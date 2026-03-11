@@ -1,14 +1,7 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
-  ],
-  "routes": [
-    { "src": "/welcome", "dest": "/welcome.html" },
-    { "src": "/landing", "dest": "/welcome.html" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/wallpaper/(.*)", "dest": "/wallpaper/$1" },
-    { "src": "/music/(.*)", "dest": "/music/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/welcome", "destination": "/welcome.html" },
+    { "source": "/landing", "destination": "/welcome.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
