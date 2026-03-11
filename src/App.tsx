@@ -491,18 +491,17 @@ function App() {
   const categories = ['All', ...Array.from(new Set(books.map(b => b.category).filter(Boolean))).sort()]
 
   const fetchBooks = async () => {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const racePromise = Promise.race([
-          supabase.from('books').select('*, summaries(short_summary, long_summary, key_insights)').order('title', { ascending: true }),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-        ]);
-        const { data, error } = await racePromise as any;
-        if (error) throw error;
-        setBooks(data || []);
-        setLoading(false);
-        return;
-      } catch {
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select('*, summaries(short_summary, long_summary, key_insights)')
+        .order('title', { ascending: true })
+      if (error) throw error
+      setBooks(data || [])
+    } catch (err) {
+      console.error('Failed to load books:', err)
+    } finally {
+      setLoading(false)
         if (attempt === 3) setLoading(false);
         else await new Promise(r => setTimeout(r, 2000));
       }
