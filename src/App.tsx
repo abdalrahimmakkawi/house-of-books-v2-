@@ -562,7 +562,11 @@ function App() {
 
   if (loading) return (
     <><style>{buildStyles(theme, lang.dir)}</style>
-    <div className="loading-screen"><div className="loading-logo">{t.loading}</div><div className="loading-bar" /></div></>
+    <div className="loading-screen">
+      <div className="loading-logo">{t.loading}</div>
+      <div className="loading-bar" />
+      <button onClick={() => setLoading(false)} style={{marginTop:'20px',padding:'8px 16px',background:'#c9a84c',border:'none',borderRadius:'6px',cursor:'pointer',color:'#000'}}>Enter App</button>
+    </div></>
   )
 
   return (
