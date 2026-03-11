@@ -491,22 +491,19 @@ function App() {
   const categories = ['All', ...Array.from(new Set(books.map(b => b.category).filter(Boolean))).sort()]
 
   const fetchBooks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('*, summaries(short_summary, long_summary, key_insights)')
-        .order('title', { ascending: true })
-      if (error) throw error
-      setBooks(data || [])
-    } catch (err) {
-      console.error('Failed to load books:', err)
-    } finally {
-      setLoading(false)
-        if (attempt === 3) setLoading(false);
-        else await new Promise(r => setTimeout(r, 2000));
-      }
-    }
+  try {
+    const { data, error } = await supabase
+      .from('books')
+      .select('*, summaries(short_summary, long_summary, key_insights)')
+      .order('title', { ascending: true })
+    if (error) throw error
+    setBooks(data || [])
+  } catch (err) {
+    console.error('Failed to load books:', err)
+  } finally {
+    setLoading(false)
   }
+}
 
   const openBook = (book: Book) => {
     const idx = books.findIndex(b => b.id === book.id)
