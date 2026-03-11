@@ -526,7 +526,7 @@ function App() {
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sk-0a2bd43938e740e885070afa5c62d8ea' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + import.meta.env.VITE_DEEPSEEK_API_KEY },
         body: JSON.stringify({ model: 'deepseek-chat', messages: [
           { role: 'system', content: systemPrompt(selectedBook?.title || '', selectedBook?.author || '') },
           ...chatMessages, userMessage
