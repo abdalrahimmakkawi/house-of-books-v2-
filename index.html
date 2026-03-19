@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+    <!-- PWA Primary -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#c9a84c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Apple PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="House of Books" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72.png" />
+    <link rel="shortcut icon" href="/icons/icon-192.png" />
+
+    <!-- SEO & Social -->
+    <title>House of Books — AI-Powered Reading</title>
+    <meta name="description" content="304 timeless books, distilled by AI. Instant summaries, deep conversations, 5 languages. Start reading smarter today." />
+    <meta name="keywords" content="books, AI, summaries, reading, blinkist alternative, book summaries" />
+    <meta name="author" content="House of Books" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://house-of-books-gamma.vercel.app" />
+    <meta property="og:title" content="House of Books — AI-Powered Reading" />
+    <meta property="og:description" content="304 timeless books, distilled by AI. Start reading smarter." />
+    <meta property="og:image" content="https://house-of-books-gamma.vercel.app/wallpaper/classic.jpg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="House of Books — AI-Powered Reading" />
+    <meta name="twitter:description" content="304 timeless books, distilled by AI." />
+    <meta name="twitter:image" content="https://house-of-books-gamma.vercel.app/wallpaper/classic.jpg" />
+
+    <!-- MS Tile -->
+    <meta name="msapplication-TileColor" content="#06050a" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
+              console.log('[HoB] Service Worker registered:', reg.scope)
+              // Check for updates every 30 minutes
+              setInterval(() => reg.update(), 30 * 60 * 1000)
+            })
+            .catch(err => console.warn('[HoB] Service Worker failed:', err))
+        })
+      }
+
+      // PWA Install prompt — save for later use
+      let deferredPrompt = null
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault()
+        deferredPrompt = e
+        // Dispatch custom event so React can show install button
+        window.dispatchEvent(new CustomEvent('pwa-installable'))
+      })
+
+      window.addEventListener('appinstalled', () => {
+        deferredPrompt = null
+        console.log('[HoB] PWA installed successfully')
+      })
+
+      // Expose install trigger globally for React to call
+      window.triggerPWAInstall = async () => {
+        if (!deferredPrompt) return false
+        deferredPrompt.prompt()
+        const { outcome } = await deferredPrompt.userChoice
+        deferredPrompt = null
+        return outcome === 'accepted'
+      }
+    </script>
+  </body>
+</html>
