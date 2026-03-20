@@ -17,7 +17,7 @@ type AppFlow = 'loading' | 'login' | 'app'
 type HubTab = 'summary' | 'insights' | 'discuss' | 'chat' | 'shelf'
 
 export default function App() {
-  const [appFlow, setAppFlow] = useState<AppFlow>('loading')
+  const [appFlow, setAppFlow] = useState<AppFlow>('login')
   const [userEmail, setUserEmail] = useState('')
   const [emailInput, setEmailInput] = useState('')
   const [currentPage, setCurrentPage] = useState<Page>('library')
@@ -40,110 +40,38 @@ export default function App() {
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-  const init = async () => {
-    try {
-      // Load saved local state
-      const savedShelf = localStorage.getItem('shelf')
-      if (savedShelf) setShelf(JSON.parse(savedShelf))
-      const savedProgress = localStorage.getItem('progress')
-      if (savedProgress) setProgress(JSON.parse(savedProgress))
-      const savedNotes = localStorage.getItem('notes')
-      if (savedNotes) setNotes(JSON.parse(savedNotes))
-      const savedCount = localStorage.getItem('aiChatCount')
-      if (savedCount) setAiChatCount(parseInt(savedCount))
+  // Load local state
+  try {
+    const s = localStorage.getItem('shelf'); if(s) setShelf(JSON.parse(s))
+    const p = localStorage.getItem('progress'); if(p) setProgress(JSON.parse(p))
+    const n = localStorage.getItem('notes'); if(n) setNotes(JSON.parse(n))
+    const c = localStorage.getItem('aiChatCount'); if(c) setAiChatCount(parseInt(c))
+  } catch(e) {}
 
-      // PWA
-      window.addEventListener('beforeinstallprompt', (e: any) => {
-        e.preventDefault()
-        ;(window as any).__pwa = e
-        setShowInstallBtn(true)
-      })
-
-      // Check for OAuth callback in URL hash
-      const hash = window.location.hash
-      if (hash && hash.includes('access_token')) {
-        const params = new URLSearchParams(hash.replace('#', ''))
-        const accessToken = params.get('access_token')
-        const refreshToken = params.get('refresh_token')
-        if (accessToken && refreshToken) {
-          const { data } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          })
-          window.history.replaceState({}, '', window.location.pathname)
-          if (data?.user?.email) {
-            await enterApp(data.user.email)
-            return
-          }
-        }
-      }
-
-      // Check saved email
-      const savedEmail = localStorage.getItem('userEmail')
-      if (savedEmail) {
-        await enterApp(savedEmail)
-        return
-      }
-
-      // No session — show login
-      setAppFlow('login')
-
-    } catch (err) {
-      console.error('Init error:', err)
-      setAppFlow('login')
-    }
+  // If email saved, go straight to app and load books in background
+  const savedEmail = localStorage.getItem('userEmail')
+  if (savedEmail) {
+    setUserEmail(savedEmail)
+    setAppFlow('app')
+    supabase.from('books').select('*').order('created_at', { ascending: true })
+      .then(({ data }) => { if(data) { setBooks(data); setFilteredBooks(data) } })
   }
 
-  // Safety timeout — if stuck after 4 seconds, show login
-  const timeout = setTimeout(() => {
-    setAppFlow(prev => {
-      if (prev === 'loading') {
-        console.log('Init timeout — showing login')
-        return 'login'
-      }
-      return prev
-    })
-  }, 4000)
-
-  init().finally(() => clearTimeout(timeout))
+  // PWA
+  window.addEventListener('beforeinstallprompt', (e: any) => {
+    e.preventDefault(); (window as any).__pwa = e; setShowInstallBtn(true)
+  })
 }, [])
 
-  const enterApp = async (email: string) => {
-    setUserEmail(email)
-    localStorage.setItem('userEmail', email)
-    try {
-      await Promise.race([
-        loadBooks(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-      ])
-    } catch (err) {
-      console.log('Books load timeout or error:', err)
-      // Continue anyway — show app even if books failed to load
-    }
-    setAppFlow('app')
-  }
-
-  const loadBooks = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('books')
-      .select('*')
-      .order('created_at', { ascending: true })
-    if (error) throw error
-    if (data) {
-      setBooks(data)
-      setFilteredBooks(data)
-    }
-  } catch (err) {
-    console.error('loadBooks error:', err)
-  }
+  const handleLogin = () => {
+  const email = emailInput.trim().toLowerCase()
+  if (!email || !email.includes('@')) return
+  setUserEmail(email)
+  localStorage.setItem('userEmail', email)
+  setAppFlow('app')
+  supabase.from('books').select('*').order('created_at', { ascending: true })
+    .then(({ data }) => { if(data) { setBooks(data); setFilteredBooks(data) } })
 }
-
-  const handleLogin = async () => {
-    const email = emailInput.trim().toLowerCase()
-    if (!email || !email.includes('@')) return
-    await enterApp(email)
-  }
 
   const logout = async () => {
     await supabase.auth.signOut()
@@ -268,17 +196,6 @@ export default function App() {
     hubPanel: { flex:1, display:'flex', flexDirection:'column' as const, overflow:'hidden', background:'#0d0d0f' },
     chatPanel: { width:'300px', background:'#13131a', borderLeft:'1px solid rgba(255,255,255,0.07)', display:'flex', flexDirection:'column' as const, flexShrink:0 },
   }
-
-  // ── LOADING ───────────────────────────────
-  if (appFlow === 'loading') return (
-    <div style={{ position:'fixed', inset:0, background:'#0d0d0f', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:'16px' }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');@keyframes lb{to{width:100%}}`}</style>
-      <div style={{ fontFamily:"'Playfair Display',serif", fontSize:'1.8rem', color:'#e8a84c' }}>📚 House of Books</div>
-      <div style={{ width:'200px', height:'2px', background:'rgba(232,168,76,0.15)', borderRadius:'2px', overflow:'hidden' }}>
-        <div style={{ height:'100%', width:'0', background:'#e8a84c', borderRadius:'2px', animation:'lb 1.5s ease forwards' }}/>
-      </div>
-    </div>
-  )
 
   // ── LOGIN ─────────────────────────────────
   if (appFlow === 'login') return (
