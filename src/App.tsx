@@ -41,64 +41,57 @@ export default function App() {
 
   useEffect(() => {
   const init = async () => {
-    // Handle OAuth redirect callback first
-    const hashParams = new URLSearchParams(window.location.hash.slice(1))
-    const accessToken = hashParams.get('access_token')
-    const refreshToken = hashParams.get('refresh_token')
+    try {
+      // Load saved local state first
+      const savedShelf = localStorage.getItem('shelf')
+      if (savedShelf) setShelf(JSON.parse(savedShelf))
+      const savedProgress = localStorage.getItem('progress')
+      if (savedProgress) setProgress(JSON.parse(savedProgress))
+      const savedNotes = localStorage.getItem('notes')
+      if (savedNotes) setNotes(JSON.parse(savedNotes))
+      const savedCount = localStorage.getItem('aiChatCount')
+      if (savedCount) setAiChatCount(parseInt(savedCount))
 
-    if (accessToken && refreshToken) {
-      // Set session from URL hash (OAuth callback)
-      const { data } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
+      // PWA
+      window.addEventListener('beforeinstallprompt', (e: any) => {
+        e.preventDefault()
+        ;(window as any).__pwa = e
+        setShowInstallBtn(true)
       })
-      if (data?.user?.email) {
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname)
-        await enterApp(data.user.email)
+
+      // Check for OAuth callback in URL hash
+      const hash = window.location.hash
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.replace('#', ''))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        if (accessToken && refreshToken) {
+          const { data } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
+          window.history.replaceState({}, '', window.location.pathname)
+          if (data?.user?.email) {
+            await enterApp(data.user.email)
+            return
+          }
+        }
+      }
+
+      // Check saved email — simplest login
+      const savedEmail = localStorage.getItem('userEmail')
+      if (savedEmail) {
+        await enterApp(savedEmail)
         return
       }
+
+      // No session found — show login
+      setAppFlow('login')
+
+    } catch (err) {
+      console.error('Init error:', err)
+      setAppFlow('login')
     }
-
-    // Check existing session
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user?.email) {
-      await enterApp(session.user.email)
-      return
-    }
-
-    // Check localStorage fallback
-    const saved = localStorage.getItem('userEmail')
-    if (saved) {
-      await enterApp(saved)
-      return
-    }
-
-    setAppFlow('login')
-
-    // Listen for future auth changes
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user?.email) {
-        await enterApp(session.user.email)
-      }
-    })
-
-    // PWA install
-    window.addEventListener('beforeinstallprompt', (e: any) => {
-      e.preventDefault()
-      ;(window as any).__pwa = e
-      setShowInstallBtn(true)
-    })
-
-    // Load saved state
-    const savedShelf = localStorage.getItem('shelf')
-    if (savedShelf) setShelf(JSON.parse(savedShelf))
-    const savedProgress = localStorage.getItem('progress')
-    if (savedProgress) setProgress(JSON.parse(savedProgress))
-    const savedNotes = localStorage.getItem('notes')
-    if (savedNotes) setNotes(JSON.parse(savedNotes))
-    const savedCount = localStorage.getItem('aiChatCount')
-    if (savedCount) setAiChatCount(parseInt(savedCount))
   }
   init()
 }, [])
