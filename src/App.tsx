@@ -42,7 +42,7 @@ export default function App() {
   useEffect(() => {
   const init = async () => {
     try {
-      // Load saved local state first
+      // Load saved local state
       const savedShelf = localStorage.getItem('shelf')
       if (savedShelf) setShelf(JSON.parse(savedShelf))
       const savedProgress = localStorage.getItem('progress')
@@ -78,14 +78,14 @@ export default function App() {
         }
       }
 
-      // Check saved email — simplest login
+      // Check saved email
       const savedEmail = localStorage.getItem('userEmail')
       if (savedEmail) {
         await enterApp(savedEmail)
         return
       }
 
-      // No session found — show login
+      // No session — show login
       setAppFlow('login')
 
     } catch (err) {
@@ -93,26 +93,51 @@ export default function App() {
       setAppFlow('login')
     }
   }
-  init()
+
+  // Safety timeout — if stuck after 4 seconds, show login
+  const timeout = setTimeout(() => {
+    setAppFlow(prev => {
+      if (prev === 'loading') {
+        console.log('Init timeout — showing login')
+        return 'login'
+      }
+      return prev
+    })
+  }, 4000)
+
+  init().finally(() => clearTimeout(timeout))
 }, [])
 
   const enterApp = async (email: string) => {
     setUserEmail(email)
     localStorage.setItem('userEmail', email)
-    await loadBooks()
+    try {
+      await Promise.race([
+        loadBooks(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ])
+    } catch (err) {
+      console.log('Books load timeout or error:', err)
+      // Continue anyway — show app even if books failed to load
+    }
     setAppFlow('app')
   }
 
   const loadBooks = async () => {
-    const { data } = await supabase
+  try {
+    const { data, error } = await supabase
       .from('books')
       .select('*')
       .order('created_at', { ascending: true })
+    if (error) throw error
     if (data) {
       setBooks(data)
       setFilteredBooks(data)
     }
+  } catch (err) {
+    console.error('loadBooks error:', err)
   }
+}
 
   const handleLogin = async () => {
     const email = emailInput.trim().toLowerCase()
