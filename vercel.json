@@ -1,5 +1,10 @@
 {
-  "buildCommand": "npx vite build",
-  "outputDirectory": "dist",
-  "framework": "vite"
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "functions": {
+    "api/agent.js": { "maxDuration": 30 },
+    "api/news.js": { "maxDuration": 15 },
+    "api/trends.js": { "maxDuration": 15 }
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }
