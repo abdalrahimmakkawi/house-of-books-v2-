@@ -1,55 +1,6 @@
-import React, { useRef, useMemo, useState, Suspense } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, PerspectiveCamera, MeshDistortMaterial, Sphere, OrbitControls, Stars, ContactShadows } from '@react-three/drei';
-import * as THREE from 'three';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Book as BookIcon, 
-  User, 
-  Mail, 
-  ArrowRight, 
-  Sparkles, 
-  ChevronDown, 
-  Volume2, 
-  Crown, 
-  Zap, 
-  Shield, 
-  Globe, 
-  MessageSquare,
-  Clock,
-  Brain,
-  Lightbulb,
-  CheckCircle,
-  Library,
-  Bot,
-  Music
-} from 'lucide-react';
-
-// Abstract Scene with Particles and Lighting
-const Scene = () => {
-  return (
-    <>
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-      <ambientLight intensity={0.2} />
-      <pointLight position={[10, 10, 10]} intensity={1} color="#c9a84c" />
-      <spotLight position={[-10, 20, 10]} angle={0.15} penumbra={1} intensity={3} color="#c9a84c" castShadow />
-      
-      <Sphere args={[1.5, 64, 64]} position={[0, 0, -12]}>
-        <MeshDistortMaterial
-          color="#c9a84c"
-          attach="material"
-          distort={0.5}
-          speed={1.5}
-          roughness={0.1}
-          metalness={1}
-        />
-      </Sphere>
-
-      <ContactShadows position={[0, -10, 0]} opacity={0.4} scale={40} blur={2} far={10} />
-      <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.2} />
-    </>
-  );
-};
+import { Book as BookIcon, Mail, ArrowRight, User, Sparkles, ChevronDown, Crown, Zap, Shield, Globe, MessageSquare, Clock, Brain, Lightbulb, CheckCircle, Library, Music, Volume2 } from 'lucide-react';
 
 interface LandingPageProps {
   onLogin: (email: string) => void;
@@ -60,23 +11,16 @@ interface LandingPageProps {
   onClearSession: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ 
-  onLogin,
-  onGoogleLogin, 
-  onMagicLink, 
-  onGuestLogin, 
-  onManualToken, 
-  onClearSession 
-}) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onGoogleLogin, onGuestLogin, onClearSession, onManualToken }) => {
   const [email, setEmail] = useState('');
   const [isHovered, setIsHovered] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero');
 
   const handleFeedbackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (feedback.trim()) {
-      console.log('Feedback submitted:', feedback);
       setFeedbackSent(true);
       setFeedback('');
       setTimeout(() => setFeedbackSent(false), 3000);
@@ -84,446 +28,279 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#0a0a0f] overflow-x-hidden font-sans selection:bg-[#c9a84c] selection:text-[#0a0a0f]">
-      {/* 3D Background Layer */}
-      <div className="fixed inset-0 z-0">
-        <Canvas shadows dpr={[1, 2]}>
-          <PerspectiveCamera makeDefault position={[0, 0, 10]} fov={50} />
-          <Scene />
-        </Canvas>
-      </div>
+    <div style={{ fontFamily: 'Georgia, serif', background: '#06050a', color: '#f0ece4', minHeight: '100vh', overflowX: 'hidden', position: 'relative' }}>
 
-      {/* Atmospheric Overlays */}
-      <div className="fixed inset-0 z-10 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f]/40 via-transparent to-[#0a0a0f]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(201,168,76,0.05)_0%,transparent_70%)]" />
-        <div className="absolute top-0 left-0 w-full h-full opacity-20 mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-      </div>
+      {/* Animated background canvas effect using CSS */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'radial-gradient(ellipse 70% 70% at 50% 50%, transparent 20%, rgba(6,5,10,0.75) 55%, rgba(6,5,10,0.97) 100%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'radial-gradient(circle at 20% 50%, rgba(201,168,76,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(201,168,76,0.05) 0%, transparent 40%)', pointerEvents: 'none' }} />
 
-      {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 w-full z-50 px-8 py-6 flex justify-between items-center backdrop-blur-md bg-[#0a0a0f]/20 border-b border-white/5">
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3"
-        >
-          <div className="w-10 h-10 bg-[#c9a84c] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(201,168,76,0.3)]">
-            <BookIcon className="w-5 h-5 text-[#0a0a0f]" />
-          </div>
-          <span className="text-white font-serif text-xl font-bold tracking-tight">House of Books</span>
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="hidden md:flex items-center gap-8"
-        >
-          {['Library', 'AI Agents', 'Solution', 'Feedback'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className="text-[11px] uppercase tracking-[0.2em] text-[#9896a4] hover:text-[#c9a84c] transition-colors">{item}</a>
+      {/* Animated particles */}
+      <style>{`
+        @keyframes float1 { 0%,100%{transform:translateY(0) translateX(0)} 33%{transform:translateY(-30px) translateX(20px)} 66%{transform:translateY(20px) translateX(-15px)} }
+        @keyframes float2 { 0%,100%{transform:translateY(0) translateX(0)} 33%{transform:translateY(25px) translateX(-20px)} 66%{transform:translateY(-15px) translateX(25px)} }
+        @keyframes float3 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-40px)} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+        @keyframes wv { 0%,100%{transform:scaleY(0.35);opacity:0.35} 50%{transform:scaleY(1);opacity:1} }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        .particle { position: fixed; border-radius: 50%; pointer-events: none; z-index: 1; }
+        .p1 { width:3px;height:3px;background:rgba(201,168,76,0.6);top:15%;left:10%;animation:float1 8s ease-in-out infinite; }
+        .p2 { width:2px;height:2px;background:rgba(201,168,76,0.4);top:25%;left:85%;animation:float2 10s ease-in-out infinite; }
+        .p3 { width:4px;height:4px;background:rgba(201,168,76,0.3);top:60%;left:5%;animation:float3 12s ease-in-out infinite; }
+        .p4 { width:2px;height:2px;background:rgba(201,168,76,0.5);top:70%;left:90%;animation:float1 9s ease-in-out infinite 2s; }
+        .p5 { width:3px;height:3px;background:rgba(201,168,76,0.4);top:40%;left:50%;animation:float2 11s ease-in-out infinite 1s; }
+        .p6 { width:2px;height:2px;background:rgba(240,236,228,0.3);top:80%;left:30%;animation:float3 7s ease-in-out infinite 3s; }
+        .p7 { width:3px;height:3px;background:rgba(201,168,76,0.3);top:10%;left:60%;animation:float1 13s ease-in-out infinite 1.5s; }
+        .p8 { width:2px;height:2px;background:rgba(240,236,228,0.2);top:50%;left:75%;animation:float2 9s ease-in-out infinite 4s; }
+        .wave-bar { width:4px;background:#c9a84c;border-radius:2px;display:inline-block;animation:wv 1.4s ease-in-out infinite; }
+        nav { transition: all 0.5s; }
+        .nav-link { text-decoration:none;color:#9a9488;font-size:0.78rem;letter-spacing:0.12em;text-transform:uppercase;transition:color 0.3s; }
+        .nav-link:hover { color:#c9a84c; }
+        .btn-primary { padding:0.95rem 2.5rem;background:linear-gradient(135deg,#c9a84c,#e8c97a);color:#06050a;border:none;border-radius:3px;font-size:0.8rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all 0.3s;font-family:'Georgia',serif; }
+        .btn-primary:hover { transform:translateY(-2px);box-shadow:0 16px 48px rgba(201,168,76,0.4); }
+        .btn-ghost { padding:0.95rem 2.5rem;background:transparent;color:#9a9488;border:1px solid rgba(255,255,255,0.14);border-radius:3px;font-size:0.8rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all 0.3s;font-family:'Georgia',serif; }
+        .btn-ghost:hover { border-color:#c9a84c;color:#c9a84c; }
+        .bcard { padding:2.6rem;background:#06050a;transition:background 0.4s;position:relative;overflow:hidden;cursor:pointer; }
+        .bcard:hover { background:rgba(201,168,76,0.03); }
+        .bcard .bicon { font-size:2.2rem;margin-bottom:1.2rem;display:block;transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+        .bcard:hover .bicon { transform:translateY(-5px) scale(1.1); }
+        .pcard { padding:3rem;background:#06050a;text-align:left;position:relative; }
+        .pcard.feat { background:rgba(201,168,76,0.04); }
+        input:focus, textarea:focus { outline:none;border-color:rgba(201,168,76,0.5)!important; }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:rgba(201,168,76,0.3);border-radius:2px; }
+      `}</style>
+
+      {/* Floating particles */}
+      {['p1','p2','p3','p4','p5','p6','p7','p8'].map(p => <div key={p} className={`particle ${p}`} />)}
+
+      {/* NAV */}
+      <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:100, padding:'1.6rem 4rem', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(6,5,10,0.8)', backdropFilter:'blur(28px)', borderBottom:'1px solid rgba(201,168,76,0.12)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'0.7rem' }}>
+          <div style={{ width:30, height:30, border:'1px solid #c9a84c', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15 }}>H</div>
+          <span style={{ fontFamily:'Georgia,serif', fontSize:'1.3rem', letterSpacing:'0.07em' }}>House of Books</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:'2.5rem' }}>
+          {['Library','Features','Pricing','Feedback'].map(item => (
+            <a key={item} href={`#${item.toLowerCase()}`} className="nav-link">{item}</a>
           ))}
-          <button 
-            onClick={onGuestLogin}
-            className="px-6 py-2 border border-[rgba(201,168,76,0.2)] rounded-full text-[11px] uppercase tracking-widest text-white hover:bg-white/5 transition-all"
-          >
+          <button onClick={onGuestLogin} style={{ border:'1px solid rgba(201,168,76,0.5)', color:'#c9a84c', background:'transparent', padding:'0.5rem 1.3rem', borderRadius:3, fontSize:'0.78rem', letterSpacing:'0.12em', textTransform:'uppercase', cursor:'pointer', fontFamily:'Georgia,serif' }}>
             Guest Access
           </button>
-        </motion.div>
+        </div>
       </nav>
 
-      {/* Main Content */}
-      <div className="relative z-20 pt-32 pb-20 px-6 lg:px-20">
-        <div className="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center min-h-[80vh]">
-          
-          {/* Hero Section (Left) */}
-          <div className="lg:col-span-7 text-left">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-            >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c9a84c]/10 border border-[#c9a84c]/20 mb-8">
-                <Sparkles className="w-3 h-3 text-[#c9a84c]" />
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[#c9a84c] font-bold">The Ultimate Digital Sanctuary</span>
-              </div>
-              
-              <h1 className="text-7xl lg:text-[110px] font-bold text-white leading-[0.85] tracking-tighter mb-8">
-                WISDOM <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#f5d17a] italic font-serif font-light">DISTILLED</span>
-              </h1>
-              
-              <p className="text-xl text-[#9896a4] max-w-xl leading-relaxed mb-12 font-light">
-                House of Books is a premium platform for the modern intellectual. We leverage state-of-the-art AI to summarize, analyze, and discuss the world's most impactful literature in an immersive 3D environment.
-              </p>
+      {/* HERO */}
+      <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:'8rem 2rem 4rem', position:'relative', zIndex:10 }}>
+        <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.4 }} style={{ display:'inline-flex', alignItems:'center', gap:'0.8rem', fontSize:'0.67rem', letterSpacing:'0.25em', textTransform:'uppercase', color:'#c9a84c', marginBottom:'2rem' }}>
+          <span style={{ display:'block', width:30, height:1, background:'#c9a84c', opacity:0.5 }} />
+          The Ultimate Digital Sanctuary
+          <span style={{ display:'block', width:30, height:1, background:'#c9a84c', opacity:0.5 }} />
+        </motion.div>
 
-              <div className="flex flex-wrap gap-10 items-center mb-16">
-                <div className="flex flex-col">
-                  <span className="text-white font-bold text-3xl">304</span>
-                  <span className="text-[#c9a84c] text-[10px] uppercase tracking-[0.2em] mt-1 font-black">Masterpieces</span>
-                </div>
-                <div className="w-px h-10 bg-white/10 hidden sm:block" />
-                <div className="flex flex-col">
-                  <span className="text-white font-bold text-3xl">90</span>
-                  <span className="text-[#c9a84c] text-[10px] uppercase tracking-[0.2em] mt-1 font-black">Free Books</span>
-                </div>
-                <div className="w-px h-10 bg-white/10 hidden sm:block" />
-                <div className="flex flex-col">
-                  <span className="text-white font-bold text-3xl">Coming</span>
-                  <span className="text-[#5f5d6b] text-[10px] uppercase tracking-[0.2em] mt-1">More Books Soon</span>
-                </div>
-              </div>
+        <motion.h1 initial={{ opacity:0, y:30 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.6 }} style={{ fontFamily:'Georgia,serif', fontSize:'clamp(3rem,8vw,7.5rem)', fontWeight:400, lineHeight:1.02, letterSpacing:'-0.02em', marginBottom:'1.4rem' }}>
+          WISDOM <br /><em style={{ fontStyle:'italic', color:'#c9a84c' }}>DISTILLED</em>
+        </motion.h1>
 
-              {/* Feature Highlights */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
-                <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-xl bg-[#c9a84c]/10 flex items-center justify-center shrink-0">
-                    <Volume2 className="w-5 h-5 text-[#c9a84c]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1 flex items-center gap-2">
-                      Audio Summaries
-                      <span className="text-[8px] bg-[#c9a84c]/20 text-[#c9a84c] px-1.5 py-0.5 rounded-md uppercase tracking-widest">Soon</span>
-                    </h3>
-                    <p className="text-[#5f5d6b] text-xs leading-relaxed">Listen to high-quality AI-narrated summaries on the go.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-xl bg-[#c9a84c]/10 flex items-center justify-center shrink-0">
-                    <Crown className="w-5 h-5 text-[#c9a84c]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1 flex items-center gap-2">
-                      Premium Features
-                      <span className="text-[8px] bg-[#c9a84c]/20 text-[#c9a84c] px-1.5 py-0.5 rounded-md uppercase tracking-widest">Soon</span>
-                    </h3>
-                    <p className="text-[#5f5d6b] text-xs leading-relaxed">Unlimited AI chats, exclusive agents, and early book access.</p>
-                  </div>
-                </div>
-              </div>
+        <motion.p initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.8 }} style={{ fontSize:'clamp(0.95rem,2vw,1.15rem)', color:'#9a9488', lineHeight:1.78, maxWidth:550, margin:'0 auto 2.8rem' }}>
+          House of Books is a premium platform for the modern intellectual. We leverage AI to summarize, analyze, and discuss the world's most impactful literature in an immersive environment.
+        </motion.p>
 
-              {/* Install Buttons */}
-              <div className="flex flex-wrap gap-4">
-                <button className="flex items-center gap-3 bg-black border border-white/10 px-6 py-3 rounded-xl hover:bg-white/5 transition-all group">
-                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.1 2.48-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-                  </svg>
-                  <div className="text-left">
-                    <p className="text-[8px] uppercase tracking-widest text-[#5f5d6b]">Download on the</p>
-                    <p className="text-white font-bold text-sm leading-none">App Store</p>
-                  </div>
-                </button>
-                <button className="flex items-center gap-3 bg-black border border-white/10 px-6 py-3 rounded-xl hover:bg-white/5 transition-all group">
-                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.61 3,21.09 3,20.5M16.81,15.12L18.66,14.05C20.44,13.03 20.44,10.97 18.66,9.95L16.81,8.88L14.89,12L16.81,15.12M4.96,2.67L13.69,11.4L15.61,9.48L5.76,3.83C5.5,3.68 5.23,3.61 4.96,3.61C4.96,3.61 4.96,3.61 4.96,2.67M13.69,12.6L4.96,21.33C4.96,20.39 4.96,20.39 4.96,20.39C5.23,20.39 5.5,20.32 5.76,20.17L15.61,14.52L13.69,12.6Z" />
-                  </svg>
-                  <div className="text-left">
-                    <p className="text-[8px] uppercase tracking-widest text-[#5f5d6b]">Get it on</p>
-                    <p className="text-white font-bold text-sm leading-none">Google Play</p>
-                  </div>
-                </button>
-              </div>
-            </motion.div>
+        <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:1.0 }} style={{ display:'flex', gap:'1rem', justifyContent:'center', flexWrap:'wrap', marginBottom:'4rem' }}>
+          <button className="btn-primary" onClick={() => document.getElementById('login-section')?.scrollIntoView({ behavior:'smooth' })}>
+            Enter Sanctuary →
+          </button>
+          <button className="btn-ghost" onClick={onGuestLogin}>
+            Explore as Guest
+          </button>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:1.2 }} style={{ display:'flex', gap:'5rem', justifyContent:'center', flexWrap:'wrap' }}>
+          {[['304','Masterpieces'],['90','Free Books'],['5','Ambient Tracks'],['8','AI Agents']].map(([num,label]) => (
+            <div key={label} style={{ textAlign:'center' }}>
+              <div style={{ fontFamily:'Georgia,serif', fontSize:'2.6rem', color:'#c9a84c', lineHeight:1 }}>{num}</div>
+              <div style={{ fontSize:10, color:'#5a5650', letterSpacing:'0.14em', textTransform:'uppercase', marginTop:4 }}>{label}</div>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* DIVIDER */}
+      <div style={{ height:1, background:'linear-gradient(90deg,transparent,rgba(201,168,76,0.3),transparent)', margin:'0 5rem', position:'relative', zIndex:10 }} />
+
+      {/* FEATURES BENTO */}
+      <div id="features" style={{ position:'relative', zIndex:10, padding:'8rem 5rem', maxWidth:1300, margin:'0 auto' }}>
+        <div style={{ fontSize:10, letterSpacing:'0.2em', textTransform:'uppercase', color:'#c9a84c', marginBottom:'1rem' }}>Inside the Sanctuary</div>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(2rem,4vw,3.4rem)', fontWeight:400, lineHeight:1.18, marginBottom:'3.5rem' }}>
+          Everything you need to <em style={{ fontStyle:'italic', color:'#c9a84c' }}>master</em> any book
+        </h2>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:1, background:'rgba(201,168,76,0.08)' }}>
+          {[
+            { icon:'⚡', name:'AI Distillation', desc:'Transform 300+ pages into 15 minutes of pure wisdom. Our AI extracts core mental models and actionable insights.' },
+            { icon:'🤖', name:'AI Author Chat', desc:"Don't just read — converse. Ask questions to the book's core logic and get instant context-aware answers.", wide:true },
+            { icon:'📚', name:'Digital Shelf', desc:'Organize your intellectual journey. Track what you\'ve mastered, reading, and what\'s next.', wide:true },
+            { icon:'🎵', name:'Ambient Focus', desc:'5 unique ambient tracks designed to trigger deep focus states while you read.' },
+            { icon:'🔒', name:'Private Sanctuary', desc:'Your reading habits and notes are yours alone. A secure, focused environment for deep work.' },
+            { icon:'🌐', name:'Global Community', desc:'Discuss ideas with intellectuals worldwide. Join book-specific rooms and share your perspectives.' },
+          ].map((f,i) => (
+            <div key={i} className="bcard" style={f.wide ? { gridColumn:'span 2' } : {}}>
+              <span className="bicon">{f.icon}</span>
+              <div style={{ fontFamily:'Georgia,serif', fontSize:'1.18rem', color:'#f0ece4', marginBottom:'0.5rem' }}>{f.name}</div>
+              <div style={{ fontSize:13, color:'#9a9488', lineHeight:1.78 }}>{f.desc}</div>
+              <div style={{ fontSize:70, color:'#c9a84c', opacity:0.08, position:'absolute', bottom:-8, right:14, lineHeight:1, pointerEvents:'none', fontFamily:'Georgia,serif' }}>{i+1}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* AMBIENT MUSIC SECTION */}
+      <div style={{ position:'relative', zIndex:10, margin:'0 5rem 5rem', padding:'3rem 3.5rem', background:'linear-gradient(135deg,rgba(201,168,76,0.07),transparent)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:4, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'2rem', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:36, flexShrink:0 }}>
+          {[10,22,36,18,28,14,26].map((h,i) => (
+            <span key={i} className="wave-bar" style={{ height:h, animationDelay:`${i*0.15}s` }} />
+          ))}
+        </div>
+        <div style={{ flex:1 }}>
+          <h3 style={{ fontFamily:'Georgia,serif', fontSize:'1.35rem', color:'#c9a84c', marginBottom:5 }}>Ambient Focus Environment</h3>
+          <p style={{ fontSize:13, color:'#9a9488', lineHeight:1.65 }}>5 curated soundscapes — Grand Library, Midnight Rain, Ancient Forest, Coastal Breeze, Cosmic Void — designed to activate your deep focus state.</p>
+        </div>
+        <div style={{ padding:'7px 18px', border:'1px solid rgba(201,168,76,0.4)', borderRadius:20, fontSize:11, color:'#c9a84c', letterSpacing:'0.1em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
+          Now Playing
+        </div>
+      </div>
+
+      {/* PRICING */}
+      <div id="pricing" style={{ position:'relative', zIndex:10, padding:'4rem 5rem 8rem', textAlign:'center' }}>
+        <div style={{ fontSize:10, letterSpacing:'0.2em', textTransform:'uppercase', color:'#c9a84c', marginBottom:'1rem' }}>Pricing</div>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(2rem,4vw,3.4rem)', fontWeight:400, lineHeight:1.18, marginBottom:'1rem' }}>
+          Begin <em style={{ fontStyle:'italic', color:'#c9a84c' }}>free</em>, upgrade when ready
+        </h2>
+        <p style={{ color:'#5a5650', fontSize:14, marginBottom:'3rem' }}>During beta — everything is free. Premium coming soon.</p>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(201,168,76,0.1)', maxWidth:860, margin:'0 auto' }}>
+          <div className="pcard">
+            <div style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#5a5650', marginBottom:'1rem' }}>Free</div>
+            <div style={{ fontFamily:'Georgia,serif', fontSize:'3.5rem', color:'#f0ece4', lineHeight:1, marginBottom:4 }}>$0 <span style={{ fontSize:'1rem', color:'#9a9488' }}>/mo</span></div>
+            <div style={{ fontSize:12, color:'#5a5650', marginBottom:'2rem' }}>Forever free during beta</div>
+            <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:10, marginBottom:'2rem' }}>
+              {['90 free books','10 AI chats / 6h','5 ambient tracks','Reading shelf & notes','Community discussions'].map(item => (
+                <li key={item} style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'#9a9488' }}>
+                  <span style={{ color:'#c9a84c' }}>✓</span> {item}
+                </li>
+              ))}
+            </ul>
+            <button onClick={onGuestLogin} className="btn-ghost" style={{ width:'100%' }}>Start Free</button>
           </div>
-
-          {/* Login Card (Right) */}
-          <div className="lg:col-span-5">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, x: 50 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative"
-            >
-              <div className="absolute -inset-4 bg-[#c9a84c]/10 blur-3xl rounded-[3rem] -z-10" />
-              
-              <div className="bg-[#13121a]/60 backdrop-blur-3xl border border-white/10 p-10 lg:p-12 rounded-[3rem] shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#c9a84c]/10 blur-3xl rounded-full" />
-                
-                <h2 className="text-3xl font-serif font-bold text-white mb-2">Join the Elite</h2>
-                <p className="text-[#9896a4] text-sm mb-10">Sign in to unlock your personal digital shelf and AI agents.</p>
-
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    onLogin(email);
-                  }} 
-                  className="space-y-5 mb-8"
-                >
-                  <div className="relative group">
-                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5f5d6b] group-focus-within:text-[#c9a84c] transition-colors" />
-                    <input 
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email Address"
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white placeholder:text-[#5f5d6b] focus:outline-none focus:border-[#c9a84c]/50 transition-all"
-                      required
-                    />
-                  </div>
-                  
-                  <motion.button 
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="submit" 
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
-                    className="w-full bg-[#c9a84c] text-[#0a0a0f] font-bold py-5 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-[0_10px_30px_rgba(201,168,76,0.2)]"
-                  >
-                    Enter Sanctuary
-                    <motion.div
-                      animate={{ x: isHovered ? 5 : 0 }}
-                    >
-                      <ArrowRight className="w-5 h-5" />
-                    </motion.div>
-                  </motion.button>
-                </form>
-
-                <div className="relative mb-8">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/5"></div>
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em]">
-                    <span className="px-4 bg-[#13121a] text-[#5f5d6b]">Or connect with</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={onGoogleLogin}
-                    className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 py-4 rounded-2xl text-white text-xs font-bold transition-all uppercase tracking-widest"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    Google
-                  </button>
-                  <button 
-                    onClick={onGuestLogin}
-                    className="flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 py-4 rounded-2xl text-white text-xs font-bold transition-all uppercase tracking-widest"
-                  >
-                    <User className="w-4 h-4" />
-                    Guest
-                  </button>
-                </div>
-                
-                <div className="mt-8 flex flex-col gap-2 items-center">
-                  <button 
-                    onClick={onClearSession}
-                    className="text-[9px] text-[#5f5d6b] hover:text-[#c9a84c] transition-colors uppercase tracking-[0.3em]"
-                  >
-                    Clear Session
-                  </button>
-                  <button 
-                    onClick={onManualToken}
-                    className="text-[9px] text-[#c9a84c]/30 hover:text-[#c9a84c]/60 transition-colors uppercase tracking-[0.3em]"
-                  >
-                    Manual Token Entry
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+          <div className="pcard feat">
+            <div style={{ position:'absolute', top:0, right:'2rem', background:'#c9a84c', color:'#06050a', fontSize:9, letterSpacing:'0.12em', textTransform:'uppercase', padding:'5px 14px' }}>✦ Coming Soon</div>
+            <div style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#5a5650', marginBottom:'1rem' }}>Premium</div>
+            <div style={{ fontFamily:'Georgia,serif', fontSize:'3.5rem', color:'#f0ece4', lineHeight:1, marginBottom:4 }}>$9 <span style={{ fontSize:'1rem', color:'#9a9488' }}>/mo</span></div>
+            <div style={{ fontSize:12, color:'#5a5650', marginBottom:'2rem' }}>Billed monthly</div>
+            <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:10, marginBottom:'2rem' }}>
+              {['304+ books unlocked','Unlimited AI chat','8 Business AI Agents','Priority new releases','Early access to audio'].map(item => (
+                <li key={item} style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'#9a9488' }}>
+                  <span style={{ color:'#c9a84c' }}>✓</span> {item}
+                </li>
+              ))}
+            </ul>
+            <button className="btn-primary" style={{ width:'100%', opacity:0.6, cursor:'not-allowed' }}>Coming Soon</button>
           </div>
         </div>
+      </div>
 
-        {/* The Problem & Solution Section */}
-        <div id="solution" className="max-w-7xl w-full mx-auto mt-48">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-serif font-bold text-white mb-6">The Modern Reading Crisis</h2>
-            <p className="text-[#9896a4] max-w-2xl mx-auto font-light">In an age of infinite information, we suffer from shallow understanding. House of Books is the antidote.</p>
+      {/* LOGIN SECTION */}
+      <div id="login-section" style={{ position:'relative', zIndex:10, padding:'4rem 5rem 8rem', display:'flex', justifyContent:'center' }}>
+        <motion.div initial={{ opacity:0, y:30 }} whileInView={{ opacity:1, y:0 }} viewport={{ once:true }} style={{ background:'rgba(19,18,26,0.6)', backdropFilter:'blur(30px)', border:'1px solid rgba(255,255,255,0.1)', padding:'3rem', borderRadius:'2rem', maxWidth:480, width:'100%', position:'relative' }}>
+          <div style={{ position:'absolute', top:0, right:0, width:128, height:128, background:'rgba(201,168,76,0.1)', filter:'blur(48px)', borderRadius:'50%' }} />
+          <h2 style={{ fontFamily:'Georgia,serif', fontSize:'2rem', color:'#f0ece4', marginBottom:'0.5rem' }}>Join the Elite</h2>
+          <p style={{ color:'#9a9488', fontSize:14, marginBottom:'2rem' }}>Sign in to unlock your personal digital shelf and AI agents.</p>
+
+          <form onSubmit={(e) => { e.preventDefault(); if(email) onLogin(email); }} style={{ display:'flex', flexDirection:'column', gap:'1rem', marginBottom:'1.5rem' }}>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Email Address"
+              required
+              style={{ background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'1.2rem 1.5rem', color:'#f0ece4', fontSize:14, fontFamily:'Georgia,serif' }}
+            />
+            <button type="submit" className="btn-primary" style={{ width:'100%', padding:'1.2rem' }}
+              onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+              Enter Sanctuary {isHovered ? '→' : ''}
+            </button>
+          </form>
+
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:'1.5rem' }}>
+            <div style={{ flex:1, height:'0.5px', background:'rgba(255,255,255,0.05)' }} />
+            <span style={{ fontSize:10, letterSpacing:'0.3em', textTransform:'uppercase', color:'#5a5650' }}>Or connect with</span>
+            <div style={{ flex:1, height:'0.5px', background:'rgba(255,255,255,0.05)' }} />
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div className="space-y-10">
-              <div className="flex gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl mb-2">No Time to Read?</h3>
-                  <p className="text-[#5f5d6b] text-sm leading-relaxed">The average non-fiction book takes 8 hours to read. Most people never finish. We distill those 8 hours into 15 minutes of high-impact wisdom.</p>
-                </div>
-              </div>
-              <div className="flex gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
-                  <Brain className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl mb-2">Information Overload?</h3>
-                  <p className="text-[#5f5d6b] text-sm leading-relaxed">Reading without retention is a waste. Our AI interactive summaries ensure you internalize mental models, not just facts.</p>
-                </div>
-              </div>
-              <div className="flex gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                  <Lightbulb className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-xl mb-2">Passive Learning?</h3>
-                  <p className="text-[#5f5d6b] text-sm leading-relaxed">Traditional books are one-way. House of Books lets you talk back. Chat with any author's ideas through our specialized AI agents.</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <div className="absolute -inset-10 bg-[#c9a84c]/5 blur-[100px] rounded-full" />
-              <div className="bg-[#13121a]/80 border border-white/10 p-12 rounded-[3rem] relative backdrop-blur-3xl">
-                <h3 className="text-[#c9a84c] font-serif text-3xl mb-8 italic">"The solution isn't more information, it's better distillation."</h3>
-                <div className="space-y-4">
-                  {[
-                    'AI-Powered Book Distillation',
-                    'Interactive Author Chatbots',
-                    'Immersive Ambient Focus Environment',
-                    'Curated Library of 304+ Masterpieces',
-                    'Personalized Reading Shelves'
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 text-white/80 text-sm">
-                      <CheckCircle className="w-4 h-4 text-[#c9a84c]" />
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1.5rem' }}>
+            <button onClick={onGoogleLogin} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'1rem', color:'#f0ece4', fontSize:12, letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer', fontFamily:'Georgia,serif' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Google
+            </button>
+            <button onClick={onGuestLogin} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'1rem', color:'#f0ece4', fontSize:12, letterSpacing:'0.1em', textTransform:'uppercase', cursor:'pointer', fontFamily:'Georgia,serif' }}>
+              👤 Guest
+            </button>
+          </div>
+
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
+            <button onClick={onClearSession} style={{ background:'none', border:'none', color:'#5a5650', fontSize:9, letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer' }}>Clear Session</button>
+            <button onClick={onManualToken} style={{ background:'none', border:'none', color:'rgba(201,168,76,0.3)', fontSize:9, letterSpacing:'0.3em', textTransform:'uppercase', cursor:'pointer' }}>Manual Token Entry</button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* FEEDBACK */}
+      <div id="feedback" style={{ position:'relative', zIndex:10, maxWidth:700, margin:'0 auto', padding:'0 2rem 8rem' }}>
+        <div style={{ background:'rgba(19,18,26,0.6)', backdropFilter:'blur(30px)', border:'1px solid rgba(255,255,255,0.1)', padding:'3rem', borderRadius:'2rem' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:'2rem' }}>
+            <div style={{ width:48, height:48, borderRadius:12, background:'rgba(201,168,76,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>💬</div>
+            <div>
+              <h2 style={{ fontFamily:'Georgia,serif', fontSize:'1.5rem', color:'#f0ece4' }}>Share Your Wisdom</h2>
+              <p style={{ color:'#9a9488', fontSize:13 }}>Help us shape the future of House of Books.</p>
             </div>
           </div>
+          <form onSubmit={handleFeedbackSubmit} style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+            <textarea value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="What features would you like to see? Which books should we add next?" required style={{ background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'1.5rem', color:'#f0ece4', fontSize:13, fontFamily:'Georgia,serif', minHeight:150, resize:'none' }} />
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ fontSize:10, color:'#5a5650', textTransform:'uppercase', letterSpacing:'0.1em' }}>Anonymous & valued</span>
+              <button type="submit" className="btn-primary">Send Feedback</button>
+            </div>
+          </form>
+          {feedbackSent && (
+            <div style={{ marginTop:'1rem', padding:'1rem', borderRadius:12, background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.2)', color:'#c9a84c', textAlign:'center', fontSize:14 }}>
+              Thank you! Your feedback has been received. ✦
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Features Inside the App Section */}
-        <div id="library" className="max-w-7xl w-full mx-auto mt-48">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-serif font-bold text-white mb-6">Inside the Sanctuary</h2>
-            <p className="text-[#9896a4] max-w-2xl mx-auto font-light">A suite of features designed for deep work, rapid learning, and intellectual growth.</p>
+      {/* FOOTER */}
+      <footer style={{ position:'relative', zIndex:10, borderTop:'1px solid rgba(255,255,255,0.05)', padding:'3rem 5rem', background:'rgba(6,5,10,0.8)', backdropFilter:'blur(24px)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'2rem', marginBottom:'2rem' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.7rem' }}>
+            <div style={{ width:28, height:28, border:'1px solid #c9a84c', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>H</div>
+            <span style={{ fontFamily:'Georgia,serif', fontSize:'1.1rem' }}>House of Books</span>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { icon: <Zap />, title: 'AI Distillation', desc: 'Transform 300+ pages into 15 minutes of pure wisdom. Our AI extracts the core mental models and actionable insights.' },
-              { icon: <Bot />, title: 'AI Author Chat', desc: 'Don\'t just read—converse. Ask questions to the book\'s core logic and get instant, context-aware answers.' },
-              { icon: <Library />, title: 'Digital Shelf', desc: 'Organize your intellectual journey. Track what you\'ve mastered, what you\'re reading, and what\'s next.' },
-              { icon: <Music />, title: 'Ambient Focus', desc: 'Immerse yourself in 5 unique ambient tracks designed to trigger deep focus states while you read.' },
-              { icon: <Shield />, title: 'Private Sanctuary', desc: 'Your reading habits and notes are yours alone. We provide a secure, focused environment for deep work.' },
-              { icon: <Globe />, title: 'Global Community', desc: 'Discuss ideas with intellectuals worldwide. Join book-specific rooms and share your unique perspectives.' }
-            ].map((feature, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="p-8 rounded-[2rem] bg-[#13121a]/40 border border-white/5 backdrop-blur-md hover:border-[#c9a84c]/20 transition-all group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c] mb-6 group-hover:scale-110 transition-transform">
-                  {feature.icon}
-                </div>
-                <h3 className="text-white font-bold text-xl mb-4">{feature.title}</h3>
-                <p className="text-[#9896a4] text-sm leading-relaxed">{feature.desc}</p>
-              </motion.div>
+          <div style={{ display:'flex', gap:'2rem', flexWrap:'wrap' }}>
+            {['Library','Features','Pricing','Feedback'].map(item => (
+              <a key={item} href={`#${item.toLowerCase()}`} className="nav-link" style={{ fontSize:10, letterSpacing:'0.2em' }}>{item}</a>
             ))}
           </div>
         </div>
-
-        {/* Feedback Section */}
-        <div id="feedback" className="max-w-3xl w-full mx-auto mt-48 p-10 rounded-[3rem] bg-[#13121a]/60 border border-white/10 backdrop-blur-3xl">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-[#c9a84c]/10 flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-[#c9a84c]" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-serif font-bold text-white">Share Your Wisdom</h2>
-              <p className="text-[#9896a4] text-sm">Help us shape the future of House of Books.</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleFeedbackSubmit} className="space-y-6">
-            <textarea 
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="What features would you like to see? Which books should we add next?"
-              className="w-full bg-black/40 border border-white/10 rounded-2xl p-6 text-white placeholder:text-[#5f5d6b] focus:outline-none focus:border-[#c9a84c]/50 transition-all min-h-[150px] resize-none"
-              required
-            />
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] text-[#5f5d6b] uppercase tracking-widest">Your feedback is anonymous and highly valued.</p>
-              <button 
-                type="submit"
-                className="px-8 py-3 bg-[#c9a84c] text-[#0a0a0f] font-bold rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(201,168,76,0.2)]"
-              >
-                Send Feedback
-              </button>
-            </div>
-          </form>
-
-          <AnimatePresence>
-            {feedbackSent && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-6 p-4 rounded-xl bg-[#c9a84c]/10 border border-[#c9a84c]/20 text-[#c9a84c] text-center text-sm font-bold"
-              >
-                Thank you! Your feedback has been received.
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="relative z-20 pt-20 pb-10 px-6 lg:px-20 border-t border-white/5 bg-[#0a0a0f]/80 backdrop-blur-md">
-        <div className="max-w-7xl w-full mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-10 mb-12">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#c9a84c] rounded-lg flex items-center justify-center">
-                <BookIcon className="w-4 h-4 text-[#0a0a0f]" />
-              </div>
-              <span className="text-white font-serif text-lg font-bold tracking-tight">House of Books</span>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-8">
-              {['Library', 'AI Agents', 'Solution', 'Feedback'].map((item) => (
-                <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className="text-[10px] uppercase tracking-[0.2em] text-[#5f5d6b] hover:text-[#c9a84c] transition-colors">{item}</a>
-              ))}
-            </div>
-
-            <div className="flex gap-4">
-              <button className="p-2 rounded-lg bg-white/5 border border-white/10 text-[#5f5d6b] hover:text-[#c9a84c] transition-colors">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.56v.01c-.88.39-1.83.65-2.82.77 1.02-.61 1.8-1.58 2.17-2.73-.95.56-2.01.97-3.13 1.19-.9-.96-2.17-1.56-3.59-1.56-2.72 0-4.92 2.2-4.92 4.92 0 .39.04.76.13 1.12-4.09-.21-7.71-2.17-10.14-5.15-.42.73-.67 1.58-.67 2.48 0 1.71.87 3.21 2.19 4.1-.8-.03-1.56-.25-2.22-.61v.06c0 2.38 1.7 4.37 3.94 4.82-.41.11-.85.17-1.29.17-.32 0-.63-.03-.93-.09.63 1.95 2.44 3.37 4.58 3.41-1.68 1.31-3.79 2.09-6.09 2.09-.4 0-.79-.02-1.18-.07 2.17 1.39 4.75 2.21 7.51 2.21 9.01 0 13.94-7.46 13.94-13.94 0-.21 0-.42-.01-.63.96-.69 1.79-1.56 2.45-2.54z"/></svg>
-              </button>
-              <button className="p-2 rounded-lg bg-white/5 border border-white/10 text-[#5f5d6b] hover:text-[#c9a84c] transition-colors">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.245 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.063 1.366-.333 2.633-1.308 3.608-.975.975-2.242 1.245-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.063-2.633-.333-3.608-1.308-.975-.975-1.245-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.245 3.608-1.308 1.266-.058 1.646-.07 4.85-.07zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948s.014 3.667.072 4.947c.2 4.337 2.618 6.78 6.98 6.98 1.281.058 1.689.073 4.948.073s3.667-.014 4.947-.072c4.337-.2 6.78-2.618 6.98-6.98.058-1.281.072-1.689.072-4.948s-.014-3.667-.072-4.947c-.2-4.337-2.618-6.78-6.98-6.98-1.281-.058-1.689-.073-4.948-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-[10px] text-[#5f5d6b] uppercase tracking-widest">© 2026 House of Books. All intellectual rights reserved.</p>
-            <div className="flex gap-8">
-              <a href="#" className="text-[9px] text-[#5f5d6b] hover:text-white transition-colors uppercase tracking-[0.2em]">Privacy Policy</a>
-              <a href="#" className="text-[9px] text-[#5f5d6b] hover:text-white transition-colors uppercase tracking-[0.2em]">Terms of Service</a>
-            </div>
+        <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:'1.5rem', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'1rem' }}>
+          <p style={{ fontSize:10, color:'#5a5650', letterSpacing:'0.1em', textTransform:'uppercase' }}>© 2026 House of Books. All intellectual rights reserved.</p>
+          <div style={{ display:'flex', gap:'2rem' }}>
+            <a href="#" className="nav-link" style={{ fontSize:9, letterSpacing:'0.2em' }}>Privacy Policy</a>
+            <a href="#" className="nav-link" style={{ fontSize:9, letterSpacing:'0.2em' }}>Terms of Service</a>
           </div>
         </div>
       </footer>
 
-      {/* Scroll Indicator */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2"
-      >
-        <span className="text-[9px] uppercase tracking-[0.4em] text-[#5f5d6b]">Discover More</span>
-        <motion.div
-          animate={{ y: [0, 5, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        >
-          <ChevronDown className="w-4 h-4 text-[#5f5d6b]" />
-        </motion.div>
-      </motion.div>
-
-      {/* Background Ambient Glows */}
-      <div className="fixed top-1/4 -left-20 w-96 h-96 bg-[#c9a84c]/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="fixed bottom-1/4 -right-20 w-96 h-96 bg-[#c9a84c]/5 blur-[120px] rounded-full pointer-events-none" />
     </div>
   );
 };
