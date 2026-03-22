@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Book as BookIcon, 
   Search, 
@@ -20,7 +20,21 @@ import {
   MessageCircle,
   Plus,
   Trash2,
-  Download
+  Download,
+  Home,
+  Compass,
+  Bell,
+  ArrowRight,
+  Quote,
+  Palette,
+  Music,
+  Volume2,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  LayoutDashboard,
+  Bot
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -35,19 +49,54 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Supabase Configuration
+const SUPABASE_URL = 'https://ulxzyjqmvzyqjynmqywe.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseHp5anFtdnp5cWp5bm1xeXdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTcyNzYsImV4cCI6MjA4Nzg3MzI3Nn0.WWW2H8JmDjVgpaUEiaKbXDcqWWtmFTD9omrEWVMG8AI';
+const SB_HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json'
+};
+
 const ADMIN_EMAIL = 'abdalrahimmakkawi@gmail.com';
 const CHAT_LIMIT = 10;
 const COOLDOWN_HOURS = 6;
+
+const THEMES = {
+  gold: { name: 'Royal Gold', accent: '#c9a84c', bg: '#0a0a0f', surface: '#13121a', card: '#1a1928' },
+  emerald: { name: 'Emerald', accent: '#4ade80', bg: '#06100a', surface: '#0d1a12', card: '#15261b' },
+  rose: { name: 'Rose', accent: '#fb7185', bg: '#10060a', surface: '#1a0d12', card: '#26151b' },
+  azure: { name: 'Azure', accent: '#60a5fa', bg: '#060a10', surface: '#0d121a', card: '#151b26' },
+  violet: { name: 'Violet', accent: '#a78bfa', bg: '#0a0610', surface: '#120d1a', card: '#1b1526' },
+  amber: { name: 'Amber', accent: '#f59e0b', bg: '#0f0a06', surface: '#1a120d', card: '#261b15' },
+};
+
+const MUSIC_TRACKS = [
+  { id: 'library', name: 'Grand Library', icon: '📚', url: '/music/library.mp3' },
+  { id: 'beach', name: 'Coastal Breeze', icon: '🏖️', url: '/music/beach.mp3' },
+  { id: 'forest', name: 'Ancient Forest', icon: '🌲', url: '/music/forest.mp3' },
+  { id: 'rain', name: 'Midnight Rain', icon: '🌧️', url: '/music/rain.mp3' },
+  { id: 'cosmos', name: 'Cosmic Void', icon: '🌌', url: '/music/cosmos.mp3' },
+];
+
+const AI_AGENTS = [
+  { id: 'growth', name: 'Growth Advisor', icon: '🚀', desc: '90-day scaling strategy & viral loops', color: '#c9a84c' },
+  { id: 'revenue', name: 'Revenue Analyst', icon: '💰', desc: 'MRR optimization & churn reduction', color: '#4ade80' },
+  { id: 'copy', name: 'Marketing Copywriter', icon: '📢', desc: 'High-converting landing pages & ads', color: '#fb7185' },
+  { id: 'price', name: 'Pricing Strategist', icon: '🏷️', desc: 'Value-based pricing & tier modeling', color: '#60a5fa' },
+  { id: 'product', name: 'Product Strategist', icon: '⚙️', desc: 'Roadmap prioritization & feature fit', color: '#a78bfa' },
+  { id: 'retention', name: 'Retention Expert', icon: '🔄', desc: 'LTV maximization & user engagement', color: '#f59e0b' },
+  { id: 'ops', name: 'Ops Automator', icon: '⚡', desc: 'Workflow efficiency & AI integration', color: '#2dd4bf' },
+  { id: 'brand', name: 'Brand Architect', icon: '🎨', desc: 'Visual identity & market positioning', color: '#e879f9' },
+];
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
-  
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  const [activeTab, setActiveTab] = useState<'summary' | 'insights' | 'discussion' | 'chat'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'insights' | 'discussion' | 'chat' | 'shelf'>('summary');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [emailInput, setEmailInput] = useState('');
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -57,120 +106,143 @@ export default function App() {
   const [readingProgress, setReadingProgress] = useState<Record<string, ReadingProgress>>({});
   const [showCooldown, setShowCooldown] = useState(false);
   const [cooldownMins, setCooldownMins] = useState(0);
-  const [showInstallBtn, setShowInstallBtn] = useState(false);
-  const [currentPage, setCurrentPage] = useState<'library' | 'agents' | 'dashboard'>('library');
+  const [currentPage, setCurrentPage] = useState<'library' | 'library-grid' | 'agents' | 'dashboard'>('library');
+  const [feedTab, setFeedTab] = useState<'all' | 'shelf' | 'free'>('all');
+  
+  const [theme, setTheme] = useState<keyof typeof THEMES>(() => {
+    const saved = localStorage.getItem('hob_theme_v2');
+    return (saved as keyof typeof THEMES) || 'gold';
+  });
+  
+  const [musicTrack, setMusicTrack] = useState<string>(MUSIC_TRACKS[0].id);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.5);
+  const [showMusicSelector, setShowMusicSelector] = useState(false);
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const currentTheme = THEMES[theme];
 
   useEffect(() => {
-    // 1. Handle OAuth Callback in Popup
-    if (window.opener && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
-      try {
-        window.opener.postMessage({ 
-          type: 'SUPABASE_AUTH_CALLBACK', 
-          hash: window.location.hash 
-        }, '*');
-        setTimeout(() => window.close(), 1500);
-      } catch (e) {
-        console.error('Error sending message to opener:', e);
+    const style = document.createElement('style');
+    style.id = 'dynamic-theme-v2';
+    style.innerHTML = `
+      :root {
+        --color-accent: ${currentTheme.accent};
+        --color-bg: ${currentTheme.bg};
+        --color-surface: ${currentTheme.surface};
+        --color-card: ${currentTheme.card};
+        --color-border: rgba(201, 168, 76, 0.1);
+        --color-text-muted: #9896a4;
       }
-      return;
-    }
-
-    // 2. Listen for messages from popup
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SUPABASE_AUTH_CALLBACK') {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session?.user) {
-            const supabaseUser: UserProfile = {
-              email: session.user.email || '',
-              isAdmin: session.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
-              chatCount: 0,
-              lastChatReset: new Date().toISOString()
-            };
-            setUser(supabaseUser);
-            window.history.replaceState(null, '', window.location.pathname);
-          }
-        });
+      body {
+        background-color: ${currentTheme.bg} !important;
+        color: #e2e8f0 !important;
       }
-    };
-    window.addEventListener('message', handleMessage);
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.2); border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 76, 0.4); }
+    `;
+    const existing = document.getElementById('dynamic-theme-v2');
+    if (existing) existing.remove();
+    document.head.appendChild(style);
+    localStorage.setItem('hob_theme_v2', theme);
+  }, [theme, currentTheme]);
 
-    // 3. Handle hash in main window
-    if (window.location.hash.includes('access_token')) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const supabaseUser: UserProfile = {
-            email: session.user.email || '',
-            isAdmin: session.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
-            chatCount: 0,
-            lastChatReset: new Date().toISOString()
-          };
-          setUser(supabaseUser);
-          window.history.replaceState(null, '', window.location.pathname);
-        }
-      });
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.loop = true;
     }
-
-    // 4. Load progress
-    try {
-      const savedUser = localStorage.getItem('hob_user');
-      if (savedUser) setUser(JSON.parse(savedUser));
-      const savedProgress = localStorage.getItem('hob_progress');
-      if (savedProgress) setReadingProgress(JSON.parse(savedProgress));
-    } catch (e) {
-      console.error('LocalStorage access failed:', e);
+    const track = MUSIC_TRACKS.find(t => t.id === musicTrack);
+    if (track) {
+      audioRef.current.src = track.url;
+      if (isPlaying) audioRef.current.play().catch(e => console.error('Audio play error:', e));
     }
+  }, [musicTrack]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) audioRef.current.play().catch(e => console.error('Audio play error:', e));
+      else audioRef.current.pause();
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isChatting]);
+
+  useEffect(() => {
+    // Auth & Data Fetching
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const supabaseUser: UserProfile = {
+        setUser({
           email: session.user.email || '',
           isAdmin: session.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
           chatCount: 0,
           lastChatReset: new Date().toISOString()
-        };
-        setUser(supabaseUser);
+        });
+      }
+
+      const savedUser = localStorage.getItem('hob_user');
+      if (savedUser) setUser(JSON.parse(savedUser));
+      
+      const savedProgress = localStorage.getItem('hob_progress');
+      if (savedProgress) setReadingProgress(JSON.parse(savedProgress));
+
+      fetchBooks();
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email || '',
+          isAdmin: session.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
+          chatCount: 0,
+          lastChatReset: new Date().toISOString()
+        });
       }
     });
 
-    fetchBooks();
-
-    window.addEventListener('beforeinstallprompt', (e: any) => {
-      e.preventDefault();
-      (window as any).__pwa = e;
-      setShowInstallBtn(true);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener('message', handleMessage);
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    try {
-      if (Object.keys(readingProgress).length > 0) {
-        localStorage.setItem('hob_progress', JSON.stringify(readingProgress));
-      }
-    } catch (e) { console.error(e); }
-  }, [readingProgress]);
+    if (user) localStorage.setItem('hob_user', JSON.stringify(user));
+    else localStorage.removeItem('hob_user');
+  }, [user]);
 
   useEffect(() => {
-    try {
-      if (user) localStorage.setItem('hob_user', JSON.stringify(user));
-      else localStorage.removeItem('hob_user');
-    } catch (e) { console.error(e); }
-  }, [user]);
+    if (Object.keys(readingProgress).length > 0) {
+      localStorage.setItem('hob_progress', JSON.stringify(readingProgress));
+    }
+  }, [readingProgress]);
 
   const fetchBooks = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      if (data) setBooks(data);
-    } catch(err) {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/books?select=*&order=created_at.asc&apikey=${SUPABASE_KEY}`,
+        { headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setBooks(data);
+        if (data.length > 0 && !selectedBook) {
+          setSelectedBook(data[0]);
+          fetchDiscussions(data[0].id);
+        }
+      }
+    } catch (err: any) {
       console.error('fetchBooks error:', err);
     } finally {
       setLoading(false);
@@ -179,42 +251,15 @@ export default function App() {
 
   const fetchDiscussions = async (bookId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('discussions')
-        .select('*')
-        .eq('book_id', bookId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      setDiscussions(data || []);
-    } catch (err) { console.error(err); }
-  };
-
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: emailInput,
-        options: { emailRedirectTo: window.location.origin },
-      });
-      if (error) throw error;
-      alert('Check your email for the login link!');
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/discussions?book_id=eq.${bookId}&select=*&order=created_at.asc&apikey=${SUPABASE_KEY}`,
+        { headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const data = await response.json();
+      setDiscussions(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      alert(`Failed to send magic link: ${err.message || 'Please try again.'}`);
-    } finally { setLoading(false); }
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput) return;
-    const newUser: UserProfile = {
-      email: emailInput,
-      isAdmin: emailInput.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
-      chatCount: 0,
-      lastChatReset: new Date().toISOString()
-    };
-    setUser(newUser);
+      console.error('fetchDiscussions error:', err);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -226,24 +271,32 @@ export default function App() {
       if (error) throw error;
       if (data?.url) {
         const popup = window.open(data.url, 'google_login', 'width=600,height=700');
-        if (!popup) alert('Popup blocked! Please allow popups for this site.');
+        if (!popup) alert('Popup blocked! Please allow popups.');
       }
-    } catch (err) { alert('Google login failed.'); }
+    } catch (err) {
+      console.error('Google login error:', err);
+    }
   };
 
   const handleLogout = () => {
+    supabase.auth.signOut();
     setUser(null);
     setSelectedBook(null);
     localStorage.removeItem('hob_user');
   };
 
   const filteredBooks = useMemo(() => {
-    return books.filter(book => 
+    let list = books.filter(book => 
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.category.toLowerCase().includes(searchQuery.toLowerCase())
+      book.author.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [books, searchQuery]);
+    if (feedTab === 'shelf') {
+      list = list.filter(b => readingProgress[b.id]?.isShelf);
+    } else if (feedTab === 'free') {
+      list = list.filter(b => b.read_time_mins < 15); // Mock free filter
+    }
+    return list;
+  }, [books, searchQuery, feedTab, readingProgress]);
 
   const handleBookClick = (book: Book) => {
     setSelectedBook(book);
@@ -255,25 +308,38 @@ export default function App() {
   const handleAddComment = async () => {
     if (!newComment || !selectedBook || !user) return;
     try {
-      const { data, error } = await supabase
-        .from('discussions')
-        .insert([{ book_id: selectedBook.id, user_email: user.email, content: newComment }])
-        .select();
-      if (error) throw error;
-      setDiscussions([...discussions, data[0]]);
-      setNewComment('');
-    } catch (err) { console.error(err); }
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/discussions?apikey=${SUPABASE_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({ book_id: selectedBook.id, user_email: user.email, content: newComment })
+        }
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setDiscussions(prev => [...prev, data[0]]);
+        setNewComment('');
+      }
+    } catch (err: any) {
+      console.error('handleAddComment error:', err);
+    }
   };
 
-  const handleChat = async () => {
-    if (!chatInput || !selectedBook || !user || isChatting) return;
+  const handleChat = async (input?: string) => {
+    const finalInput = input || chatInput;
+    if (!finalInput || !selectedBook || !user || isChatting) return;
+
     if (!user.isAdmin) {
       const now = new Date();
       const lastReset = new Date(user.lastChatReset);
       const cooldownEnd = addHours(lastReset, COOLDOWN_HOURS);
       if (user.chatCount >= CHAT_LIMIT && !isAfter(now, cooldownEnd)) {
-        const minsLeft = Math.ceil((cooldownEnd.getTime() - now.getTime()) / 60000);
-        setCooldownMins(minsLeft);
+        setCooldownMins(Math.ceil((cooldownEnd.getTime() - now.getTime()) / 60000));
         setShowCooldown(true);
         return;
       }
@@ -282,32 +348,36 @@ export default function App() {
       }
     }
 
-    const newMessage = { role: 'user' as const, content: chatInput };
+    const newMessage = { role: 'user' as const, content: finalInput };
     setChatMessages(prev => [...prev, newMessage]);
-    setChatInput('');
+    if (!input) setChatInput('');
     setIsChatting(true);
 
     try {
-      const apiKey = 'sk-0a2bd43938e740e885070afa5c62d8ea';
-      const apiUrl = 'https://api.deepseek.com/chat/completions';
-      const response = await fetch(apiUrl, {
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer sk-0a2bd43938e740e885070afa5c62d8ea` 
+        },
         body: JSON.stringify({
           model: "deepseek-chat",
           messages: [
-            { role: "system", content: `You are an expert literary assistant for the book "${selectedBook.title}" by ${selectedBook.author}.` },
-            ...chatMessages, newMessage
-          ],
-          stream: false
+            { role: "system", content: `You are an expert literary assistant for "${selectedBook.title}" by ${selectedBook.author}.` },
+            ...chatMessages,
+            newMessage
+          ]
         })
       });
       const data = await response.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', content: data.choices[0].message.content }]);
+      const assistantMessage = { role: 'assistant' as const, content: data.choices[0].message.content };
+      setChatMessages(prev => [...prev, assistantMessage]);
       if (!user.isAdmin) setUser(prev => prev ? { ...prev, chatCount: prev.chatCount + 1 } : null);
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Error. Please try again.' }]);
-    } finally { setIsChatting(false); }
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'AI error. Please try again.' }]);
+    } finally {
+      setIsChatting(false);
+    }
   };
 
   const toggleShelf = (bookId: string) => {
@@ -320,135 +390,482 @@ export default function App() {
   if (!user) {
     return (
       <LandingPage 
-        onLogin={(email) => { setEmailInput(email); handleLogin({ preventDefault: () => {} } as any); }}
+        onLogin={(email) => setUser({ email, isAdmin: email.toLowerCase() === ADMIN_EMAIL.toLowerCase(), chatCount: 0, lastChatReset: new Date().toISOString() })}
         onGoogleLogin={handleGoogleLogin}
-        onMagicLink={(email) => { setEmailInput(email); handleMagicLink({ preventDefault: () => {} } as any); }}
+        onMagicLink={() => alert('Check email!')}
         onGuestLogin={() => setUser({ email: 'guest@example.com', isAdmin: false, chatCount: 0, lastChatReset: new Date().toISOString() })}
         onManualToken={() => {
-          const token = prompt('Paste token here:');
-          if (token) { window.location.hash = token.includes('#') ? token.split('#')[1] : token; window.location.reload(); }
+          const token = prompt('Paste your token here:');
+          if (token) {
+            const hash = token.includes('#') ? token.split('#')[1] : token;
+            window.location.hash = hash;
+            window.location.reload();
+          }
         }}
-        onClearSession={async () => { await supabase.auth.signOut(); localStorage.removeItem('hob_user'); setUser(null); window.location.hash = ''; }}
+        onClearSession={async () => {
+          await supabase.auth.signOut();
+          localStorage.removeItem('hob_user');
+          setUser(null);
+          window.location.hash = '';
+          alert('Session cleared.');
+        }}
       />
     );
   }
 
   return (
-    <div className="flex h-screen bg-dark-bg overflow-hidden">
-      <motion.aside animate={{ width: isSidebarOpen ? 260 : 80 }} className="bg-dark-surface border-r border-dark-border flex flex-col z-20">
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-accent rounded-xl flex items-center justify-center shrink-0"><BookIcon className="text-black w-6 h-6" /></div>
-          {isSidebarOpen && <span className="font-bold text-xl text-white tracking-tight">House of Books</span>}
+    <div className="flex h-screen bg-[#0a0a0f] text-white overflow-hidden font-sans">
+      {/* 1. LEFT SIDEBAR (64px) */}
+      <aside className="w-16 bg-[#13121a] border-r border-[rgba(201,168,76,0.1)] flex flex-col items-center py-6 shrink-0 z-20">
+        <div className="w-10 h-10 bg-[#c9a84c] rounded-xl flex items-center justify-center font-serif font-black text-[#0a0a0f] text-xl mb-8 cursor-pointer shadow-[0_0_20px_rgba(201,168,76,0.3)]">
+          H
         </div>
-        <nav className="flex-1 px-4 space-y-2">
-          <NavItem icon={<Library />} label="Library" active={currentPage === 'library'} onClick={() => { setCurrentPage('library'); setSelectedBook(null) }} isOpen={isSidebarOpen} />
-          <NavItem icon={<Bookmark />} label="My Shelf" active={false} onClick={() => {}} isOpen={isSidebarOpen} />
-          <NavItem icon={<MessageSquare />} label="Discussions" active={false} onClick={() => {}} isOpen={isSidebarOpen} />
+
+        <div className="flex flex-col gap-4">
+          <SidebarIcon icon={<Home />} active={currentPage === 'library'} onClick={() => setCurrentPage('library')} />
+          <SidebarIcon icon={<Library />} active={currentPage === 'library-grid'} onClick={() => setCurrentPage('library-grid')} />
+          <SidebarIcon icon={<Compass />} active={false} onClick={() => {}} />
+          <SidebarIcon icon={<MessageSquare />} active={false} onClick={() => {}} />
+        </div>
+
+        <div className="mt-auto flex flex-col gap-4 items-center">
+          <div className="relative">
+            <SidebarIcon icon={<Music />} active={showMusicSelector} onClick={() => setShowMusicSelector(!showMusicSelector)} />
+            {showMusicSelector && (
+              <div className="absolute left-14 bottom-0 w-48 bg-[#1a1928] border border-[rgba(201,168,76,0.1)] rounded-xl shadow-2xl p-3 z-50">
+                <div className="text-[10px] text-[#c9a84c] font-bold uppercase tracking-widest mb-3">Ambient Tracks</div>
+                <div className="space-y-1">
+                  {MUSIC_TRACKS.map(track => (
+                    <button 
+                      key={track.id}
+                      onClick={() => { setMusicTrack(track.id); setIsPlaying(true); }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all",
+                        musicTrack === track.id ? "bg-[#c9a84c]/10 text-[#c9a84c]" : "text-[#9896a4] hover:bg-white/5"
+                      )}
+                    >
+                      <span>{track.icon}</span>
+                      <span>{track.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <SidebarIcon icon={<Palette />} active={false} onClick={() => {}} />
           {user.isAdmin && (
             <>
-              <div className="pt-4 pb-2 px-2"><span className={cn("text-[10px] uppercase tracking-widest text-gray-500 font-bold", !isSidebarOpen && "hidden")}>Admin</span></div>
-              <NavItem icon={<Sparkles />} label="AI Agents" active={currentPage === 'agents'} onClick={() => { setCurrentPage('agents'); setSelectedBook(null) }} isOpen={isSidebarOpen} />
-              <NavItem icon={<Settings />} label="Dashboard" active={currentPage === 'dashboard'} onClick={() => { setCurrentPage('dashboard'); setSelectedBook(null) }} isOpen={isSidebarOpen} />
+              <SidebarIcon icon={<Bot />} active={currentPage === 'agents'} onClick={() => setCurrentPage('agents')} />
+              <SidebarIcon icon={<LayoutDashboard />} active={currentPage === 'dashboard'} onClick={() => setCurrentPage('dashboard')} />
             </>
           )}
-        </nav>
-        <div className="p-4 border-t border-dark-border">
-          {showInstallBtn && (
-            <button onClick={() => { const p = (window as any).__pwa; if(p){ p.prompt(); p.userChoice.then(() => setShowInstallBtn(false)) } }} className="w-full flex items-center gap-3 p-3 rounded-xl text-gray-400 hover:bg-dark-border hover:text-white transition-all mb-2">
-              <Download className="w-5 h-5 shrink-0" />{isSidebarOpen && <span className="text-sm">Install App</span>}
-            </button>
-          )}
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border transition-colors cursor-pointer group" onClick={handleLogout}>
-            <div className="w-8 h-8 bg-dark-border rounded-full flex items-center justify-center group-hover:bg-red-500/20 transition-colors"><LogOut className="w-4 h-4 text-gray-400 group-hover:text-red-500" /></div>
-            {isSidebarOpen && <div className="flex-1 overflow-hidden"><p className="text-sm font-medium text-white truncate">{user.email}</p><p className="text-[10px] text-gray-500 uppercase font-bold">Sign Out</p></div>}
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#e8a84c] flex items-center justify-center text-[13px] font-bold text-[#0a0a0f] cursor-pointer" onClick={handleLogout}>
+            {user.email.substring(0, 2).toUpperCase()}
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
-      <main className="flex-1 flex flex-col relative overflow-hidden">
-        <header className="h-16 border-b border-dark-border flex items-center justify-between px-8 bg-dark-bg/80 backdrop-blur-md z-10">
-          <div className="flex items-center gap-4 flex-1 max-w-xl">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-dark-surface border border-dark-border rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-amber-accent/50 transition-all" />
+      {/* 2. FEED PANEL (280px) */}
+      <aside className="w-[280px] bg-[#13121a] border-r border-[rgba(201,168,76,0.1)] flex flex-col shrink-0">
+        <div className="p-6 pb-4">
+          <h2 className="font-serif text-xl font-bold text-white mb-4">Reading Feed</h2>
+          <div className="flex gap-1 bg-[#1a1928] rounded-lg p-1 mb-6">
+            <FeedTab label="All" active={feedTab === 'all'} onClick={() => setFeedTab('all')} />
+            <FeedTab label="Shelf" active={feedTab === 'shelf'} onClick={() => setFeedTab('shelf')} />
+            <FeedTab label="Free" active={feedTab === 'free'} onClick={() => setFeedTab('free')} />
+          </div>
+
+          {/* Streak Widget */}
+          <div className="bg-gradient-to-br from-[#c9a84c]/20 to-transparent border border-[#c9a84c]/20 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] text-[#9896a4] font-medium uppercase tracking-wider">7-Day Streak</span>
+              <Sparkles className="w-3.5 h-3.5 text-[#c9a84c]" />
+            </div>
+            <div className="flex justify-between">
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                <div key={i} className={cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold",
+                  i < 6 ? "bg-[#c9a84c]/10 text-[#c9a84c] border border-[#c9a84c]/20" : "bg-[#c9a84c] text-[#0a0a0f]"
+                )}>{d}</div>
+              ))}
             </div>
           </div>
-          <div className="flex items-center gap-4"><button className="p-2 text-gray-400 hover:text-white transition-colors"><Settings className="w-5 h-5" /></button><div className="w-8 h-8 bg-amber-accent/10 rounded-full flex items-center justify-center border border-amber-accent/20"><User className="w-4 h-4 text-amber-accent" /></div></div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto">
-          {currentPage === 'library' && (
-            <div className="p-8">
-              {loading ? <div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-amber-accent border-t-transparent rounded-full animate-spin"></div></div> : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                  {filteredBooks.map((book) => <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} onShelfToggle={() => toggleShelf(book.id)} isOnShelf={readingProgress[book.id]?.isShelf} />)}
-                </div>
-              )}
-            </div>
-          )}
-          {currentPage === 'agents' && (
-            <div className="p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">AI Business Agents</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[{ icon: '🚀', label: 'Growth Advisor', desc: '90-day growth plan' }, { icon: '💰', label: 'Revenue Analyst', desc: 'Analyze MRR, churn' }, { icon: '📢', label: 'Marketing Copywriter', desc: 'Landing pages, ads' }, { icon: '🏷️', label: 'Pricing Strategist', desc: 'Optimize pricing' }, { icon: '⚙️', label: 'Product Strategist', desc: 'Roadmap decisions' }, { icon: '🔄', label: 'Churn & Retention', desc: 'Reduce churn' }, { icon: '🎯', label: 'Competitor Analysis', desc: 'Competitive positioning' }, { icon: '🔍', label: 'SEO & Content', desc: 'Strategy, keywords' }].map(agent => (
-                  <div key={agent.label} className="card p-6 cursor-pointer hover:border-amber-accent/50 transition-all"><div className="text-3xl mb-3">{agent.icon}</div><h3 className="font-bold text-white mb-1">{agent.label}</h3><p className="text-sm text-gray-500">{agent.desc}</p></div>
-                ))}
-              </div>
-            </div>
-          )}
-          {currentPage === 'dashboard' && (
-            <div className="p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Admin Dashboard</h2>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {[{ label: 'Total Books', value: books.length, emoji: '📚' }, { label: 'Free Books', value: 90, emoji: '🆓' }, { label: 'AI Chats/Day', value: '10', emoji: '🤖' }, { label: 'Status', value: 'Beta', emoji: '⭐' }].map(stat => (
-                  <div key={stat.label} className="card p-6 relative overflow-hidden"><div className="absolute right-4 top-4 text-3xl opacity-10">{stat.emoji}</div><div className="text-2xl font-bold text-amber-accent mb-1">{stat.value}</div><div className="text-xs text-gray-500 uppercase tracking-widest">{stat.label}</div></div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        <AnimatePresence>
-          {selectedBook && (
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute inset-y-0 right-0 w-full max-w-2xl bg-dark-surface border-l border-dark-border z-30 shadow-2xl flex flex-col">
-              <div className="p-6 border-b border-dark-border flex items-center justify-between"><button onClick={() => setSelectedBook(null)} className="p-2 hover:bg-dark-border rounded-lg transition-colors"><ChevronRight className="w-6 h-6 rotate-180" /></button><div className="flex items-center gap-2"><button className="btn-secondary py-1.5 text-xs">Share</button><button onClick={() => toggleShelf(selectedBook.id)} className={cn("btn-primary py-1.5 text-xs", readingProgress[selectedBook.id]?.isShelf && "bg-dark-border text-white hover:bg-dark-border/80")}>{readingProgress[selectedBook.id]?.isShelf ? 'On Shelf' : 'Add to Shelf'}</button></div></div>
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="flex gap-8 mb-8"><img src={selectedBook.cover_url} alt={selectedBook.title} className="w-40 h-60 object-cover rounded-xl shadow-xl border border-dark-border" referrerPolicy="no-referrer" /><div className="flex-1"><h2 className="text-3xl font-bold text-white mb-2">{selectedBook.title}</h2><p className="text-amber-accent font-medium mb-4">{selectedBook.author}</p><div className="flex flex-wrap gap-3"><Badge icon={<Clock className="w-3 h-3" />} label={`${selectedBook.read_time_mins}m read`} /><Badge icon={<Globe className="w-3 h-3" />} label={selectedBook.language} /><Badge label={selectedBook.category} /></div></div></div>
-                <div className="flex border-b border-dark-border mb-6"><TabButton active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={<Info className="w-4 h-4" />} label="Summary" /><TabButton active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} icon={<Lightbulb className="w-4 h-4" />} label="Key Insights" /><TabButton active={activeTab === 'discussion'} onClick={() => setActiveTab('discussion')} icon={<MessageCircle className="w-4 h-4" />} label="Discussion" /><TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} icon={<Sparkles className="w-4 h-4" />} label="AI Chat" /></div>
-                <div className="min-h-[300px]">
-                  {activeTab === 'summary' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{selectedBook.summary}</p></motion.div>}
-                  {activeTab === 'insights' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">{typeof selectedBook.key_insights === 'string' && selectedBook.key_insights ? selectedBook.key_insights.split('. ').filter(s => s.trim()).slice(0, 4).map((insight, i) => (<div key={i} className="flex gap-4 p-4 bg-dark-bg rounded-xl border border-dark-border"><div className="w-6 h-6 bg-amber-accent/10 rounded-full flex items-center justify-center shrink-0 text-amber-accent font-bold text-xs">{i + 1}</div><p className="text-gray-300">{insight.replace(/^[-•*]\s*/, '')}</p></div>)) : <p className="text-gray-500 italic">No insights available.</p>}</motion.div>}
-                  {activeTab === 'discussion' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6"><div className="space-y-4">{discussions.map((comment) => (<div key={comment.id} className="p-4 bg-dark-bg rounded-xl border border-dark-border"><div className="flex items-center justify-between mb-2"><span className="text-xs font-bold text-amber-accent">{comment.user_email}</span><span className="text-[10px] text-gray-500">{formatDistanceToNow(new Date(comment.created_at))} ago</span></div><p className="text-sm text-gray-300">{comment.content}</p></div>))}{discussions.length === 0 && <p className="text-center text-gray-500 py-8">No discussions yet.</p>}</div><div className="pt-4 border-t border-dark-border"><textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Share thoughts..." className="w-full bg-dark-bg border border-dark-border rounded-xl p-4 text-sm focus:outline-none focus:border-amber-accent/50 min-h-[100px]" /><div className="flex justify-end mt-2"><button onClick={handleAddComment} className="btn-primary">Post</button></div></div></motion.div>}
-                  {activeTab === 'chat' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-[500px]"><div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">{chatMessages.length === 0 && <div className="text-center py-12"><div className="w-12 h-12 bg-amber-accent/10 rounded-full flex items-center justify-center mx-auto mb-4"><Sparkles className="w-6 h-6 text-amber-accent" /></div><p className="text-gray-400">Ask me anything about "{selectedBook.title}"</p>{!user.isAdmin && <p className="text-[10px] text-gray-600 mt-2 uppercase tracking-widest">{CHAT_LIMIT - user.chatCount} chats remaining</p>}</div>}{chatMessages.map((msg, i) => (<div key={i} className={cn("flex gap-3 max-w-[85%]", msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto")}><div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", msg.role === 'user' ? "bg-amber-accent text-black" : "bg-dark-border text-amber-accent")}>{msg.role === 'user' ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}</div><div className={cn("p-3 rounded-2xl text-sm", msg.role === 'user' ? "bg-amber-accent/10 text-white rounded-tr-none" : "bg-dark-bg border border-dark-border text-gray-300 rounded-tl-none")}>{msg.content}</div></div>))}{isChatting && <div className="flex gap-3 mr-auto"><div className="w-8 h-8 bg-dark-border rounded-lg flex items-center justify-center shrink-0"><Sparkles className="w-4 h-4 text-amber-accent animate-pulse" /></div><div className="p-3 bg-dark-bg border border-dark-border rounded-2xl rounded-tl-none"><div className="flex gap-1"><div className="w-1.5 h-1.5 bg-gray-600 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-gray-600 rounded-full animate-bounce [animation-delay:0.2s]"></div><div className="w-1.5 h-1.5 bg-gray-600 rounded-full animate-bounce [animation-delay:0.4s]"></div></div></div></div>}</div><div className="relative"><input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleChat()} placeholder="Ask AI..." className="w-full bg-dark-bg border border-dark-border rounded-full pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-amber-accent/50" /><button onClick={handleChat} disabled={isChatting} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-amber-accent text-black rounded-full hover:bg-amber-accent/90 transition-all disabled:opacity-50"><Send className="w-4 h-4" /></button></div></motion.div>}
+        <div className="flex-1 overflow-y-auto px-4 pb-6 custom-scrollbar space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-[#c9a84c] border-t-transparent rounded-full animate-spin" /></div>
+          ) : (
+            filteredBooks.map(book => (
+              <CompactBookCard 
+                key={book.id} 
+                book={book} 
+                active={selectedBook?.id === book.id} 
+                onClick={() => handleBookClick(book)} 
+              />
+            ))
+          )}
+        </div>
+      </aside>
+
+      {/* 3. HUB PANEL (flex: 1) */}
+      <main className="flex-1 flex flex-col bg-[#0a0a0f] relative overflow-hidden">
+        {currentPage === 'agents' ? (
+          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+            <h2 className="text-3xl font-serif font-bold mb-8">AI Business Agents</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {AI_AGENTS.map(agent => (
+                <div key={agent.id} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-6 rounded-2xl hover:border-[#c9a84c]/40 transition-all group cursor-pointer">
+                  <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{agent.icon}</div>
+                  <h3 className="font-bold text-lg mb-2">{agent.name}</h3>
+                  <p className="text-sm text-[#9896a4] leading-relaxed">{agent.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : currentPage === 'dashboard' ? (
+          <div className="flex-1 p-10">
+            <h2 className="text-3xl font-serif font-bold mb-8">Admin Dashboard</h2>
+            <div className="grid grid-cols-4 gap-6">
+              {[
+                { label: 'Total Books', val: books.length, icon: <BookIcon /> },
+                { label: 'Active Readers', val: '1,242', icon: <User /> },
+                { label: 'AI Requests', val: '8.4k', icon: <Sparkles /> },
+                { label: 'Revenue', val: '$12.4k', icon: <Globe /> },
+              ].map(s => (
+                <div key={s.label} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-6 rounded-2xl">
+                  <div className="text-[#c9a84c] mb-4">{s.icon}</div>
+                  <div className="text-2xl font-bold mb-1">{s.val}</div>
+                  <div className="text-[10px] text-[#9896a4] uppercase tracking-widest">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : currentPage === 'library-grid' ? (
+          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="text-3xl font-serif font-bold">Digital Library</h2>
+              <div className="flex items-center gap-3 bg-[#13121a] border border-[rgba(201,168,76,0.1)] rounded-xl px-4 py-2 w-64">
+                <Search className="w-4 h-4 text-[#9896a4]" />
+                <input type="text" placeholder="Search books..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none text-sm w-full" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+              {filteredBooks.map(book => (
+                <div key={book.id} onClick={() => { handleBookClick(book); setCurrentPage('library'); }} className="group cursor-pointer">
+                  <div className="aspect-[2/3] rounded-xl overflow-hidden shadow-2xl mb-4 relative border border-white/5">
+                    <img src={book.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button className="px-4 py-2 bg-[#c9a84c] text-[#0a0a0f] font-bold text-xs rounded-lg">View Details</button>
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-sm truncate group-hover:text-[#c9a84c] transition-colors">{book.title}</h3>
+                  <p className="text-xs text-[#9896a4] truncate">{book.author}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : selectedBook ? (
+          <>
+            {/* Hero Section */}
+            <div className="relative h-64 shrink-0 flex items-end p-10 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#2a1b12] via-[#0a0a0f] to-[#0f1a1a]" />
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_30%,#c9a84c_0%,transparent_50%)]" />
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
+              
+              <div className="relative z-10 flex gap-8 items-end">
+                <div className="w-32 h-48 rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 shrink-0">
+                  <img src={selectedBook.cover_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                </div>
+                <div className="mb-2">
+                  <h1 className="font-serif text-4xl font-bold mb-2 text-white">{selectedBook.title}</h1>
+                  <p className="text-[#9896a4] text-lg mb-4">{selectedBook.author} · {selectedBook.category}</p>
+                  <div className="flex gap-6">
+                    <div className="flex items-center gap-2 text-xs font-mono text-[#9896a4]">
+                      <div className="w-2 h-2 bg-[#4ade80] rounded-full animate-pulse" /> 342 reading now
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-mono text-[#9896a4]">
+                      ⭐ 4.9 · {discussions.length} discussions
+                    </div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {showCooldown && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowCooldown(false)}>
-            <div className="bg-dark-surface border border-dark-border rounded-2xl p-8 max-w-sm w-full text-center" onClick={e => e.stopPropagation()}>
-              <div className="text-4xl mb-4">⏳</div><h3 className="text-xl font-bold text-white mb-2">Chat Limit Reached</h3><p className="text-gray-400 text-sm mb-4 leading-relaxed">You've used your {CHAT_LIMIT} free AI chats. Come back in <span className="text-amber-accent font-bold">{cooldownMins} minutes</span>.</p><p className="text-xs text-gray-600 mb-6">✦ Premium with unlimited AI chat — coming soon</p><button onClick={() => setShowCooldown(false)} className="btn-primary w-full">Got it</button>
             </div>
+
+            {/* Tabs */}
+            <div className="flex px-10 border-b border-[rgba(201,168,76,0.1)] shrink-0">
+              <HubTab label="Summary" active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} />
+              <HubTab label="Key Insights" active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} />
+              <HubTab label="Discussion" active={activeTab === 'discussion'} onClick={() => setActiveTab('discussion')} badge={discussions.length} />
+              <HubTab label="AI Chat" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
+              <HubTab label="My Shelf" active={activeTab === 'shelf'} onClick={() => setActiveTab('shelf')} />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar pb-24">
+              <AnimatePresence mode="wait">
+                {activeTab === 'summary' && (
+                  <motion.div key="summary" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-2xl">
+                    <p className="text-lg leading-relaxed text-[#9896a4] whitespace-pre-wrap">{selectedBook.summary}</p>
+                  </motion.div>
+                )}
+                {activeTab === 'insights' && (
+                  <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-4 max-w-3xl">
+                    {selectedBook.key_insights.split('. ').filter(s => s.trim()).map((insight, i) => (
+                      <div key={i} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-6 rounded-2xl">
+                        <div className="text-[#c9a84c] font-mono text-xs mb-2">INSIGHT 0{i+1}</div>
+                        <p className="text-[#9896a4] leading-relaxed">{insight}</p>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+                {activeTab === 'discussion' && (
+                  <motion.div key="discussion" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-2xl space-y-6">
+                    {discussions.map(d => (
+                      <div key={d.id} className="flex gap-4">
+                        <div className="w-10 h-10 rounded-full bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c] font-bold shrink-0">{d.user_email[0].toUpperCase()}</div>
+                        <div className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-4 rounded-2xl flex-1">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm font-bold">{d.user_email}</span>
+                            <span className="text-[10px] text-[#9896a4] font-mono">{formatDistanceToNow(new Date(d.created_at))} ago</span>
+                          </div>
+                          <p className="text-sm text-[#9896a4]">{d.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex gap-4 pt-4">
+                      <div className="w-10 h-10 rounded-full bg-[#c9a84c] flex items-center justify-center text-[#0a0a0f] font-bold shrink-0">{user.email[0].toUpperCase()}</div>
+                      <div className="flex-1">
+                        <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Share your thoughts..." className="w-full bg-[#13121a] border border-[rgba(201,168,76,0.1)] rounded-2xl p-4 text-sm focus:border-[#c9a84c]/50 outline-none min-h-[100px] resize-none" />
+                        <div className="flex justify-end mt-2"><button onClick={handleAddComment} className="px-6 py-2 bg-[#c9a84c] text-[#0a0a0f] font-bold rounded-xl active:scale-95 transition-all">Post</button></div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                {activeTab === 'chat' && (
+                  <motion.div key="chat" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col h-[500px] max-w-2xl">
+                    <div className="flex-1 overflow-y-auto space-y-4 mb-6 custom-scrollbar pr-4">
+                      {chatMessages.map((m, i) => (
+                        <div key={i} className={cn("flex gap-4", m.role === 'user' ? "flex-row-reverse" : "")}>
+                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", m.role === 'user' ? "bg-[#c9a84c] text-black" : "bg-[#1a1928] text-[#c9a84c]")}>
+                            {m.role === 'user' ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                          </div>
+                          <div className={cn("p-4 rounded-2xl text-sm max-w-[80%]", m.role === 'user' ? "bg-[#c9a84c]/10 text-white rounded-tr-none" : "bg-[#13121a] border border-[rgba(201,168,76,0.1)] text-[#9896a4] rounded-tl-none")}>
+                            {m.content}
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <div className="relative">
+                      <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleChat()} placeholder="Ask AI anything about this book..." className="w-full bg-[#13121a] border border-[rgba(201,168,76,0.1)] rounded-full py-4 pl-6 pr-14 text-sm focus:border-[#c9a84c]/50 outline-none" />
+                      <button onClick={() => handleChat()} className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#c9a84c] rounded-full flex items-center justify-center text-black"><Send className="w-4 h-4" /></button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
+            <div className="w-20 h-20 bg-[#c9a84c]/10 rounded-3xl flex items-center justify-center mb-6"><BookIcon className="w-10 h-10 text-[#c9a84c]" /></div>
+            <h2 className="text-2xl font-serif font-bold mb-2">Welcome to House of Books</h2>
+            <p className="text-[#9896a4] max-w-sm">Select a book from the feed to start your AI-powered reading journey.</p>
           </div>
         )}
+
+        {/* BOTTOM MUSIC PLAYER BAR */}
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-[#13121a]/80 backdrop-blur-xl border-t border-[rgba(201,168,76,0.1)] px-8 flex items-center justify-between z-30">
+          <div className="flex items-center gap-4 w-1/3">
+            <div className="w-10 h-10 bg-[#1a1928] rounded-lg flex items-center justify-center text-xl">{MUSIC_TRACKS.find(t => t.id === musicTrack)?.icon}</div>
+            <div>
+              <div className="text-sm font-bold text-white">{MUSIC_TRACKS.find(t => t.id === musicTrack)?.name}</div>
+              <div className="text-[10px] text-[#9896a4] uppercase tracking-widest">Ambient Mode</div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-2 w-1/3">
+            <div className="flex items-center gap-6">
+              <button className="text-[#9896a4] hover:text-white transition-colors"><SkipBack className="w-5 h-5" /></button>
+              <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 bg-[#c9a84c] rounded-full flex items-center justify-center text-[#0a0a0f] transform active:scale-95 transition-all shadow-[0_0_15px_rgba(201,168,76,0.4)]">
+                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}
+              </button>
+              <button className="text-[#9896a4] hover:text-white transition-colors"><SkipForward className="w-5 h-5" /></button>
+            </div>
+            <div className="w-full max-w-xs h-1 bg-[rgba(201,168,76,0.1)] rounded-full overflow-hidden">
+              <div className="h-full bg-[#c9a84c] w-1/2 animate-pulse" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-6 w-1/3">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-[#9896a4]" />
+              <input type="range" min="0" max="1" step="0.01" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-20 accent-[#c9a84c] h-1" />
+            </div>
+            <div className="flex gap-2">
+              {Object.entries(THEMES).map(([id, t]) => (
+                <button 
+                  key={id} 
+                  onClick={() => setTheme(id as any)}
+                  className={cn(
+                    "w-4 h-4 rounded-full border-2 transition-all transform hover:scale-125",
+                    theme === id ? "border-white scale-110" : "border-transparent"
+                  )}
+                  style={{ backgroundColor: t.accent }}
+                  title={t.name}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </main>
+
+      {/* 4. RIGHT PANEL (280px) */}
+      <aside className="w-[280px] bg-[#13121a] border-l border-[rgba(201,168,76,0.1)] flex flex-col shrink-0">
+        <div className="p-6 border-b border-[rgba(201,168,76,0.1)]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-sm">Book Room</h3>
+            <div className="flex items-center gap-1.5 text-[10px] text-[#4ade80] font-mono">
+              <div className="w-1.5 h-1.5 bg-[#4ade80] rounded-full animate-pulse" /> 24 online
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <ReaderChip name="Sara A." />
+            <ReaderChip name="Mohamed K." />
+            <ReaderChip name="Rami H." />
+            <div className="text-[10px] text-[#9896a4] ml-1 self-center">+12 more</div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          <ChatMessage initials="🤖" name="AI Guide" text="Welcome! I'm here to help you dive deeper into the book's core concepts." color="#c9a84c" isAI />
+          <ChatMessage initials="SA" name="Sara" text="The identity chapter in Atomic Habits is a game changer. Focus on who you want to become!" color="#fb7185" />
+          <ChatMessage initials="MK" name="Mohamed" text="Agreed. Small wins build that identity over time." color="#60a5fa" />
+        </div>
+
+        <div className="p-6 border-t border-[rgba(201,168,76,0.1)]">
+          <div className="text-[10px] text-[#c9a84c] font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3" /> Quick Prompts
+          </div>
+          <div className="flex flex-wrap gap-2 mb-6">
+            <PromptPill label="4 laws" onClick={() => handleChat("Explain the 4 laws of habits")} />
+            <PromptPill label="Habit stacking" onClick={() => handleChat("What is habit stacking?")} />
+            <PromptPill label="2-min rule" onClick={() => handleChat("Explain the 2-minute rule")} />
+          </div>
+
+          <div className="flex items-center gap-2 bg-[#1a1928] border border-[rgba(201,168,76,0.1)] rounded-xl p-1.5 pl-4 focus-within:border-[#c9a84c]/50 transition-all">
+            <input type="text" placeholder="Type a message..." className="flex-1 bg-transparent border-none outline-none text-xs" />
+            <button className="w-8 h-8 bg-[#c9a84c] rounded-lg flex items-center justify-center text-[#0a0a0f]"><Send className="w-4 h-4" /></button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Cooldown Modal */}
+      {showCooldown && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowCooldown(false)}>
+          <div className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-5xl mb-6">⌛</div>
+            <h3 className="text-2xl font-serif font-bold mb-2">Patience, Reader</h3>
+            <p className="text-[#9896a4] text-sm mb-8 leading-relaxed">
+              You've reached your {CHAT_LIMIT} free AI insights. Your wisdom will replenish in <span className="text-[#c9a84c] font-bold">{cooldownMins} minutes</span>.
+            </p>
+            <button onClick={() => setShowCooldown(false)} className="w-full bg-[#c9a84c] text-[#0a0a0f] font-bold py-4 rounded-2xl active:scale-95 transition-all shadow-[0_10px_30px_rgba(201,168,76,0.2)]">Understood</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function NavItem({ icon, label, active, onClick, isOpen }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void, isOpen: boolean }) {
-  return (<button onClick={onClick} className={cn("w-full flex items-center gap-3 p-3 rounded-xl transition-all group", active ? "bg-amber-accent text-black font-bold" : "text-gray-400 hover:bg-dark-border hover:text-white")}><div className={cn("shrink-0", active ? "text-black" : "text-gray-500 group-hover:text-amber-accent transition-colors")}>{React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-5 h-5" }) : icon}</div>{isOpen && <span className="text-sm">{label}</span>}</button>);
+function SidebarIcon({ icon, active, onClick, title }: { icon: React.ReactNode, active: boolean, onClick: () => void, title?: string }) {
+  return (
+    <div 
+      onClick={onClick}
+      title={title}
+      className={cn(
+        "w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer transition-all relative group",
+        active ? "bg-[#c9a84c]/10 text-[#c9a84c]" : "text-[#9896a4] hover:bg-white/5 hover:text-white"
+      )}
+    >
+      {React.cloneElement(icon as React.ReactElement<any>, { className: "w-5 h-5" })}
+      {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#c9a84c] rounded-r-full" />}
+    </div>
+  );
 }
 
-const BookCard: React.FC<{ book: Book, onClick: () => void, onShelfToggle: () => void, isOnShelf: boolean }> = ({ book, onClick, onShelfToggle, isOnShelf }) => {
-  return (<motion.div whileHover={{ y: -5 }} className="card group cursor-pointer" onClick={onClick}><div className="relative aspect-[2/3] overflow-hidden"><img src={book.cover_url} alt={book.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4"><button onClick={(e) => { e.stopPropagation(); onShelfToggle(); }} className={cn("w-full py-2 rounded-lg text-xs font-bold transition-all", isOnShelf ? "bg-white text-black" : "bg-amber-accent text-black")}>{isOnShelf ? 'Remove from Shelf' : 'Add to Shelf'}</button></div>{isOnShelf && <div className="absolute top-2 right-2 bg-amber-accent text-black p-1.5 rounded-lg shadow-lg"><Bookmark className="w-3 h-3 fill-current" /></div>}</div><div className="p-4"><h3 className="font-bold text-white truncate mb-1 group-hover:text-amber-accent transition-colors">{book.title}</h3><p className="text-xs text-gray-500 mb-3">{book.author}</p><div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-widest font-bold text-gray-600 bg-dark-bg px-2 py-1 rounded border border-dark-border">{book.category}</span><div className="flex items-center gap-1 text-gray-500"><Clock className="w-3 h-3" /><span className="text-[10px]">{book.read_time_mins}m</span></div></div></div></motion.div>);
+function FeedTab({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) {
+  return (
+    <button onClick={onClick} className={cn(
+      "flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all",
+      active ? "bg-[#c9a84c] text-[#0a0a0f]" : "text-[#9896a4] hover:text-white"
+    )}>{label}</button>
+  );
 }
 
-function Badge({ icon, label }: { icon?: React.ReactNode, label: string }) {
-  return (<div className="flex items-center gap-1.5 px-2.5 py-1 bg-dark-bg border border-dark-border rounded-full text-[10px] font-bold text-gray-400 uppercase tracking-wider">{icon && <span className="text-amber-accent">{icon}</span>}{label}</div>);
+function CompactBookCard({ book, active, onClick }: { book: Book, active: boolean, onClick: () => void }) {
+  return (
+    <div onClick={onClick} className={cn(
+      "p-3 rounded-2xl border cursor-pointer transition-all group",
+      active ? "bg-[#c9a84c]/5 border-[#c9a84c]/30" : "bg-[#1a1928] border-[rgba(201,168,76,0.05)] hover:border-[#c9a84c]/20"
+    )}>
+      <div className="flex gap-4">
+        <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 border border-white/5 shadow-lg">
+          <img src={book.cover_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-[13px] font-bold truncate mb-0.5 group-hover:text-[#c9a84c] transition-colors">{book.title}</h4>
+          <p className="text-[11px] text-[#9896a4] truncate mb-2">{book.author}</p>
+          <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-full bg-[#c9a84c] w-[65%]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function TabButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
-  return (<button onClick={onClick} className={cn("flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all relative", active ? "text-amber-accent" : "text-gray-500 hover:text-gray-300")}>{icon}{label}{active && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-accent" initial={false} />}</button>);
+function HubTab({ label, active, onClick, badge }: { label: string, active: boolean, onClick: () => void, badge?: number }) {
+  return (
+    <button onClick={onClick} className={cn(
+      "px-6 py-4 text-[13px] font-bold transition-all border-b-2 relative",
+      active ? "text-[#c9a84c] border-[#c9a84c]" : "text-[#9896a4] border-transparent hover:text-white"
+    )}>
+      <div className="flex items-center gap-2">
+        {label}
+        {badge !== undefined && <span className="bg-[#c9a84c]/10 text-[#c9a84c] text-[10px] px-1.5 py-0.5 rounded-md">{badge}</span>}
+      </div>
+    </button>
+  );
+}
+
+function ReaderChip({ name }: { name: string }) {
+  return (
+    <div className="flex items-center gap-1.5 bg-[#1a1928] border border-[rgba(201,168,76,0.1)] rounded-full px-2.5 py-1 text-[10px] text-[#9896a4]">
+      <div className="w-1 h-1 bg-[#4ade80] rounded-full" />
+      {name}
+    </div>
+  );
+}
+
+function ChatMessage({ initials, name, text, color, isAI }: { initials: string, name: string, text: string, color: string, isAI?: boolean }) {
+  return (
+    <div className="flex gap-3 items-start">
+      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: `${color}20`, color }}>{initials}</div>
+      <div className="flex-1">
+        <div className="text-[10px] font-bold mb-1" style={{ color }}>{name}</div>
+        <div className={cn(
+          "text-[12px] leading-relaxed p-3 rounded-2xl",
+          isAI ? "bg-[#c9a84c]/10 border border-[#c9a84c]/20 text-white rounded-tl-none" : "bg-[#1a1928] text-[#9896a4] rounded-tl-none"
+        )}>{text}</div>
+      </div>
+    </div>
+  );
+}
+
+function PromptPill({ label, onClick }: { label: string, onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] rounded-full px-3 py-1.5 text-[10px] text-[#9896a4] hover:border-[#c9a84c]/40 hover:text-white transition-all">
+      {label}
+    </button>
+  );
 }

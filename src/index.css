@@ -2,20 +2,50 @@
 
 @theme {
   --color-amber-accent: #e8a84c;
-  --color-dark-bg: #0f0f0f;
-  --color-dark-surface: #1a1a1a;
-  --color-dark-border: #2a2a2a;
+  --color-dark-bg: #0d0d0f;
+  --color-dark-surface: #1e1e2e;
+  --color-dark-border: rgba(255,255,255,0.07);
 }
 
 @layer base {
-  body { @apply bg-dark-bg text-gray-200 antialiased; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-dark-bg; }
-  ::-webkit-scrollbar-thumb { @apply bg-dark-border rounded-full hover:bg-amber-accent/50; }
+  body {
+    @apply bg-dark-bg text-gray-200 antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-bg;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-border rounded-full hover:bg-amber-accent/50 transition-colors;
+  }
 }
 
 @layer components {
-  .btn-primary { @apply bg-amber-accent text-black font-semibold px-4 py-2 rounded-lg hover:bg-amber-accent/90 transition-all active:scale-95; }
-  .btn-secondary { @apply bg-dark-surface border border-dark-border text-gray-300 px-4 py-2 rounded-lg hover:bg-dark-border transition-all active:scale-95; }
-  .card { @apply bg-dark-surface border border-dark-border rounded-xl overflow-hidden hover:border-amber-accent/30 transition-all; }
+  .btn-primary {
+    @apply bg-amber-accent text-black font-semibold px-4 py-2 rounded-lg hover:bg-amber-accent/90 transition-all active:scale-95;
+  }
+  .btn-secondary {
+    @apply bg-dark-surface border border-dark-border text-gray-300 px-4 py-2 rounded-lg hover:bg-dark-border transition-all active:scale-95;
+  }
+  .input-field {
+    @apply bg-dark-surface border border-dark-border text-white px-4 py-2 rounded-lg focus:outline-none focus:border-amber-accent/50 transition-all;
+  }
+  .card {
+    @apply bg-dark-surface border border-dark-border rounded-xl overflow-hidden hover:border-amber-accent/30 transition-all;
+  }
+}
+
+/* Custom animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
