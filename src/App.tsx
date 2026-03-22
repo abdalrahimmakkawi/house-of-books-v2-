@@ -91,6 +91,25 @@ const AI_AGENTS = [
 ];
 
 export default function App() {
+  const APP_VERSION = '2.0';
+
+  useEffect(() => {
+    const savedVersion = localStorage.getItem('hob_version');
+    if (savedVersion !== APP_VERSION) {
+      localStorage.setItem('hob_version', APP_VERSION);
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+        });
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => reg.unregister());
+        }).then(() => window.location.reload());
+      }
+    }
+  }, []);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
