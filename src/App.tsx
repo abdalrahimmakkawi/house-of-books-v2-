@@ -106,7 +106,7 @@ export default function App() {
   const [readingProgress, setReadingProgress] = useState<Record<string, ReadingProgress>>({});
   const [showCooldown, setShowCooldown] = useState(false);
   const [cooldownMins, setCooldownMins] = useState(0);
-  const [currentPage, setCurrentPage] = useState<'library' | 'library-grid' | 'agents' | 'dashboard'>('library');
+  const [currentPage, setCurrentPage] = useState<'library' | 'library-grid' | 'agents' | 'dashboard' | 'community'>('library');
   const [feedTab, setFeedTab] = useState<'all' | 'shelf' | 'free'>('all');
   
   const [theme, setTheme] = useState<keyof typeof THEMES>(() => {
@@ -414,9 +414,9 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0f] text-white overflow-hidden font-sans">
+    <div className="flex h-screen text-white overflow-hidden font-sans" style={{ background: currentTheme.bg }}>
       {/* 1. LEFT SIDEBAR (64px) */}
-      <aside className="w-16 bg-[#13121a] border-r border-[rgba(201,168,76,0.1)] flex flex-col items-center py-6 shrink-0 z-20">
+      <aside className="w-16 border-r border-[rgba(201,168,76,0.1)] flex flex-col items-center py-6 shrink-0 z-20" style={{ background: currentTheme.surface }}>
         <div className="w-10 h-10 bg-[#c9a84c] rounded-xl flex items-center justify-center font-serif font-black text-[#0a0a0f] text-xl mb-8 cursor-pointer shadow-[0_0_20px_rgba(201,168,76,0.3)]">
           H
         </div>
@@ -424,8 +424,8 @@ export default function App() {
         <div className="flex flex-col gap-4">
           <SidebarIcon icon={<Home />} active={currentPage === 'library'} onClick={() => setCurrentPage('library')} />
           <SidebarIcon icon={<Library />} active={currentPage === 'library-grid'} onClick={() => setCurrentPage('library-grid')} />
-          <SidebarIcon icon={<Compass />} active={false} onClick={() => {}} />
-          <SidebarIcon icon={<MessageSquare />} active={false} onClick={() => {}} />
+          <SidebarIcon icon={<Compass />} active={currentPage === 'community'} onClick={() => setCurrentPage('community')} />
+          <SidebarIcon icon={<MessageSquare />} active={currentPage === 'community'} onClick={() => setCurrentPage('community')} />
         </div>
 
         <div className="mt-auto flex flex-col gap-4 items-center">
@@ -466,7 +466,7 @@ export default function App() {
       </aside>
 
       {/* 2. FEED PANEL (280px) */}
-      <aside className="w-[280px] bg-[#13121a] border-r border-[rgba(201,168,76,0.1)] flex flex-col shrink-0">
+      <aside className="w-[280px] border-r border-[rgba(201,168,76,0.1)] flex flex-col shrink-0" style={{ background: currentTheme.surface }}>
         <div className="p-6 pb-4">
           <h2 className="font-serif text-xl font-bold text-white mb-4">Reading Feed</h2>
           <div className="flex gap-1 bg-[#1a1928] rounded-lg p-1 mb-6">
@@ -539,6 +539,13 @@ export default function App() {
                   <div className="text-[10px] text-[#9896a4] uppercase tracking-widest">{s.label}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        ) : currentPage === 'community' ? (
+          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+            <h2 className="text-3xl font-serif font-bold mb-8">Community</h2>
+            <div id="communityFeed" className="space-y-4 max-w-2xl">
+              <div className="text-[#9896a4]">Loading discussions...</div>
             </div>
           </div>
         ) : currentPage === 'library-grid' ? (
@@ -721,7 +728,7 @@ export default function App() {
       </main>
 
       {/* 4. RIGHT PANEL (280px) */}
-      <aside className="w-[280px] bg-[#13121a] border-l border-[rgba(201,168,76,0.1)] flex flex-col shrink-0">
+      <aside className="w-[280px] border-l border-[rgba(201,168,76,0.1)] flex flex-col shrink-0" style={{ background: currentTheme.surface }}>
         <div className="p-6 border-b border-[rgba(201,168,76,0.1)]">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-sm">Book Room</h3>
