@@ -561,7 +561,7 @@ export default function App() {
               ))}
             </div>
           </div>
-        ) : currentPage === 'community' && (
+        ) : currentPage === 'community' ? (
           <CommunityPage userEmail={user.email} />
         ) : currentPage === 'library-grid' ? (
           <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
