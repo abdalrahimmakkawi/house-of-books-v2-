@@ -4,32 +4,6 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Force update logic
-const APP_VERSION = '2.0';
-const savedVersion = localStorage.getItem('hob_version');
-if (savedVersion !== APP_VERSION) {
-  localStorage.setItem('hob_version', APP_VERSION);
-  if ('caches' in window) {
-    caches.keys().then(names => names.forEach(name => caches.delete(name)));
-  }
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(reg => reg.unregister());
-    }).then(() => window.location.reload());
-  }
-}
-
-// Force update all PWA installations
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(registration => {
-      registration.unregister();
-    });
-  }).then(() => {
-    navigator.serviceWorker.register('/sw.js');
-  });
-}
-
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; error: Error | null; }
 
