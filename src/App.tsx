@@ -597,11 +597,11 @@ export default function App() {
               
               <div className="relative z-10 flex gap-8 items-end">
                 <div className="w-32 h-48 rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 shrink-0">
-                  <img src={selectedBook.cover_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={selectedBook?.cover_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="mb-2">
-                  <h1 className="font-serif text-4xl font-bold mb-2 text-white">{selectedBook.title}</h1>
-                  <p className="text-[#9896a4] text-lg mb-4">{selectedBook.author} · {selectedBook.category}</p>
+                  <h1 className="font-serif text-4xl font-bold mb-2 text-white">{selectedBook?.title}</h1>
+                  <p className="text-[#9896a4] text-lg mb-4">{selectedBook?.author} · {selectedBook?.category}</p>
                   <div className="flex gap-6">
                     <div className="flex items-center gap-2 text-xs font-mono text-[#9896a4]">
                       <div className="w-2 h-2 bg-[#4ade80] rounded-full animate-pulse" /> 342 reading now
@@ -628,12 +628,12 @@ export default function App() {
               <AnimatePresence mode="wait">
                 {activeTab === 'summary' && (
                   <motion.div key="summary" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-2xl">
-                    <p className="text-lg leading-relaxed text-[#9896a4] whitespace-pre-wrap">{selectedBook.summary}</p>
+                    <p className="text-lg leading-relaxed text-[#9896a4] whitespace-pre-wrap">{selectedBook?.summary}</p>
                   </motion.div>
                 )}
                 {activeTab === 'insights' && (
                   <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-4 max-w-3xl">
-                    {selectedBook.key_insights.split('. ').filter(s => s.trim()).map((insight, i) => (
+                    {selectedBook?.key_insights?.split('. ').filter(s => s.trim()).map((insight, i) => (
                       <div key={i} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-6 rounded-2xl">
                         <div className="text-[#c9a84c] font-mono text-xs mb-2">INSIGHT 0{i+1}</div>
                         <p className="text-[#9896a4] leading-relaxed">{insight}</p>
