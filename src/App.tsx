@@ -443,7 +443,7 @@ export default function App() {
         <div className="flex flex-col gap-4">
           <SidebarIcon icon={<Home />} active={currentPage === 'library'} onClick={() => setCurrentPage('library')} />
           <SidebarIcon icon={<Library />} active={currentPage === 'library-grid'} onClick={() => setCurrentPage('library-grid')} />
-          <SidebarIcon icon={<Compass />} active={currentPage === 'community'} onClick={() => setCurrentPage('community')} />
+          <SidebarIcon icon={<Compass />} active={currentPage === 'library-grid'} onClick={() => setCurrentPage('library-grid')} />
           <SidebarIcon icon={<MessageSquare />} active={currentPage === 'community'} onClick={() => setCurrentPage('community')} />
         </div>
 
@@ -521,6 +521,7 @@ export default function App() {
                 book={book} 
                 active={selectedBook?.id === book.id} 
                 onClick={() => handleBookClick(book)} 
+                progress={readingProgress[book.id]?.progress || 0}
               />
             ))
           )}
@@ -528,7 +529,7 @@ export default function App() {
       </aside>
 
       {/* 3. HUB PANEL (flex: 1) */}
-      <main className="flex-1 flex flex-col bg-[#0a0a0f] relative overflow-hidden">
+      <main className="flex-1 flex flex-col relative overflow-hidden" style={{ background: currentTheme.bg }}>
         {currentPage === 'agents' ? (
           <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
             <h2 className="text-3xl font-serif font-bold mb-8">AI Business Agents</h2>
@@ -560,13 +561,8 @@ export default function App() {
               ))}
             </div>
           </div>
-        ) : currentPage === 'community' ? (
-          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-            <h2 className="text-3xl font-serif font-bold mb-8">Community</h2>
-            <div id="communityFeed" className="space-y-4 max-w-2xl">
-              <div className="text-[#9896a4]">Loading discussions...</div>
-            </div>
-          </div>
+        ) : currentPage === 'community' && (
+          <CommunityPage userEmail={user.email} />
         ) : currentPage === 'library-grid' ? (
           <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
             <div className="flex items-center justify-between mb-10">
@@ -701,7 +697,7 @@ export default function App() {
         )}
 
         {/* BOTTOM MUSIC PLAYER BAR */}
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-[#13121a]/80 backdrop-blur-xl border-t border-[rgba(201,168,76,0.1)] px-8 flex items-center justify-between z-30">
+        <div className="absolute bottom-0 left-0 right-0 h-20 backdrop-blur-xl border-t border-[rgba(201,168,76,0.1)] px-8 flex items-center justify-between z-30" style={{ background: currentTheme.surface + 'cc' }}>
           <div className="flex items-center gap-4 w-1/3">
             <div className="w-10 h-10 bg-[#1a1928] rounded-lg flex items-center justify-center text-xl">{MUSIC_TRACKS.find(t => t.id === musicTrack)?.icon}</div>
             <div>
@@ -828,7 +824,7 @@ function FeedTab({ label, active, onClick }: { label: string, active: boolean, o
   );
 }
 
-function CompactBookCard({ book, active, onClick }: { book: Book, active: boolean, onClick: () => void }) {
+function CompactBookCard({ book, active, onClick, progress }: { book: Book, active: boolean, onClick: () => void, progress: number }) {
   return (
     <div onClick={onClick} className={cn(
       "p-3 rounded-2xl border cursor-pointer transition-all group",
@@ -842,7 +838,7 @@ function CompactBookCard({ book, active, onClick }: { book: Book, active: boolea
           <h4 className="text-[13px] font-bold truncate mb-0.5 group-hover:text-[#c9a84c] transition-colors">{book.title}</h4>
           <p className="text-[11px] text-[#9896a4] truncate mb-2">{book.author}</p>
           <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-[#c9a84c] w-[65%]" />
+            <div className="h-full bg-[#c9a84c]" style={{ width: `${progress}%` }} />
           </div>
         </div>
       </div>
@@ -893,5 +889,59 @@ function PromptPill({ label, onClick }: { label: string, onClick: () => void }) 
     <button onClick={onClick} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] rounded-full px-3 py-1.5 text-[10px] text-[#9896a4] hover:border-[#c9a84c]/40 hover:text-white transition-all">
       {label}
     </button>
+  );
+}
+
+function CommunityPage({ userEmail }: { userEmail: string }) {
+  const [discussions, setDiscussions] = useState<any[]>([]);
+  const [newPost, setNewPost] = useState('');
+  const SUPABASE_URL = 'https://ulxzyjqmvzyqjynmqywe.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseHp5anFtdnp5cWp5bm1xeXdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTcyNzYsImV4cCI6MjA4Nzg3MzI3Nn0.WWW2H8JmDjVgpaUEiaKbXDcqWWtmFTD9omrEWVMG8AI';
+
+  useEffect(() => {
+    fetch(`${SUPABASE_URL}/rest/v1/discussions?select=*&order=created_at.desc&limit=50&apikey=${SUPABASE_KEY}`,
+      { headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setDiscussions(data); });
+  }, []);
+
+  const postMessage = async () => {
+    if (!newPost.trim()) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/discussions?apikey=${SUPABASE_KEY}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify({ book_id: 'general', book_title: 'Community', user_email: userEmail, content: newPost })
+    });
+    setNewPost('');
+    fetch(`${SUPABASE_URL}/rest/v1/discussions?select=*&order=created_at.desc&limit=50&apikey=${SUPABASE_KEY}`,
+      { headers: { 'Authorization': `Bearer ${SUPABASE_KEY}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setDiscussions(data); });
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+      <h2 className="text-3xl font-serif font-bold mb-8">Community</h2>
+      <div className="max-w-2xl space-y-4 mb-8">
+        {discussions.map((d, i) => (
+          <div key={i} className="flex gap-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-[#c9a84c] font-bold shrink-0 text-sm" style={{ background: 'rgba(201,168,76,0.1)' }}>
+              {d.user_email?.[0]?.toUpperCase() || 'R'}
+            </div>
+            <div className="flex-1 p-4 rounded-2xl" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.1)' }}>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-bold text-[#c9a84c]">{d.user_email?.split('@')[0] || 'Reader'}</span>
+                <span className="text-xs text-[#9896a4]">{d.book_title || 'General'}</span>
+              </div>
+              <p className="text-sm text-[#9896a4]">{d.content}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="max-w-2xl flex gap-4">
+        <input value={newPost} onChange={e => setNewPost(e.target.value)} onKeyDown={e => e.key === 'Enter' && postMessage()} placeholder="Share a thought with the community..." className="flex-1 rounded-xl px-4 py-3 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)', color: '#f0ece4' }} />
+        <button onClick={postMessage} className="px-6 py-3 rounded-xl font-bold text-sm" style={{ background: '#c9a84c', color: '#0a0a0f' }}>Post</button>
+      </div>
+    </div>
   );
 }
