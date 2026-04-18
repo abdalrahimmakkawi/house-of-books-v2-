@@ -43,6 +43,7 @@ import { supabase } from './lib/supabase';
 import { Book, Discussion, UserProfile, ReadingProgress } from './types';
 import { formatDistanceToNow, isAfter, addHours } from 'date-fns';
 import { LandingPage } from './components/LandingPage';
+import { Analytics } from '@vercel/analytics/react';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -773,6 +774,7 @@ export default function App() {
           </div>
         </div>
       )}
+      <Analytics />
     </div>
   );
 }
