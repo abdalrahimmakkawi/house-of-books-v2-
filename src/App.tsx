@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { supabase, signInWithEmail, signOut } from './lib/supabase'
+import { supabase, signInWithEmail, signInWithGoogle, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
 import CommunityHub from './pages/CommunityHub'
 import Agent from './pages/Agent'
@@ -1136,6 +1136,8 @@ export default function App() {
     () => localStorage.getItem('userEmail') ? 'app' : 'login'
   )
   const [showInstallBtn, setShowInstallBtn] = useState(false)
+  const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [loginError, setLoginError] = useState('')
   const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [showIOSInstall, setShowIOSInstall] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -1320,8 +1322,24 @@ export default function App() {
 }
   const handleLogin = async () => {
     const email = emailInput.trim().toLowerCase()
-    if (!email || !email.includes('@')) return
-    await signInWithEmail(email)
+    if (!email || !email.includes('@')) {
+      setLoginError('Please enter a valid email address.')
+      return
+    }
+    setLoginError('')
+    setLoginStatus('sending')
+    const { error } = await signInWithEmail(email)
+    if (error) {
+      setLoginStatus('idle')
+      setLoginError(error.message || 'Could not send the login link. Please try again.')
+    } else {
+      setLoginStatus('sent')
+    }
+  }
+  const handleGoogleLogin = async () => {
+    setLoginError('')
+    const { error } = await signInWithGoogle()
+    if (error) setLoginError(error.message || 'Google sign-in failed. Please try again.')
   }
   const updateShelf=(bookId:string,status:ShelfStatus)=>{setShelf(p=>({...p,[bookId]:status}))}
   const updateProgress=(bookId:string,pct:number)=>{setReadingProgress(p=>({...p,[bookId]:pct}))}
@@ -1638,27 +1656,60 @@ export default function App() {
           <div style={{background:'rgba(14,14,20,0.97)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'16px',padding:'2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const}}>
             <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>📚</div>
             <h2 style={{fontSize:'1.6rem',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif'}}>House of Books</h2>
-            <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'2rem',lineHeight:1.6}}>Sign in to start reading</p>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={emailInput}
-              onChange={e => setEmailInput(e.target.value)}
-              onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
-              style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
-            />
-            <button
-              onClick={handleLogin}
-              style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:'pointer',fontFamily:'Georgia,serif'}}
-            >
-              Enter House of Books →
-            </button>
-            <button
-              onClick={() => setAppFlow('landing')}
-              style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
-            >
-              ← Back
-            </button>
+            {loginStatus === 'sent' ? (
+              <>
+                <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
+                <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
+                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
+                  We sent a login link to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Open it on this device to sign in. (Check your spam folder if you don't see it.)
+                </p>
+                <button
+                  onClick={() => { setLoginStatus('idle'); setLoginError('') }}
+                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%'}}
+                >
+                  ← Use a different email
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'2rem',lineHeight:1.6}}>Sign in to start reading</p>
+                <button
+                  onClick={handleGoogleLogin}
+                  style={{width:'100%',padding:'11px',background:'#fff',border:'none',borderRadius:'10px',color:'#1a1a1a',fontSize:'14px',cursor:'pointer',fontFamily:'Georgia,serif',marginBottom:'14px',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',fontWeight:600}}
+                >
+                  <span style={{fontSize:'16px'}}>🇬</span> Continue with Google
+                </button>
+                <div style={{display:'flex',alignItems:'center',gap:'10px',margin:'0 0 14px'}}>
+                  <div style={{flex:1,height:'1px',background:'rgba(201,168,76,0.2)'}}/>
+                  <span style={{color:'#6a6458',fontSize:'11px'}}>or</span>
+                  <div style={{flex:1,height:'1px',background:'rgba(201,168,76,0.2)'}}/>
+                </div>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={emailInput}
+                  onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
+                  onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
+                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                />
+                <button
+                  onClick={handleLogin}
+                  disabled={loginStatus === 'sending'}
+                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
+                >
+                  {loginStatus === 'sending' ? 'Sending link…' : 'Email me a login link →'}
+                </button>
+                {loginError && (
+                  <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
+                )}
+                <button
+                  onClick={() => setAppFlow('landing')}
+                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
+                >
+                  ← Back
+                </button>
+              </>
+            )}
           </div>
         </div>
       </>
