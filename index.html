@@ -47,18 +47,14 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Service Worker Registration -->
+    <!-- PWA install prompt (service-worker registration intentionally removed to avoid stale-cache stuck-loading) -->
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(reg => {
-              console.log('[HoB] Service Worker registered:', reg.scope)
-              // Check for updates every 30 minutes
-              setInterval(() => reg.update(), 30 * 60 * 1000)
-            })
-            .catch(err => console.warn('[HoB] Service Worker failed:', err))
-        })
+      // Proactively unregister any previously-installed service worker so returning
+      // visitors are never served a stale cached shell.
+      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations()
+          .then(regs => regs.forEach(r => r.unregister()))
+          .catch(() => {})
       }
 
       // PWA Install prompt — save for later use
