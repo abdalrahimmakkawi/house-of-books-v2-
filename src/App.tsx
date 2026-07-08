@@ -287,8 +287,8 @@ export default function App() {
 
   const filteredBooks = useMemo(() => {
     let list = books.filter(book => 
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase())
+      (book.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (book.author || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     if (feedTab === 'shelf') {
       list = list.filter(b => readingProgress[b.id]?.isShelf);
@@ -460,7 +460,7 @@ export default function App() {
             </>
           )}
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#e8a84c] flex items-center justify-center text-[13px] font-bold text-[#0a0a0f] cursor-pointer" onClick={handleLogout}>
-            {user.email.substring(0, 2).toUpperCase()}
+            {(user.email || '?').substring(0, 2).toUpperCase()}
           </div>
         </div>
       </aside>
@@ -611,7 +611,7 @@ export default function App() {
                 )}
                 {activeTab === 'insights' && (
                   <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-4 max-w-3xl">
-                    {selectedBook.key_insights.split('. ').filter(s => s.trim()).map((insight, i) => (
+                    {(selectedBook.key_insights || '').split('. ').filter(s => s.trim()).map((insight, i) => (
                       <div key={i} className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-6 rounded-2xl">
                         <div className="text-[#c9a84c] font-mono text-xs mb-2">INSIGHT 0{i+1}</div>
                         <p className="text-[#9896a4] leading-relaxed">{insight}</p>
@@ -623,7 +623,7 @@ export default function App() {
                   <motion.div key="discussion" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-2xl space-y-6">
                     {discussions.map(d => (
                       <div key={d.id} className="flex gap-4">
-                        <div className="w-10 h-10 rounded-full bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c] font-bold shrink-0">{d.user_email[0].toUpperCase()}</div>
+                        <div className="w-10 h-10 rounded-full bg-[#c9a84c]/10 flex items-center justify-center text-[#c9a84c] font-bold shrink-0">{(d.user_email || '?').charAt(0).toUpperCase()}</div>
                         <div className="bg-[#1a1928] border border-[rgba(201,168,76,0.1)] p-4 rounded-2xl flex-1">
                           <div className="flex justify-between mb-2">
                             <span className="text-sm font-bold">{d.user_email}</span>
@@ -634,7 +634,7 @@ export default function App() {
                       </div>
                     ))}
                     <div className="flex gap-4 pt-4">
-                      <div className="w-10 h-10 rounded-full bg-[#c9a84c] flex items-center justify-center text-[#0a0a0f] font-bold shrink-0">{user.email[0].toUpperCase()}</div>
+                      <div className="w-10 h-10 rounded-full bg-[#c9a84c] flex items-center justify-center text-[#0a0a0f] font-bold shrink-0">{(user.email || '?').charAt(0).toUpperCase()}</div>
                       <div className="flex-1">
                         <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Share your thoughts..." className="w-full bg-[#13121a] border border-[rgba(201,168,76,0.1)] rounded-2xl p-4 text-sm focus:border-[#c9a84c]/50 outline-none min-h-[100px] resize-none" />
                         <div className="flex justify-end mt-2"><button onClick={handleAddComment} className="px-6 py-2 bg-[#c9a84c] text-[#0a0a0f] font-bold rounded-xl active:scale-95 transition-all">Post</button></div>
