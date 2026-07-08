@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+
+# Allow search engines to crawl the site
+User-agent: Googlebot
+Allow: /
+
+# Allow all search engines
+User-agent: Bingbot
+Allow: /
+
+# Allow specific important crawlers
+User-agent: Slurp
+Allow: /
+
+# Disallow AI crawlers
+User-agent: GPTBot
+Disallow: /
+User-agent: ChatGPT-User
+Disallow: /
+User-agent: Claude-Web
+Disallow: /
+
+# Sitemap location
+Sitemap: https://house-of-books-gamma.vercel.app/sitemap.xml

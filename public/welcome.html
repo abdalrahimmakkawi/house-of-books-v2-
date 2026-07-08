@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="300+ books distilled by AI. Free during beta — no credit card needed. Join the global reading community today.">
+<title>House of Books — Free AI Reading During Beta</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --gold:#c9a84c;--gold-light:#e8c97a;--gold-dim:rgba(201,168,76,0.15);
+  --dark:#06050a;--text:#f0ece4;--text-soft:#9a9488;--text-dim:#5a5650;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Georgia',serif;background:var(--dark);color:var(--text);overflow-x:hidden;cursor:none}
+.cursor{position:fixed;width:8px;height:8px;background:var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+.cursor-ring{position:fixed;width:36px;height:36px;border:1px solid rgba(201,168,76,0.55);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all 0.12s ease}
+.cursor-ring.hov{width:54px;height:54px;border-color:var(--gold);background:rgba(201,168,76,0.06)}
+
+/* HERO BG — full canvas */
+#entropy-canvas{position:fixed;inset:0;z-index:0;width:100%!important;height:100%!important}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 70% at 50% 50%,transparent 20%,rgba(6,5,10,0.75) 55%,rgba(6,5,10,0.97) 100%)}
+.noise{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0.03;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.content{position:relative;z-index:10}
+
+/* BETA BAR */
+.top-bar{background:#c9a84c;color:#0a0a0f;text-align:center;padding:10px;font-size:13px;font-family:Georgia,serif;letter-spacing:0.05em}
+.top-bar a{color:#0a0a0f;text-decoration:none;font-weight:bold;margin-left:8px}
+.top-bar a:hover{text-decoration:underline}
+
+/* BETA BANNER */
+.beta-banner{background:var(--dark);border:2px solid var(--gold);border-radius:16px;padding:3rem;margin:2rem auto;max-width:600px;text-align:center}
+.beta-label{font-size:0.9rem;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:1rem}
+.beta-banner h2{font-family:'Georgia',serif;font-size:2rem;color:var(--text);margin-bottom:1rem}
+.beta-banner p{color:var(--text-soft);margin-bottom:2rem;line-height:1.6}
+
+/* FEATURES */
+.feature{padding:2.6rem;background:var(--dark);transition:background .4s;position:relative;overflow:hidden;text-align:center}
+.feature::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 0% 100%,rgba(201,168,76,.06),transparent 60%);opacity:0;transition:opacity .4s}
+.feature:hover{background:rgba(201,168,76,.03)}.feature:hover::before{opacity:1}
+.feature-icon{font-size:2.2rem;margin-bottom:1.2rem;display:block;transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.feature:hover .feature-icon{transform:translateY(-5px) scale(1.1)}
+.feature h3{font-family:'Georgia',serif;font-size:1.18rem;color:var(--text);margin-bottom:.5rem}
+.feature p{font-size:13px;color:var(--text-soft);line-height:1.78}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1.6rem 4rem;display:flex;align-items:center;justify-content:space-between;transition:all .5s}
+nav.scrolled{background:rgba(6,5,10,0.96);backdrop-filter:blur(28px);padding:1rem 4rem;border-bottom:1px solid rgba(201,168,76,0.12)}
+.nav-logo{font-family:'Georgia',serif;font-size:1.3rem;letter-spacing:.07em;color:var(--text);display:flex;align-items:center;gap:.7rem;text-decoration:none}
+.nav-logo-icon{width:30px;height:30px;border:1px solid var(--gold);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.nav-links{display:flex;align-items:center;gap:2.5rem}
+.nav-links a{text-decoration:none;color:var(--text-soft);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;transition:color .3s}
+.nav-links a:hover{color:var(--gold)}
+.nav-cta{border:1px solid rgba(201,168,76,0.5);color:var(--gold)!important;padding:.5rem 1.3rem;border-radius:3px}
+.nav-cta:hover{background:var(--gold)!important;color:var(--dark)!important}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8rem 2rem 4rem;position:relative}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:.8rem;font-size:.67rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:2rem;opacity:0;animation:fadeUp 1s .4s forwards}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:30px;height:1px;background:var(--gold);opacity:.5}
+.hero-title{font-family:'Georgia',serif;font-size:clamp(3rem,8vw,7.5rem);font-weight:400;line-height:1.02;letter-spacing:-.02em;margin-bottom:1.4rem;opacity:0;animation:fadeUp 1s .62s forwards}
+.hero-title em{font-style:italic;color:var(--gold)}
+.hero-sub{font-size:clamp(.95rem,2vw,1.15rem);color:var(--text-soft);line-height:1.78;max-width:550px;margin:0 auto 2.8rem;opacity:0;animation:fadeUp 1s .82s forwards}
+.hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;opacity:0;animation:fadeUp 1s 1.02s forwards}
+.btn-primary{padding:.95rem 2.5rem;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#06050a;border:none;border-radius:3px;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .3s;text-decoration:none;font-family:'Georgia',serif}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 48px rgba(201,168,76,.4)}
+.btn-ghost{padding:.95rem 2.5rem;background:transparent;color:var(--text-soft);border:1px solid rgba(255,255,255,.14);border-radius:3px;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .3s;text-decoration:none;font-family:'Georgia',serif}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.scroll-ind{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;opacity:0;animation:fadeIn 1s 2.4s forwards}
+.scroll-line{width:1px;height:50px;background:linear-gradient(to bottom,var(--gold),transparent);animation:sp 2.4s infinite}
+.scroll-txt{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--text-dim)}
+@keyframes sp{0%,100%{opacity:.2;transform:scaleY(.6)}50%{opacity:1;transform:scaleY(1)}}
+
+/* STATS */
+.stats{position:relative;z-index:10;padding:2.5rem 4rem;display:flex;justify-content:center;gap:5rem;border-top:1px solid rgba(201,168,76,.1);border-bottom:1px solid rgba(201,168,76,.1);background:rgba(6,5,10,.88);backdrop-filter:blur(24px)}
+.stat-num{font-family:'Georgia',serif;font-size:2.6rem;color:var(--gold);line-height:1}
+.stat-label{font-size:10px;color:var(--text-dim);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+
+/* SECTIONS */
+.section{position:relative;z-index:10;padding:8rem 5rem;max-width:1300px;margin:0 auto}
+.sec-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:1rem}
+.sec-title{font-family:'Georgia',serif;font-size:clamp(2rem,4vw,3.4rem);font-weight:400;line-height:1.18;margin-bottom:3.5rem}
+.sec-title em{font-style:italic;color:var(--gold)}
+
+/* BENTO */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(201,168,76,.08)}
+.bcard{padding:2.6rem;background:var(--dark);transition:background .4s;position:relative;overflow:hidden}
+.bcard::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 0% 100%,rgba(201,168,76,.06),transparent 60%);opacity:0;transition:opacity .4s}
+.bcard:hover{background:rgba(201,168,76,.03)}.bcard:hover::before{opacity:1}
+.bcard.wide{grid-column:span 2}
+.bicon{font-size:2.2rem;margin-bottom:1.2rem;display:block;transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.bcard:hover .bicon{transform:translateY(-5px) scale(1.1)}
+.bname{font-family:'Georgia',serif;font-size:1.18rem;color:var(--text);margin-bottom:.5rem}
+.bdesc{font-size:13px;color:var(--text-soft);line-height:1.78}
+.btag{display:inline-block;margin-top:1rem;font-size:9px;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(201,168,76,.3);padding:3px 11px;border-radius:2px}
+.bbig{font-family:'Georgia',serif;font-size:5rem;color:var(--gold);opacity:.1;position:absolute;bottom:-8px;right:14px;line-height:1;pointer-events:none}
+
+/* AUDIO */
+.audio-sec{position:relative;z-index:10;margin:0 5rem 5rem;padding:3rem 3.5rem;background:linear-gradient(135deg,rgba(201,168,76,.07),transparent);border:1px solid rgba(201,168,76,.2);border-radius:4px;display:flex;align-items:center;justify-content:space-between;gap:2rem;flex-wrap:wrap}
+.waves{display:flex;align-items:flex-end;gap:3px;height:36px;flex-shrink:0}
+.wave{width:4px;background:var(--gold);border-radius:2px;animation:wv 1.4s ease-in-out infinite}
+.wave:nth-child(1){height:10px}.wave:nth-child(2){height:22px;animation-delay:.15s}.wave:nth-child(3){height:36px;animation-delay:.3s}.wave:nth-child(4){height:18px;animation-delay:.45s}.wave:nth-child(5){height:28px;animation-delay:.6s}.wave:nth-child(6){height:14px;animation-delay:.75s}.wave:nth-child(7){height:26px;animation-delay:.9s}
+@keyframes wv{0%,100%{transform:scaleY(.35);opacity:.35}50%{transform:scaleY(1);opacity:1}}
+.audio-text h3{font-family:'Georgia',serif;font-size:1.35rem;color:var(--gold);margin-bottom:5px}
+.audio-text p{font-size:13px;color:var(--text-soft);line-height:1.65}
+.apill{padding:7px 18px;border:1px solid rgba(201,168,76,.4);border-radius:20px;font-size:11px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+
+/* PRICING */
+.pricing-sec{position:relative;z-index:10;padding:4rem 5rem 8rem;text-align:center}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(201,168,76,.1);max-width:860px;margin:4rem auto 0}
+.pcard{padding:3rem;background:var(--dark);text-align:left;position:relative}
+.pcard.feat{background:rgba(201,168,76,.04)}
+.pcard.feat::before{content:'✦ Most Popular';position:absolute;top:0;right:2rem;background:var(--gold);color:#06050a;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:5px 14px}
+.ptag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);margin-bottom:1rem}
+.pnum{font-family:'Georgia',serif;font-size:3.5rem;color:var(--text);line-height:1;margin-bottom:4px}
+.pnum span{font-size:1rem;color:var(--text-soft)}
+.pper{font-size:12px;color:var(--text-dim);margin-bottom:2rem}
+.plist{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:2rem}
+.plist li{font-size:13px;color:var(--text-soft);display:flex;align-items:center;gap:9px}
+.plist li::before{content:'✦';color:var(--gold);font-size:9px;flex-shrink:0}
+.paction{display:block;width:100%;padding:.9rem;text-align:center;border-radius:3px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .3s;text-decoration:none;font-family:'Georgia',serif}
+.pfree{background:transparent;color:var(--text-soft);border:1px solid rgba(255,255,255,.12)}
+.pfree:hover{border-color:var(--gold);color:var(--gold)}
+.pprem{background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#06050a;border:none}
+.pprem:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(201,168,76,.4)}
+
+/* FINAL + FOOTER */
+.final{position:relative;z-index:10;padding:8rem 4rem;text-align:center;border-top:1px solid rgba(201,168,76,.1)}
+.final h2{font-family:'Georgia',serif;font-size:clamp(2.2rem,5vw,4.5rem);font-weight:400;line-height:1.08;margin-bottom:1.5rem}
+.final h2 em{font-style:italic;color:var(--gold)}
+.final p{font-size:1rem;color:var(--text-soft);margin-bottom:3rem}
+
+/* FEEDBACK SECTION */
+.feedback-sec{position:relative;z-index:10;padding:6rem 4rem 8rem;background:linear-gradient(135deg,rgba(201,168,76,.03),transparent);border-top:1px solid rgba(201,168,76,.08)}
+.feedback-container{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4rem}
+.feedback-form{background:var(--dark);padding:3rem;border:1px solid rgba(201,168,76,.15);border-radius:8px}
+.form-group{margin-bottom:1.8rem}
+.form-group label{display:block;font-size:12px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+.form-group input,
+.form-group select,
+.form-group textarea{width:100%;padding:.8rem 1rem;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.2);border-radius:4px;color:var(--text);font-family:'Georgia',serif;font-size:14px;transition:all .3s}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{outline:none;border-color:var(--gold);background:rgba(201,168,76,.05)}
+.form-group textarea{resize:vertical;min-height:120px}
+.rating-container{display:flex;align-items:center;gap:1rem}
+.rating-stars{display:flex;gap:.3rem}
+.rating-stars input{display:none}
+.rating-stars label{font-size:1.5rem;color:var(--text-dim);cursor:pointer;transition:color .2s}
+.rating-stars input:checked ~ label,
+.rating-stars label:hover{color:var(--gold)}
+.submit-btn{width:100%;padding:1rem;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#06050a;border:none;border-radius:4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .3s;font-family:'Georgia',serif}
+.submit-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(201,168,76,.4)}
+.feedback-message{margin-top:1rem;padding:.8rem;border-radius:4px;font-size:13px;text-align:center;display:none}
+.feedback-message.success{background:rgba(201,168,76,.1);color:var(--gold);border:1px solid rgba(201,168,76,.3)}
+.feedback-message.error{background:rgba(220,38,38,.1);color:#f87171;border:1px solid rgba(220,38,38,.3)}
+.feedback-info{display:flex;flex-direction:column;gap:2rem}
+.info-card{background:rgba(201,168,76,.05);padding:2rem;border:1px solid rgba(201,168,76,.1);border-radius:8px}
+.info-icon{font-size:2rem;margin-bottom:1rem;display:block}
+.info-card h3{font-family:'Georgia',serif;font-size:1.2rem;color:var(--gold);margin-bottom:.8rem}
+.info-card p{font-size:13px;color:var(--text-soft);line-height:1.6}
+footer{position:relative;z-index:10;padding:2rem 5rem;border-top:1px solid rgba(201,168,76,.08);display:flex;align-items:center;justify-content:space-between}
+.fcopy{font-size:11px;color:var(--text-dim);letter-spacing:.06em}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .9s ease,transform .9s ease}
+.reveal.vis{opacity:1;transform:none}
+
+@media(max-width:900px){
+  nav{padding:1.2rem 1.5rem}nav.scrolled{padding:.8rem 1.5rem}.nav-links{display:none}
+  .hero{padding:5rem 1.5rem 3rem}
+  .stats{padding:2rem 1.5rem;gap:2.5rem;flex-wrap:wrap}
+  .section{padding:4rem 1.5rem}
+  .bento{grid-template-columns:1fr}.bcard.wide{grid-column:span 1}
+  .audio-sec{margin:0 1.5rem 4rem;padding:2rem}
+  .pricing-sec{padding:3rem 1.5rem 5rem}.pgrid{grid-template-columns:1fr}
+  .final{padding:5rem 1.5rem}
+  .feedback-sec{padding:4rem 1.5rem 6rem}
+  .feedback-container{grid-template-columns:1fr;gap:3rem}
+  .feedback-form{padding:2rem}
+  footer{padding:1.5rem;flex-direction:column;gap:.5rem;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  ✦ We're in Beta — Everything is free right now. &nbsp;
+  <a href="https://house-of-books-gamma.vercel.app">Start Reading →</a>
+</div>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cring"></div>
+<canvas id="entropy-canvas"></canvas>
+<div class="vignette"></div>
+<div class="noise"></div>
+
+<div class="content">
+<nav id="nav">
+  <a href="/" class="nav-logo"><div class="nav-logo-icon">📚</div>House of Books</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#feedback">Feedback</a>
+    <a href="/" class="nav-cta">Enter Library →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow">✦ AI-Powered Reading ✦</div>
+  <h1 class="hero-title">The World's Greatest Books<br><em>Distilled by AI</em></h1>
+  <p class="hero-sub">Read smarter. Explore 300+ books with AI summaries, live chat, and a global reading community. Free during beta.</p>
+  <div class="hero-actions">
+    <a href="https://house-of-books-gamma.vercel.app" class="btn-primary">
+      START READING FREE →
+    </a>
+    <a href="https://house-of-books-gamma.vercel.app/community" class="btn-ghost">
+      JOIN THE COMMUNITY
+    </a>
+  </div>
+  <div class="scroll-ind"><div class="scroll-line"></div><span class="scroll-txt">Scroll</span></div>
+</section>
+
+<div class="stats reveal">
+  <div class="stat">
+    <span class="stat-number">304</span>
+    <span class="stat-label">BOOKS</span>
+  </div>
+  <div class="stat">
+    <span class="stat-number">90</span>
+    <span class="stat-label">FREE BOOKS</span>
+  </div>
+  <div class="stat">
+    <span class="stat-number">5</span>
+    <span class="stat-label">LANGUAGES</span>
+  </div>
+</div>
+
+<section class="section" id="features">
+  <div class="reveal"><div class="sec-label">✦ Features</div><h2 class="sec-title">Everything you need to<br><em>read smarter</em></h2></div>
+  <div class="bento reveal" style="grid-template-columns: repeat(2, 1fr); gap: 1px; background: rgba(201,168,76,0.08);">
+    <div class="feature">
+      <span class="feature-icon">📚</span>
+      <h3>300+ Books</h3>
+      <p>Classics and modern titles from 15+ countries in 5 languages</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">✦</span>
+      <h3>AI Book Chat</h3>
+      <p>Ask anything about any book — get instant AI-powered answers</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">🌍</span>
+      <h3>Global Community</h3>
+      <p>Join reading groups, discuss books, connect with readers worldwide</p>
+    </div>
+    <div class="feature">
+      <span class="feature-icon">⭐</span>
+      <h3>Premium Coming Soon</h3>
+      <p>Unlimited AI chat, full library access, PDF exports and more</p>
+    </div>
+  </div>
+</section>
+
+<div class="audio-sec reveal">
+  <div style="display:flex;align-items:center;gap:1.8rem">
+    <div class="waves"><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div></div>
+    <div class="audio-text"><h3>Audio Summaries — Coming Soon</h3><p>Beautifully narrated book summaries. Listen while commuting, exercising, or relaxing.</p></div>
+  </div>
+  <span class="apill">✦ Coming Soon</span>
+</div>
+
+<section class="pricing-sec" id="pricing">
+  <div class="reveal">
+    <div class="beta-banner">
+      <p class="beta-label">✦ BETA</p>
+      <h2>Free While We're in Beta</h2>
+      <p>Enjoy 10 free AI chats, 90 books, and full community access — no credit card needed. Premium features coming soon.</p>
+      <a href="https://house-of-books-gamma.vercel.app" class="btn-primary">
+        Start Reading Free →
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <h2 class="reveal">Your next great idea<br>is <em>one book away</em></h2>
+  <p class="reveal">Join readers who learn faster with House of Books.</p>
+  <a href="/" class="btn-primary reveal">Enter the Library →</a>
+</section>
+
+<!-- FEEDBACK SECTION -->
+<section class="feedback-sec" id="feedback">
+  <div class="reveal"><div class="sec-label">✦ Feedback</div><h2 class="sec-title">Help Us <em>Improve</em></h2></div>
+  <div class="feedback-container reveal">
+    <div class="feedback-form">
+      <form id="feedbackForm">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" required placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" name="category" required>
+            <option value="">Select a category</option>
+            <option value="bug">Bug Report</option>
+            <option value="feature">Feature Request</option>
+            <option value="ui">UI/UX Feedback</option>
+            <option value="content">Content Suggestion</option>
+            <option value="general">General Feedback</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="message">Your Feedback</label>
+          <textarea id="message" name="message" required placeholder="Share your thoughts, ideas, or report issues..." rows="5"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="rating">Overall Experience</label>
+          <div class="rating-container">
+            <span class="rating-label">Poor</span>
+            <div class="rating-stars">
+              <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+              <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+              <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+              <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+              <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+            </div>
+            <span class="rating-label">Excellent</span>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn">Send Feedback →</button>
+        <div id="feedbackMessage" class="feedback-message"></div>
+      </form>
+    </div>
+    <div class="feedback-info">
+      <div class="info-card">
+        <div class="info-icon">💡</div>
+        <h3>Why Your Feedback Matters</h3>
+        <p>Your insights help us build a better reading experience. Every comment is read and considered for future updates.</p>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">🚀</div>
+        <h3>What We're Working On</h3>
+        <p>Audio summaries, mobile apps, more books, and enhanced AI capabilities. Your feedback shapes our roadmap.</p>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">📧</div>
+        <h3>Direct Response</h3>
+        <p>While we can't respond to every submission individually, we read all feedback and may reach out for clarification.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span style="font-family:'Georgia',serif;font-size:1rem;color:var(--text-soft)">📚 House of Books</span>
+  <span class="fcopy">© 2026 House of Books · Read Smarter</span>
+</footer>
+</div>
+
+<script>
+// ── CURSOR ─────────────────────────────────────────────────────────
+const cur=document.getElementById('cursor'),cring=document.getElementById('cring')
+let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'})
+;(function ar(){rx+=(mx-rx)*.11;ry+=(my-ry)*.11;cring.style.left=Math.round(rx)+'px';cring.style.top=Math.round(ry)+'px';requestAnimationFrame(ar)})()
+document.querySelectorAll('a,button').forEach(el=>{el.addEventListener('mouseenter',()=>cring.classList.add('hov'));el.addEventListener('mouseleave',()=>cring.classList.remove('hov'))})
+
+// ── NAV ────────────────────────────────────────────────────────────
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>60))
+
+// ── REVEAL ─────────────────────────────────────────────────────────
+const ro=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vis')}),{threshold:.1})
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el))
+
+// ══════════════════════════════════════════════════════════════════════
+// ENTROPY PARTICLE SYSTEM — adapted from 21st.dev
+// Gold particles on left = "ordered knowledge" (books in library)
+// White particles on right = "chaos" (unread world)
+// They interact, bleed into each other — beautiful metaphor for reading
+// Mouse position influences the chaos boundary
+// Book cover thumbnails float as special particles
+// ══════════════════════════════════════════════════════════════════════
+;(function(){
+  const canvas = document.getElementById('entropy-canvas')
+  const ctx = canvas.getContext('2d')
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+
+  let W = innerWidth, H = innerHeight
+
+  function resize(){
+    W = innerWidth; H = innerHeight
+    canvas.width  = W * dpr
+    canvas.height = H * dpr
+    canvas.style.width  = W + 'px'
+    canvas.style.height = H + 'px'
+    ctx.scale(dpr, dpr)
+  }
+  resize()
+  window.addEventListener('resize', () => { ctx.setTransform(1,0,0,1,0,0); resize() })
+
+  // Mouse
+  let mouseX = W * 0.5, mouseY = H * 0.5
+  document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY })
+
+  // ── Book cover images (Open Library by cover ID) ────────────────
+  const COVER_IDS = [
+    '10523163','8739161','8108119','7984916','9254401',
+    '8739006','8091016','9261174','8445616','9176438',
+    '8228802','10494183','7682895','9360807','10515358',
+    '8751916','12008066','8351980','9176452','8271495',
+  ]
+  const coverImgs = {}
+  COVER_IDS.forEach(id => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = `https://covers.openlibrary.org/b/id/${id}-S.jpg`  // S = small, 48px wide
+    img.onload = () => { coverImgs[id] = img }
+  })
+
+  // ── Particle class ──────────────────────────────────────────────
+  class Particle {
+    constructor(x, y, isOrder) {
+      this.x = x
+      this.y = y
+      this.ox = x  // original x
+      this.oy = y  // original y
+      this.isOrder = isOrder
+      this.vx = (Math.random() - 0.5) * 1.8
+      this.vy = (Math.random() - 0.5) * 1.8
+      this.influence = 0
+      this.neighbors = []
+      // Some ordered particles are book-cover particles
+      this.isCover = isOrder && Math.random() < 0.04
+      this.coverId = COVER_IDS[Math.floor(Math.random() * COVER_IDS.length)]
+      this.size = this.isCover ? 18 : (1.5 + Math.random() * 1.5)
+      this.pulse = Math.random() * Math.PI * 2  // phase for pulsing
+    }
+
+    update(time, boundary) {
+      this.pulse += 0.02
+
+      if (this.isOrder) {
+        // Ordered: wants to return home, but chaos bleeds in
+        const dx = this.ox - this.x
+        const dy = this.oy - this.y
+        let cx = 0, cy = 0
+
+        this.neighbors.forEach(n => {
+          if (!n.isOrder) {
+            const d = Math.hypot(this.x - n.x, this.y - n.y)
+            const s = Math.max(0, 1 - d / 120)
+            cx += n.vx * s
+            cy += n.vy * s
+            this.influence = Math.max(this.influence, s)
+          }
+        })
+
+        const pull = 1 - this.influence
+        this.x += dx * 0.04 * pull + cx * this.influence * 0.8
+        this.y += dy * 0.04 * pull + cy * this.influence * 0.8
+        this.influence *= 0.98
+
+        // Cover particles float gently
+        if (this.isCover) {
+          this.x += Math.sin(this.pulse * 0.7) * 0.15
+          this.y += Math.cos(this.pulse * 0.5) * 0.1
+        }
+      } else {
+        // Chaos: wanders freely, attracted slightly toward mouse
+        this.vx += (Math.random() - 0.5) * 0.4
+        this.vy += (Math.random() - 0.5) * 0.4
+
+        // Subtle mouse attraction for chaos side
+        const mdx = mouseX - this.x, mdy = mouseY - this.y
+        const md = Math.hypot(mdx, mdy)
+        if (md < 200) {
+          this.vx += (mdx / md) * 0.08
+          this.vy += (mdy / md) * 0.08
+        }
+
+        this.vx *= 0.94
+        this.vy *= 0.94
+        this.x += this.vx
+        this.y += this.vy
+
+        // Chaos particles stay in right half (with soft boundary)
+        const leftBound = boundary
+        if (this.x < leftBound) { this.vx += 0.5; this.x = Math.max(this.x, leftBound - 30) }
+        if (this.x > W) { this.vx -= 0.5 }
+        if (this.y < 0) { this.vy += 0.5 }
+        if (this.y > H) { this.vy -= 0.5 }
+        this.x = Math.max(leftBound - 40, Math.min(W + 10, this.x))
+        this.y = Math.max(-10, Math.min(H + 10, this.y))
+      }
+    }
+
+    draw(ctx, time) {
+      if (this.isCover && coverImgs[this.coverId]) {
+        // Draw real book cover as a floating mini-card
+        const img = coverImgs[this.coverId]
+        const w = this.size * 1.5, h = this.size * 2.2
+        const alpha = 0.55 + Math.sin(this.pulse) * 0.15 - this.influence * 0.3
+
+        ctx.save()
+        ctx.globalAlpha = Math.max(0, alpha)
+        ctx.translate(this.x, this.y)
+        ctx.rotate(Math.sin(this.pulse * 0.3) * 0.08)
+
+        // Shadow
+        ctx.shadowColor = 'rgba(201,168,76,0.4)'
+        ctx.shadowBlur = 8
+
+        // Gold border
+        ctx.strokeStyle = `rgba(201,168,76,${alpha})` 
+        ctx.lineWidth = 1
+        ctx.strokeRect(-w/2 - 1, -h/2 - 1, w + 2, h + 2)
+
+        // Cover image
+        ctx.drawImage(img, -w/2, -h/2, w, h)
+        ctx.restore()
+      } else {
+        // Regular particle
+        const base = this.isOrder
+          ? `rgba(201,168,76,`   // gold for order
+          : `rgba(240,236,228,`  // white-ish for chaos
+
+        const alpha = this.isOrder
+          ? 0.7 - this.influence * 0.45 + Math.sin(this.pulse) * 0.1
+          : 0.5 + Math.random() * 0.1
+
+        const size = this.size + (this.isOrder ? Math.sin(this.pulse) * 0.4 : 0)
+
+        ctx.beginPath()
+        ctx.arc(this.x, this.y, Math.max(0.5, size), 0, Math.PI * 2)
+        ctx.fillStyle = base + Math.max(0, Math.min(1, alpha)) + ')'
+        ctx.fill()
+      }
+    }
+  }
+
+  // ── Build particle grid ─────────────────────────────────────────
+  let particles = []
+
+  function buildParticles() {
+    particles = []
+    const cols = Math.floor(W / 28)
+    const rows = Math.floor(H / 28)
+    const sx = W / cols, sy = H / rows
+    const boundary = W * 0.5
+
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = sx * i + sx / 2
+        const y = sy * j + sy / 2
+        const isOrder = x < boundary
+        particles.push(new Particle(x, y, isOrder))
+      }
+    }
+  }
+  buildParticles()
+  window.addEventListener('resize', buildParticles)
+
+  // ── Update neighbor relationships every N frames ────────────────
+  function updateNeighbors() {
+    const maxDist = 110
+    particles.forEach(p => {
+      p.neighbors = []
+      particles.forEach(o => {
+        if (o === p) return
+        if (Math.hypot(p.x - o.x, p.y - o.y) < maxDist) p.neighbors.push(o)
+      })
+    })
+  }
+  // Initial + periodic
+  updateNeighbors()
+
+  // ── Draw ───────────────────────────────────────────────────────
+  let frame = 0
+  // Boundary oscillates slowly — the division breathes
+  function getBoundary(t) {
+    return W * 0.5 + Math.sin(t * 0.0008) * W * 0.06
+  }
+
+  function draw() {
+    requestAnimationFrame(draw)
+    frame++
+
+    // Throttle neighbor updates
+    if (frame % 40 === 0) updateNeighbors()
+
+    ctx.clearRect(0, 0, W, H)
+
+    // Subtle dark background
+    ctx.fillStyle = 'rgba(6,5,10,0.18)'
+    ctx.fillRect(0, 0, W, H)
+
+    const boundary = getBoundary(frame)
+
+    // Update all particles
+    particles.forEach(p => p.update(frame, boundary))
+
+    // Draw connections
+    particles.forEach(p => {
+      p.neighbors.forEach(n => {
+        const d = Math.hypot(p.x - n.x, p.y - n.y)
+        if (d < 55) {
+          const alpha = 0.18 * (1 - d / 55)
+          // Gold connections on order side, dim white on chaos
+          const col = p.isOrder && n.isOrder
+            ? `rgba(201,168,76,${alpha})` 
+            : `rgba(200,190,170,${alpha * 0.6})` 
+          ctx.beginPath()
+          ctx.moveTo(p.x, p.y)
+          ctx.lineTo(n.x, n.y)
+          ctx.strokeStyle = col
+          ctx.lineWidth = 0.6
+          ctx.stroke()
+        }
+      })
+    })
+
+    // Draw particles
+    particles.forEach(p => p.draw(ctx, frame))
+
+    // ── Breathing dividing line ────────────────────────────────────
+    const grad = ctx.createLinearGradient(boundary, 0, boundary, H)
+    grad.addColorStop(0,   'rgba(201,168,76,0.0)')
+    grad.addColorStop(0.2, 'rgba(201,168,76,0.25)')
+    grad.addColorStop(0.5, 'rgba(201,168,76,0.35)')
+    grad.addColorStop(0.8, 'rgba(201,168,76,0.25)')
+    grad.addColorStop(1,   'rgba(201,168,76,0.0)')
+
+    // Wavy line following sine
+    ctx.beginPath()
+    for (let y = 0; y <= H; y += 4) {
+      const xOffset = Math.sin(y * 0.012 + frame * 0.018) * 18
+      if (y === 0) ctx.moveTo(boundary + xOffset, y)
+      else ctx.lineTo(boundary + xOffset, y)
+    }
+    ctx.strokeStyle = grad
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+
+    // Labels either side of divider
+    ctx.save()
+    ctx.font = '10px Georgia,serif'
+    ctx.letterSpacing = '0.18em'
+    ctx.textAlign = 'center'
+    const labelAlpha = 0.22 + Math.sin(frame * 0.015) * 0.06
+    ctx.fillStyle = `rgba(201,168,76,${labelAlpha})` 
+    ctx.fillText('ORDER', boundary - 90, H * 0.5)
+    ctx.fillStyle = `rgba(240,236,228,${labelAlpha * 0.7})` 
+    ctx.fillText('CHAOS', boundary + 90, H * 0.5)
+    ctx.restore()
+  }
+
+  draw()
+})()
+
+// ── FEEDBACK FORM ─────────────────────────────────────────────────────
+document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
+  e.preventDefault()
+  
+  const submitBtn = this.querySelector('.submit-btn')
+  const messageDiv = document.getElementById('feedbackMessage')
+  const originalText = submitBtn.textContent
+  
+  // Show loading state
+  submitBtn.textContent = 'Sending...'
+  submitBtn.disabled = true
+  messageDiv.style.display = 'none'
+  
+  try {
+    const formData = new FormData(this)
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      category: formData.get('category'),
+      message: formData.get('message'),
+      rating: formData.get('rating') || '',
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href
+    }
+    
+    // Send to your backend or service
+    const response = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    })
+    
+    if (response.ok) {
+      messageDiv.textContent = '✅ Thank you! Your feedback has been received and will help us improve House of Books.'
+      messageDiv.className = 'feedback-message success'
+      this.reset()
+      
+      // Log to console for development (you can remove this in production)
+      console.log('Feedback submitted:', data)
+      
+      // Optional: Send to Google Sheets, Airtable, or your email service
+      // await sendToEmailService(data)
+      
+    } else {
+      throw new Error('Failed to submit feedback')
+    }
+    
+  } catch (error) {
+    console.error('Feedback submission error:', error)
+    messageDiv.textContent = '❌ Sorry, there was an error submitting your feedback. Please try again later.'
+    messageDiv.className = 'feedback-message error'
+  } finally {
+    submitBtn.textContent = originalText
+    submitBtn.disabled = false
+    messageDiv.style.display = 'block'
+  }
+})
+
+// ── SMOOTH SCROLL TO FEEDBACK ─────────────────────────────────────────
+document.querySelectorAll('a[href="#feedback"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault()
+    document.getElementById('feedback').scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+  })
+})
+</script>
+</body>
+</html>

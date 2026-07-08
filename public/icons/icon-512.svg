@@ -1,0 +1,9 @@
+
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="512 * 0.18" fill="#06050a"/>
+  <rect x="512 * 0.05" y="512 * 0.05" width="512 * 0.9" height="512 * 0.9" rx="512 * 0.14" 
+        fill="none" stroke="#c9a84c" stroke-width="512 * 0.04"/>
+  <text x="512/2" y="512/2 + 512 * 0.03" 
+        font-family="serif" font-size="512 * 0.52" 
+        text-anchor="middle" dominant-baseline="middle" fill="#c9a84c">📚</text>
+</svg>

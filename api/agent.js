@@ -1,30 +1,199 @@
-export default function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+async function gatherWorldData(query) {
+  let context = ''
+  try {
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:5173'
+
+    const [newsRes, trendsRes] = await Promise.allSettled([
+      fetch(`${baseUrl}/api/news`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      }).then(r => r.json()),
+      fetch(`${baseUrl}/api/trends`).then(r => r.json())
+    ])
+
+    // Limit each news article to title only, no description
+    let articles = ''
+    if (newsRes.status === 'fulfilled' && newsRes.value.articles?.length) {
+      articles = newsRes.value.articles
+        .slice(0, 3)
+        .map(a => `- ${a.title} (${a.source.name})`)
+        .join('\n')
+    }
+
+    // Limit trends to 5 items only
+    let trending = ''
+    if (trendsRes.status === 'fulfilled' && trendsRes.value.trending?.length) {
+      trending = trendsRes.value.trending
+        .slice(0, 5)
+        .join(', ')
+    }
+
+    // Cap the entire world data context at 300 characters
+    const worldContext = (articles + '\n\nCURRENTLY TRENDING GLOBALLY:\n' + trending).slice(0, 300)
+    context = worldContext
+
+  } catch(e) {
+    console.log('World data error:', e)
+  }
+  return context
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const { messages, systemPrompt, agentId } = req.body
+  if (!messages || !systemPrompt) return res.status(400).json({ error: 'Missing messages or systemPrompt' })
+
+  // Extract user's latest message
+  const lastMessage = messages[messages.length - 1]?.content || ''
+
+  async function getUserInsights() {
+    try {
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.VITE_SUPABASE_URL,
+        process.env.VITE_SUPABASE_ANON_KEY
+      )
+
+      const { data: features } = await supabase
+        .from('feedback_insights')
+        .select('insight_value, count')
+        .order('count', { ascending: false })
+        .limit(10)
+
+      const { data: sentiments } = await supabase
+        .from('ai_feedback')
+        .select('sentiment, book_category')
+        .limit(200)
+
+      if (!features?.length && !sentiments?.length) return ''
+
+      const sentimentCounts = { positive: 0, neutral: 0, negative: 0 }
+      sentiments?.forEach(s => {
+        if (s.sentiment) sentimentCounts[s.sentiment]++
+      })
+
+      const categoryCounts = {}
+      sentiments?.forEach(c => {
+        if (c.book_category) {
+          categoryCounts[c.book_category] = (categoryCounts[c.book_category] || 0) + 1
+        }
+      })
+      const topCats = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([cat, count]) => `${cat}(${count})`)
+
+      return `
+\n\nREAL USER INSIGHTS FROM YOUR PLATFORM (anonymized):
+- Feature requests: ${features?.map(f => `${f.insight_value}(${f.count})`).join(', ')}
+- User sentiment: ${sentimentCounts.positive} positive / ${sentimentCounts.neutral} neutral / ${sentimentCounts.negative} negative
+- Popular categories: ${topCats.join(', ')}
+Use this data to give more accurate, data-driven advice.`
+    } catch(e) {
+      return ''
+    }
   }
 
-  const { agent, prompt } = req.body;
+  // Gather real-time world data
+  const worldData = await gatherWorldData(lastMessage.slice(0, 100))
 
-  // Simple agent responses
-  const responses = {
-    'growth': `Based on your request for growth advice, here's a 90-day plan:\n\nDays 1-30: Foundation\n- Optimize onboarding flow\n- Implement referral program\n- Set up analytics\n\nDays 31-60: Scaling\n- Launch marketing campaigns\n- Expand to new channels\n- Optimize conversion rates\n\nDays 61-90: Optimization\n- Analyze performance metrics\n- Scale successful initiatives\n- Plan next quarter`,
-    
-    'revenue': `Revenue Analysis:\n\nCurrent MRR: $45,000\nChurn Rate: 3.2%\nNet Revenue Retention: 96.8%\n\nRecommendations:\n- Focus on reducing churn to <2%\n- Implement upselling strategies\n- Expand pricing tiers`,
-    
-    'marketing': `Marketing Copy Strategy:\n\nHeadline: Transform Your Business Today\n\nKey Benefits:\n• 10x ROI guaranteed\n• Results in 30 days\n• No risk trial\n\nCall to Action: Start Free Trial`,
-    
-    'pricing': `Pricing Strategy Recommendations:\n\nCurrent Analysis:\n- Entry tier: $29/mo\n- Growth tier: $99/mo\n- Enterprise: Custom\n\nOptimization:\n- Add annual billing (20% discount)\n- Implement usage-based pricing\n- Create team plans`,
-    
-    'product': `Product Roadmap:\n\nQ1: Core Features\n- Enhanced analytics\n- Team collaboration\n- Mobile app\n\nQ2: Advanced Features\n- AI integration\n- Custom workflows\n- API access\n\nQ3: Scale\n- Enterprise features\n- Advanced security\n- Global expansion`,
-    
-    'churn': `Churn Reduction Strategy:\n\nIdentify At-Risk Customers:\n- Low engagement last 30 days\n- Support tickets > 3/month\n- Usage decline > 20%\n\nRetention Tactics:\n- Personal outreach\n- Special offers\n- Feature training\n- Success check-ins`,
-    
-    'competitor': `Competitive Analysis:\n\nKey Competitors:\n- Company A: $50M funding, similar features\n- Company B: Strong enterprise focus\n- Company C: Better pricing\n\nOur Advantages:\n- Superior UX\n- Better support\n- More flexible`,
-    
-    'seo': `SEO & Content Strategy:\n\nKeyword Opportunities:\n- "business automation tool"\n- "team productivity software"\n- "workflow management"\n\nContent Plan:\n- Blog posts: 2x/week\n- Case studies: Monthly\n- Video tutorials: Weekly\n\nTechnical SEO:\n- Site speed optimization\n- Schema markup\n- Backlink building`
-  };
+  // Get user insights
+  const userInsights = await getUserInsights()
 
-  const response = responses[agent] || 'Agent not found. Please try: growth, revenue, marketing, pricing, product, churn, competitor, seo';
-  
-  res.status(200).json({ response });
+  // Append to system prompt
+  const enhancedPrompt = systemPrompt + (worldData
+    ? `\n\n--- REAL-WORLD CONTEXT (use this data in your analysis) ---${worldData}\n---` 
+    : '') + (userInsights
+    ? `\n\n${userInsights}\n---` 
+    : '')
+
+  // Try DeepSeek first for agents (better reasoning)
+  try {
+    const deepseekApiKey = process.env.VITE_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY
+    
+    if (!deepseekApiKey) {
+      throw new Error('DeepSeek API key not configured')
+    }
+
+    const res1 = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekApiKey}` 
+      },
+      signal: AbortSignal.timeout(30000), // 30 second timeout
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        max_tokens: 600,
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: enhancedPrompt },
+          ...messages.slice(-4)
+        ]
+      })
+    })
+
+    if (!res1.ok) {
+      const err = await res1.text()
+      throw new Error(`DeepSeek error: ${res1.status} - ${err}`)
+    }
+
+    const data = await res1.json()
+    const content = data.choices?.[0]?.message?.content || ''
+    
+    return res.json({ content, provider: 'deepseek' })
+
+  } catch(deepseekError) {
+    console.log('DeepSeek failed, falling back to Groq:', deepseekError.message)
+
+    // Fallback to Groq if DeepSeek fails or balance is low
+    try {
+      if (!process.env.GROQ_API_KEY) {
+        throw new Error('Groq API key not configured')
+      }
+
+      const res2 = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}` 
+        },
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 600,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: enhancedPrompt },
+            ...messages.slice(-4)
+          ]
+        })
+      })
+
+      if (!res2.ok) {
+        const err = await res2.text()
+        throw new Error(`Groq error: ${res2.status} - ${err}`)
+      }
+
+      const data2 = await res2.json()
+      const content = data2.choices?.[0]?.message?.content || ''
+
+      return res.json({
+        content,
+        provider: 'groq_fallback'
+      })
+
+    } catch(groqError) {
+      console.error('Both AI providers failed:', { deepseek: deepseekError.message, groq: groqError.message })
+      return res.status(500).json({ error: 'Both AI providers failed. Please try again.' })
+    }
+  }
 }

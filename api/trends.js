@@ -1,34 +1,15 @@
-export default function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+export default async function handler(req, res) {
+  try {
+    // Use Google Trends RSS feed — no API key needed
+    const r = await fetch('https://trends.google.com/trends/trendingsearches/daily/rss?geo=US', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    })
+    const text = await r.text()
+    const matches = [...text.matchAll(/<title><!\[CDATA\[(.+?)\]\]><\/title>/g)]
+      .slice(1, 8)
+      .map(m => m[1])
+    res.json({ trending: matches })
+  } catch(e) {
+    res.json({ trending: [] })
   }
-
-  const trends = [
-    {
-      category: 'Reading Habits',
-      trend: 'Digital Reading Up 45%',
-      description: 'More readers prefer digital over physical books',
-      growth: '+45%'
-    },
-    {
-      category: 'AI Integration',
-      trend: 'AI Book Recommendations',
-      description: 'Personalized reading suggestions powered by machine learning',
-      growth: '+120%'
-    },
-    {
-      category: 'Social Reading',
-      trend: 'Book Clubs Going Digital',
-      description: 'Virtual discussion groups gain popularity',
-      growth: '+67%'
-    },
-    {
-      category: 'Audio Books',
-      trend: 'Audio Content Consumption',
-      description: 'Multi-format reading experiences on the rise',
-      growth: '+89%'
-    }
-  ];
-
-  res.status(200).json({ trends });
 }

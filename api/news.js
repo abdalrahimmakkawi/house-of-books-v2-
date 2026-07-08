@@ -1,31 +1,21 @@
-export default function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end()
+  const { query } = req.body
+  try {
+    const r = await fetch(
+      `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${process.env.NEWS_API_KEY}` 
+    )
+    const data = await r.json()
+    if (data.status !== 'ok') return res.json({ articles: [] })
+    const articles = data.articles.map(a => ({
+      title: a.title,
+      description: a.description,
+      source: a.source.name,
+      publishedAt: a.publishedAt?.slice(0, 10),
+      url: a.url
+    }))
+    res.json({ articles })
+  } catch(e) {
+    res.json({ articles: [] })
   }
-
-  const news = [
-    {
-      id: 1,
-      title: 'House of Books Launches AI-Powered Reading Experience',
-      summary: 'Revolutionary platform combines literature with artificial intelligence',
-      date: '2024-03-21',
-      category: 'Product Launch'
-    },
-    {
-      id: 2,
-      title: 'User Base Grows to 10,000 Active Readers',
-      summary: 'Milestone reached as platform expansion continues globally',
-      date: '2024-03-20',
-      category: 'Growth'
-    },
-    {
-      id: 3,
-      title: 'New Partnership with Major Publishers Announced',
-      summary: 'Exclusive content deals bring bestselling titles to platform',
-      date: '2024-03-19',
-      category: 'Business'
-    }
-  ];
-
-  res.status(200).json({ news });
 }
