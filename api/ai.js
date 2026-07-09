@@ -3,30 +3,10 @@
 // ✅ Rate limiting: 20 requests per IP per hour
 // ✅ Input validation and sanitization
 
-const DEEPSEEK_API_KEY = process.env.VITE_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY
+import { enforceRateLimit } from './_lib/ratelimit.js'
+
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
-
-// Simple in-memory rate limiter
-const rateLimitMap = new Map()
-const RATE_LIMIT = 20
-const RATE_WINDOW = 60 * 60 * 1000
-
-function checkRateLimit(ip) {
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-  if (!entry || now - entry.windowStart > RATE_WINDOW) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT) return false
-  entry.count++
-  return true
-}
-
-function getClientIP(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] || 'unknown'
-}
 
 const LANG_PROMPTS = {
   en:'Respond in English.', ar:'أجب باللغة العربية فقط.',
@@ -34,18 +14,15 @@ const LANG_PROMPTS = {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  // Debug: Check if API key is available
   if (!DEEPSEEK_API_KEY) {
-    console.error('[AI] DEEPSEEK_API_KEY not configured. Available env vars:', Object.keys(process.env).filter(k => k.includes('DEEP')))
-    return res.status(500).json({ error: 'DEEPSEEK_API_KEY not configured' })
+    return res.status(503).json({ error: 'AI service not configured' })
   }
-  
-  console.log('[AI] API key found, length:', DEEPSEEK_API_KEY.length)
 
-  const ip = getClientIP(req)
-  if (!checkRateLimit(ip)) return res.status(429).json({ error: 'Too many requests. Please wait.' })
+  // 20 AI requests per IP per hour.
+  if (enforceRateLimit(req, res, 'ai', 20, 60 * 60 * 1000)) return
 
   if (JSON.stringify(req.body).length > 8000) return res.status(413).json({ error: 'Request too large' })
 
@@ -101,10 +78,9 @@ export default async function handler(req, res) {
         userFriendlyMessage = 'Too many requests, please try again later'
       }
       
-      return res.status(response.status).json({ 
-        error: errorMessage, 
-        details: userFriendlyMessage,
-        originalError: err
+      return res.status(response.status >= 500 ? 502 : response.status).json({
+        error: errorMessage,
+        details: userFriendlyMessage
       })
     }
 
@@ -122,6 +98,6 @@ export default async function handler(req, res) {
     if (e.name === 'TimeoutError') {
       return res.status(408).json({ error: 'Request timeout', details: 'AI service took too long to respond' })
     }
-    return res.status(500).json({ error: 'Internal server error', details: e.message })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }

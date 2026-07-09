@@ -1,3 +1,4 @@
+import { enforceRateLimit } from './_lib/ratelimit.js'
 async function gatherWorldData(query) {
   let context = ''
   try {
@@ -47,6 +48,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  // 15 agent requests per IP per hour.
+  if (enforceRateLimit(req, res, 'agent', 15, 60 * 60 * 1000)) return
+
 
   const { messages, systemPrompt, agentId } = req.body
   if (!messages || !systemPrompt) return res.status(400).json({ error: 'Missing messages or systemPrompt' })

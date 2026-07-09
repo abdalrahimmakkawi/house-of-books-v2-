@@ -1,8 +1,13 @@
+import { enforceRateLimit } from './_lib/ratelimit.js'
 // api/feedback.js — Handle user feedback submissions
 // Stores feedback data and optionally sends notifications
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  // 5 feedback submissions per IP per hour.
+  if (enforceRateLimit(req, res, 'feedback', 5, 60 * 60 * 1000)) return
+
 
   try {
     const { name, email, category, message, rating, timestamp, userAgent, url } = req.body

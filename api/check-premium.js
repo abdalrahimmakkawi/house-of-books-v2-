@@ -1,3 +1,4 @@
+import { enforceRateLimit } from './_lib/ratelimit.js'
 // api/check-premium.js
 // Securely checks premium status server-side
 // Uses service role key — never exposed to browser
@@ -20,6 +21,10 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  // 30 premium checks per IP per hour.
+  if (enforceRateLimit(req, res, 'premium', 30, 60 * 60 * 1000)) return
+
 
   const { email } = req.body || {}
 

@@ -676,6 +676,86 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: 
 FocusCard.displayName = 'FocusCard'
 
 // ── Expanded reader panel ─────────────────────────────────────────
+// ── Audio Summary player (ElevenLabs via /api/voice) ─────────────
+function AudioSummary({ text, bookId }: { text?: string; bookId: string }) {
+  const [state, setState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const urlRef = useRef<string>('')
+  const loadedForRef = useRef<string>('')
+
+  // Stop + cleanup when switching books or unmounting
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause()
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+      audioRef.current = null; urlRef.current = ''; loadedForRef.current = ''
+    }
+  }, [bookId])
+
+  const toggle = async () => {
+    if (!text?.trim()) return
+    if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
+    if (audioRef.current && loadedForRef.current === bookId) {
+      audioRef.current.play(); setState('playing'); return
+    }
+    setState('loading'); setErrorMsg('')
+    try {
+      const r = await fetch('/api/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        throw new Error(r.status === 429
+          ? 'Listening limit reached — try again in a bit.'
+          : (j.error || 'Audio unavailable right now.'))
+      }
+      const blob = await r.blob()
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+      urlRef.current = URL.createObjectURL(blob)
+      const audio = new Audio(urlRef.current)
+      audio.onended = () => setState('paused')
+      audioRef.current = audio
+      loadedForRef.current = bookId
+      await audio.play()
+      setState('playing')
+    } catch (e: any) {
+      setState('error'); setErrorMsg(e.message || 'Audio unavailable right now.')
+    }
+  }
+
+  const disabled = !text?.trim()
+  return (
+    <div style={{marginBottom:'16px'}}>
+      <button
+        onClick={toggle}
+        disabled={disabled || state === 'loading'}
+        style={{
+          width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+          background: state==='playing' ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
+          border:'0.5px solid rgba(201,168,76,0.35)',
+          borderRadius:'12px',padding:'13px 14px',
+          fontSize:'13px',color: disabled ? '#6a6458' : '#c9a84c',
+          fontFamily:'Georgia,serif',
+          cursor: disabled || state==='loading' ? 'default' : 'pointer',
+          opacity: state==='loading' ? 0.75 : 1,
+          transition:'background .2s',
+        }}
+      >
+        {state === 'loading' ? '⏳ Preparing audio…'
+          : state === 'playing' ? '⏸ Pause narration'
+          : disabled ? '🎧 Generate the AI summary first to listen'
+          : '🎧 Listen to this summary'}
+      </button>
+      {state === 'error' && (
+        <div style={{fontSize:'11px',color:'#e07a7a',marginTop:'6px',fontFamily:'Georgia,serif'}}>{errorMsg}</div>
+      )}
+    </div>
+  )
+}
+
 function ExpandedPanel({
   book, t, shelfStatus, progress, exportingPDF,
   currentNote, noteSaved, chatMessages, chatInput, chatLoading,
@@ -878,15 +958,7 @@ function ExpandedPanel({
             <div style={{fontSize:'13px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Audio Summary
             </div>
-            <div style={{
-              background:'rgba(255,255,255,0.03)',
-              border:'0.5px solid rgba(255,255,255,0.08)',
-              borderRadius:'10px',padding:'12px 14px',
-              fontSize:'12px',color:'#9a9080',
-              fontFamily:'Georgia,serif',marginBottom:'16px',
-            }}>
-              🎧 Audio Summary — Coming Soon
-            </div>
+            <AudioSummary text={book.summary} bookId={book.id} />
           </div>
         )}
 
