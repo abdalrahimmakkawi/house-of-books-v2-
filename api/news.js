@@ -1,5 +1,10 @@
+import { enforceRateLimit } from './_lib/ratelimit.js'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
+
+  // 30 news lookups per IP per hour.
+  if (enforceRateLimit(req, res, 'news', 30, 60 * 60 * 1000)) return
+
   const { query } = req.body
   try {
     const r = await fetch(

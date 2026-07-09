@@ -1,11 +1,35 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(wallpaper|wallpapers|music|icons)/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=604800" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
   ],
   "functions": {
     "api/agent.js": { "maxDuration": 30 },
-    "api/chat.js":  { "maxDuration": 20 },
-    "api/news.js":  { "maxDuration": 15 },
-    "api/trends.js":{ "maxDuration": 15 }
+    "api/ai.js": { "maxDuration": 35 },
+    "api/chat.js": { "maxDuration": 20 },
+    "api/voice.js": { "maxDuration": 30 },
+    "api/news.js": { "maxDuration": 15 },
+    "api/trends.js": { "maxDuration": 15 }
   }
 }
