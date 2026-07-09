@@ -1756,7 +1756,7 @@ export default function App() {
         <div className="app-bg"/>
         <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
           <div style={{background:'rgba(14,14,20,0.97)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'16px',padding:'2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const}}>
-            <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>📚</div>
+            <img src="/logo-icon.png" alt="House of Books" style={{width:'72px',height:'72px',objectFit:'contain',margin:'0 auto 10px',display:'block'}} />
             <h2 style={{fontSize:'1.6rem',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif'}}>House of Books</h2>
             {loginStatus === 'sent' ? (
               <>
@@ -1829,8 +1829,7 @@ export default function App() {
     {/* HEADER */}
     <header className="app-header">
       <div style={{display:'flex',alignItems:'center',gap:'11px'}}>
-        <div className="logo-mark">📚</div>
-        <div><div className="logo-text">{t.appName}</div><div className="logo-sub">{t.appSub}</div></div>
+        <img src="/logo.png" alt="House of Books" style={{height:'38px',width:'auto',maxWidth:'210px',display:'block'}} />
       </div>
       
       {/* Navigation Tabs */}
