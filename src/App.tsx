@@ -210,7 +210,7 @@ html{direction:${dir}}
 body{font-family:${dir==='rtl'?"'Noto Sans Arabic',":""}Georgia,serif;font-size:14px;min-height:100vh;background:var(--bg);color:var(--text);direction:${dir}}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${th.accent}33;border-radius:2px}
 
-.app-bg{position:fixed;inset:0;z-index:0;background-color:var(--bg);${th.image!=='none'?`background-image:url('${th.image}');background-size:cover;background-position:center;`:''}}
+.app-bg{position:fixed;inset:0;z-index:-1;background-color:var(--bg);${th.image!=='none'?`background-image:url('${th.image}');background-size:cover;background-position:center;`:''}}
 ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;background:${th.overlay}}`:''}
 .app-root{position:relative;z-index:1;min-height:100vh}
 
@@ -1496,7 +1496,7 @@ export default function App() {
   if (!appReady) return (
     <>
       <style>{buildStyles(theme, lang.dir)}</style>
-      <div className="app-bg" style={{zIndex: 0}}/>
+      <div className="app-bg"/>
       <div className="loading-screen" style={{position: 'relative', zIndex: 10}}>
         <div className="loading-logo">📚 House of Books</div>
         <div className="loading-bar"/>
@@ -1550,7 +1550,7 @@ export default function App() {
           .landing-feature-title { font-size: 14px; color: #c9a84c; margin-bottom: 6px; }
           .landing-feature-desc { font-size: 12px; color: #9a9080; line-height: 1.5; }
         `}</style>
-        <div className="app-bg" style={{zIndex: 0}}/>
+        <div className="app-bg"/>
 
         {/* Beta top bar */}
         <div style={{
