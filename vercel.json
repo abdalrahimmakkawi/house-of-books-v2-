@@ -29,6 +29,7 @@
     "api/ai.js": { "maxDuration": 35 },
     "api/chat.js": { "maxDuration": 20 },
     "api/voice.js": { "maxDuration": 60 },
+    "api/delete-account.js": { "maxDuration": 20 },
     "api/news.js": { "maxDuration": 15 },
     "api/trends.js": { "maxDuration": 15 }
   }

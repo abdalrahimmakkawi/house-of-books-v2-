@@ -1366,6 +1366,25 @@ export default function App() {
   setAppFlow('landing')
   localStorage.clear()
 }
+  const deleteAccount = async () => {
+    if (!window.confirm('Permanently delete your account and all your data? This cannot be undone.')) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        await fetch('/api/delete-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: session.access_token }),
+        }).catch(() => {})
+      }
+    } catch {}
+    try { await signOut() } catch {}
+    localStorage.clear()
+    setUserEmail(''); setEmailInput(''); setIsPremium(false); setIsTrial(false)
+    setShelf({}); setReadingProgress({}); setNotes({}); setAiChatCount(0)
+    setShowUserDashboard(false); setCurrentPage('library'); setAppFlow('login')
+    window.alert('Your account and data have been deleted.')
+  }
   const handleLogin = async () => {
     const email = emailInput.trim().toLowerCase()
     if (!email || !email.includes('@')) {
@@ -2032,25 +2051,35 @@ export default function App() {
             <button
               onClick={logout}
               style={{
-                background:'rgba(220,50,50,0.08)', border:'0.5px solid rgba(220,50,50,0.3)',
-                borderRadius:'10px', padding:'11px', color:'#e05555',
+                background:'var(--surface)', border:'0.5px solid var(--gold-border)',
+                borderRadius:'10px', padding:'11px', color:'var(--text)',
                 fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                 textAlign:'left', paddingLeft:'16px', marginTop:'4px'
               }}>
               🚪 Log Out
             </button>
+            <button
+              onClick={deleteAccount}
+              style={{
+                background:'rgba(220,50,50,0.08)', border:'0.5px solid rgba(220,50,50,0.3)',
+                borderRadius:'10px', padding:'11px', color:'#e05555',
+                fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
+                textAlign:'left', paddingLeft:'16px'
+              }}>
+              🗑️ Delete my account
+            </button>
           </div>
 
-          {/* Close */}
-          <button
-            onClick={() => setShowUserDashboard(false)}
-            style={{
-              marginTop:'1rem', width:'100%', background:'none',
-              border:'none', color:'var(--text-muted)', fontSize:'12px',
-              cursor:'pointer', fontFamily:'Georgia, serif'
-            }}>
-            Close
-          </button>
+          {/* Legal + Close */}
+          <div style={{marginTop:'1rem',display:'flex',gap:'14px',justifyContent:'center',fontSize:'11px'}}>
+            <a href="https://house-of-books-site.vercel.app/privacy.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Privacy</a>
+            <a href="https://house-of-books-site.vercel.app/terms.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Terms</a>
+            <button
+              onClick={() => setShowUserDashboard(false)}
+              style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'11px',cursor:'pointer',fontFamily:'Georgia, serif',padding:0}}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     )}
