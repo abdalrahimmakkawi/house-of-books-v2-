@@ -6,10 +6,11 @@
 import { enforceRateLimit } from './_lib/ratelimit.js'
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
-// "George" — warm narrator voice; multilingual model covers ar/fr/es/zh too.
+// "George" — warm narrator voice; turbo model is ~5x faster and half the
+// cost of multilingual_v2, still covers ar/fr/es/zh (32 languages).
 const DEFAULT_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'
-const MODEL_ID = 'eleven_multilingual_v2'
-const MAX_CHARS = 2800 // keep per-request TTS cost bounded
+const MODEL_ID = 'eleven_turbo_v2_5'
+const MAX_CHARS = 2000 // keep per-request TTS latency and cost bounded
 
 export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
