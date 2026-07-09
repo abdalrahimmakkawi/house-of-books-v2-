@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, memo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, signInWithGoogle, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
-import CommunityHub from './pages/CommunityHub'
 import Agent from './pages/Agent'
 import Dashboard from './pages/Dashboard'
 import { collectChatFeedback } from './lib/feedbackCollector'
@@ -1222,18 +1221,12 @@ export default function App() {
   const [appFlow, setAppFlow] = useState<AppFlow>(
     () => localStorage.getItem('userEmail') ? 'app' : 'login'
   )
-  const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [loginError, setLoginError] = useState('')
   const [booksError, setBooksError] = useState(false)
   const [booksRetryNonce, setBooksRetryNonce] = useState(0)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
-  const [showIOSInstall, setShowIOSInstall] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
-  
-  // iOS detection
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
-  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches
 
   const audioRef=useRef<HTMLAudioElement|null>(null)
   const chatEndRef=useRef<HTMLDivElement|null>(null)
@@ -1281,48 +1274,6 @@ export default function App() {
   }, [])
 
   // PWA install detection
-  useEffect(() => {
-    // Show install button when prompt is available
-    const handleInstallable = () => {
-      setShowInstallBtn(true)
-    }
-    
-    // Hide button if already installed
-    const handleInstalled = () => {
-      setShowInstallBtn(false)
-    }
-    
-    // Check if already running as PWA
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setShowInstallBtn(false)
-    }
-    
-    // Show iOS install instructions if on iOS and not already installed
-    if (isIOS && !isInStandaloneMode) {
-      setTimeout(() => setShowIOSInstall(true), 3000)
-    }
-    
-    window.addEventListener('pwa-installable', handleInstallable)
-    window.addEventListener('appinstalled', handleInstalled)
-    
-    return () => {
-      window.removeEventListener('pwa-installable', handleInstallable)
-      window.removeEventListener('appinstalled', handleInstalled)
-    }
-  }, [isIOS, isInStandaloneMode])
-
-  const installPWA = async () => {
-    if ((window as any).triggerPWAInstall) {
-      const accepted = await (window as any).triggerPWAInstall()
-      if (accepted) {
-        setShowInstallBtn(false)
-      }
-    } else {
-      // iOS fallback instructions
-      alert('To install: tap the Share button in your browser then "Add to Home Screen"')
-    }
-  }
-
   // Show feedback widget after every 3rd message
   // useEffect(() => {
   //   if (chatMessages.length > 0 && chatMessages.length % 3 === 0 && !feedbackGiven) {
@@ -1675,7 +1626,7 @@ export default function App() {
 
           <p className="landing-sub">
             Read smarter. Explore 304 books with AI summaries,
-            live chat, and a global reading community. Free during beta.
+            audio narration, and an AI companion. Free during beta.
           </p>
 
           {/* Stats */}
@@ -1689,7 +1640,7 @@ export default function App() {
           </div>
 
           {/* Buttons */}
-          <div style={{display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap', marginBottom:'2rem'}}>
+          <div style={{display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap', marginBottom:'2.5rem'}}>
             <button
               className="btn-premium"
               style={{padding:'14px 32px', fontSize:'15px'}}
@@ -1697,32 +1648,7 @@ export default function App() {
             >
               Start Reading Free →
             </button>
-            <button
-              className="btn-ai"
-              style={{padding:'14px 32px', fontSize:'15px'}}
-              onClick={() => setAppFlow('login')}
-            >
-              Join Community
-            </button>
           </div>
-
-          {/* PWA Install Button */}
-          <button
-            onClick={installPWA}
-            style={{
-              marginTop: '12px',
-              background: 'none',
-              border: '0.5px solid rgba(201,168,76,0.3)',
-              borderRadius: '20px',
-              padding: '8px 20px',
-              color: '#9a9080',
-              fontSize: '12px',
-              cursor: 'pointer',
-              fontFamily: 'Georgia, serif'
-            }}
-          >
-            📲 Install as App — iOS & Android
-          </button>
 
           {/* Feature cards */}
           <div style={{
@@ -1733,7 +1659,7 @@ export default function App() {
             {[
               ['📚','304 Books','Classics and modern titles from 15+ countries in 5 languages'],
               ['✦','AI Book Chat','10 free AI chats per session — ask anything about any book'],
-              ['🌍','Community','Reading groups, discussions, and global readers'],
+              ['🎧','Audio Summaries','Listen to any book, narrated by a natural AI voice'],
               ['⭐','Premium Soon','Unlimited AI, full library access, PDF exports and more']
             ].map(([icon, title, desc]) => (
               <div key={title} className="landing-feature">
@@ -1851,16 +1777,6 @@ export default function App() {
           }}>
           📚 Library
         </button>
-        <button
-          onClick={() => setCurrentPage('community')}
-          style={{
-            padding: '6px 16px', borderRadius: '999px', border: 'none',
-            background: currentPage === 'community' ? 'var(--gold-dim)' : 'transparent',
-            color: currentPage === 'community' ? 'var(--gold)' : 'var(--text-muted)',
-            fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif'
-          }}>
-          🌍 Community
-        </button>
         {isAdmin(userEmail) && (
           <>
             <button
@@ -1903,7 +1819,6 @@ export default function App() {
           <button className={`icon-btn${(isPlaying||showMusicMenu)?' active':''}`} onClick={()=>{setShowMusicMenu(v=>!v);setShowThemeMenu(false);setShowLangMenu(false)}}>{isPlaying?'🎵':'🎧'}</button>
           {showMusicMenu&&<div className="dropdown" style={{minWidth:'200px'}}><div className="dropdown-title">{t.music}</div>{TRACKS.map(tr=><button key={tr.id} className={`dropdown-item${currentTrack===tr.id?' active':''}`} onClick={()=>toggleTrack(tr.id)}><span className="dropdown-item-emoji">{tr.emoji}</span>{tr.label}{currentTrack===tr.id&&isPlaying&&<span className="track-playing"><span className="track-bar"/><span className="track-bar"/><span className="track-bar"/></span>}</button>)}<div className="volume-row"><span className="volume-label">{t.vol}</span><input type="range" className="volume-slider" min="0" max="1" step="0.05" value={volume} onChange={e=>setVolume(parseFloat(e.target.value))}/></div></div>}
         </div>
-        <button className="icon-btn" onClick={()=>window.open('/community','_blank')} title="Community">👥</button>
         {/* Mobile search toggle button — only visible on mobile */}
         <button
           className="icon-btn mobile-search-btn"
@@ -1913,54 +1828,6 @@ export default function App() {
         >
           🔍
         </button>
-        {/* Android — native prompt */}
-        {showInstallBtn && !isIOS && (
-          <button
-            onClick={installPWA}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '6px 12px',
-              background: 'rgba(201,168,76,0.12)',
-              border: '0.5px solid rgba(201,168,76,0.4)',
-              borderRadius: '20px',
-              color: '#c9a84c',
-              fontSize: '11px',
-              cursor: 'pointer',
-              fontFamily: 'Georgia, serif',
-              letterSpacing: '.04em',
-              transition: 'all .2s',
-              whiteSpace: 'nowrap'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background='rgba(201,168,76,0.22)'}
-            onMouseLeave={e => e.currentTarget.style.background='rgba(201,168,76,0.12)'}
-          >
-            📲 Install App
-          </button>
-        )}
-
-        {/* iOS — show instructions banner */}
-        {isIOS && !isInStandaloneMode && (
-          <button
-            onClick={() => setShowIOSInstall(true)}
-            className="pwa-install-btn"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '6px 12px',
-              background: 'rgba(201,168,76,0.12)',
-              border: '0.5px solid rgba(201,168,76,0.4)',
-              borderRadius: '20px',
-              color: '#c9a84c',
-              fontSize: '11px',
-              cursor: 'pointer',
-              fontFamily: 'Georgia, serif',
-              letterSpacing: '.04em',
-              transition: 'all .2s',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            📲 Install App
-          </button>
-        )}
         {userEmail && (
           <button
             className="icon-btn"
@@ -2010,7 +1877,6 @@ export default function App() {
 
     <main className="main-content">
       {currentPage === 'library' && <LibraryPage />}
-      {currentPage === 'community' && <CommunityHub userEmail={userEmail} />}
       {currentPage === 'agent' && isAdmin(userEmail) && <Agent />}
       {currentPage === 'dashboard' && isAdmin(userEmail) && <Dashboard />}
     </main>
@@ -2139,16 +2005,6 @@ export default function App() {
 
           {/* Action buttons */}
           <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-            <button
-              onClick={() => { setShowUserDashboard(false); window.location.href='/community' }}
-              style={{
-                background:'var(--surface)', border:'0.5px solid var(--gold-border)',
-                borderRadius:'10px', padding:'11px', color:'var(--text)',
-                fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
-                textAlign:'left', paddingLeft:'16px'
-              }}>
-              🌍 Go to Community
-            </button>
             {isAdmin(userEmail) && (
               <button
                 onClick={() => { setShowUserDashboard(false); window.location.href='/dashboard' }}
@@ -2199,80 +2055,5 @@ export default function App() {
       </div>
     )}
     
-    {/* iOS Install Instructions Modal */}
-    {showIOSInstall && (
-      <div
-        onClick={() => setShowIOSInstall(false)}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'flex-end',
-          justifyContent: 'center',
-          padding: '1rem'
-        }}
-      >
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{
-            background: 'rgba(14,14,20,0.99)',
-            border: '1px solid rgba(201,168,76,0.4)',
-            borderRadius: '20px',
-            padding: '2rem',
-            width: '100%',
-            maxWidth: '400px',
-            textAlign: 'center',
-            fontFamily: 'Georgia, serif',
-            marginBottom: '1rem'
-          }}
-        >
-          <div style={{fontSize:'2rem', marginBottom:'12px'}}>📱</div>
-          <h3 style={{color:'#c9a84c', fontSize:'1.2rem', marginBottom:'8px'}}>
-            Install on iPhone
-          </h3>
-          <p style={{color:'#9a9080', fontSize:'13px', marginBottom:'1.5rem', lineHeight:1.6}}>
-            Follow these 3 steps to add House of Books to your home screen:
-          </p>
-          <div style={{display:'flex', flexDirection:'column', gap:'12px', marginBottom:'1.5rem'}}>
-            {[
-              ['1', '📤', 'Tap the Share button', 'The square with an arrow at the bottom of Safari'],
-              ['2', '📜', 'Scroll down to menu', 'Look for "Add to Home Screen" option'],
-              ['3', '✅', 'Tap "Add to Home Screen"', 'Then tap "Add" in the top right corner'],
-            ].map(([num, emoji, title, desc]) => (
-              <div key={num} style={{
-                display: 'flex', alignItems: 'flex-start', gap: '12px',
-                background: 'rgba(201,168,76,0.06)',
-                border: '0.5px solid rgba(201,168,76,0.2)',
-                borderRadius: '12px', padding: '12px',
-                textAlign: 'left'
-              }}>
-                <div style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
-                  background: 'rgba(201,168,76,0.15)',
-                  border: '1px solid rgba(201,168,76,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px', color: '#c9a84c', flexShrink: 0
-                }}>{num}</div>
-                <div>
-                  <div style={{fontSize:'13px', color:'#e8e4d9', marginBottom:'2px'}}>{emoji} {title}</div>
-                  <div style={{fontSize:'11px', color:'#9a9080'}}>{desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowIOSInstall(false)}
-            style={{
-              width: '100%', padding: '11px',
-              background: '#c9a84c', border: 'none',
-              borderRadius: '10px', color: '#0a0a0f',
-              fontSize: '14px', cursor: 'pointer',
-              fontFamily: 'Georgia, serif'
-            }}
-          >
-            Got it!
-          </button>
-        </div>
-      </div>
-    )}
   </div></>)
 }
