@@ -178,10 +178,10 @@ const T: Record<string,Record<string,string>> = {
 }
 
 const THEMES = [
-  { id:'classic',label:'Classic',emoji:'🏛️',image:'/wallpaper/classic.jpg',accent:'#d9b45c',accentLight:'#f2d992',overlay:'rgba(8,6,2,0.76)',isLight:false,bg:'#0a0a0f',text:'#efeadd',textMuted:'rgba(239,234,221,0.58)',border:'rgba(217,180,92,0.26)',headerBg:'rgba(10,10,15,0.88)',modalBg:'rgba(14,14,20,0.97)',surface:'rgba(255,255,255,0.05)',inputBg:'rgba(255,255,255,0.05)' },
-  { id:'cosmos', label:'Cosmos', emoji:'🌌',image:'/wallpaper/cosmos.jpg', accent:'#8ec4ff',accentLight:'#c8e2ff',overlay:'rgba(2,4,18,0.74)', isLight:false,bg:'#02040f',text:'#e4eefb',textMuted:'rgba(228,238,251,0.56)', border:'rgba(142,196,255,0.26)',headerBg:'rgba(2,4,18,0.88)',  modalBg:'rgba(4,8,22,0.97)',  surface:'rgba(255,255,255,0.05)',inputBg:'rgba(255,255,255,0.05)' },
-  { id:'nature', label:'Nature', emoji:'🌿',image:'/wallpaper/nature.jpg', accent:'#8fd98f',accentLight:'#bdf0bd',overlay:'rgba(2,10,4,0.74)',  isLight:false,bg:'#020a04',text:'#e2f3e2',textMuted:'rgba(226,243,226,0.56)', border:'rgba(143,217,143,0.26)',headerBg:'rgba(2,10,4,0.88)',  modalBg:'rgba(4,14,6,0.97)',  surface:'rgba(255,255,255,0.05)',inputBg:'rgba(255,255,255,0.05)' },
-  { id:'beach',  label:'Beach',  emoji:'🌊',image:'/wallpaper/beach.jpg',  accent:'#5fd4d4',accentLight:'#a3ecec',overlay:'rgba(2,12,18,0.72)', isLight:false,bg:'#020c12',text:'#def3f5',textMuted:'rgba(222,243,245,0.56)', border:'rgba(95,212,212,0.26)', headerBg:'rgba(2,12,18,0.88)', modalBg:'rgba(4,16,22,0.97)',  surface:'rgba(255,255,255,0.05)',inputBg:'rgba(255,255,255,0.05)' },
+  { id:'classic',label:'Classic',emoji:'🏛️',image:'/wallpaper/classic.jpg',accent:'#cba86a',accentLight:'#e4cf95',overlay:'rgba(8,6,2,0.80)',isLight:false,bg:'#0a0a0f',text:'#ebe6da',textMuted:'rgba(235,230,218,0.56)',border:'rgba(203,168,106,0.22)',headerBg:'rgba(10,10,15,0.90)',modalBg:'rgba(14,14,20,0.97)',surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'cosmos', label:'Cosmos', emoji:'🌌',image:'/wallpaper/cosmos.jpg', accent:'#93bde0',accentLight:'#c2dbef',overlay:'rgba(2,4,18,0.78)', isLight:false,bg:'#02040f',text:'#e0eaf6',textMuted:'rgba(224,234,246,0.54)', border:'rgba(147,189,224,0.22)',headerBg:'rgba(2,4,18,0.90)',  modalBg:'rgba(4,8,22,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'nature', label:'Nature', emoji:'🌿',image:'/wallpaper/nature.jpg', accent:'#93c795',accentLight:'#bcdcbe',overlay:'rgba(2,10,4,0.78)',  isLight:false,bg:'#020a04',text:'#dfeedf',textMuted:'rgba(223,238,223,0.54)', border:'rgba(147,199,149,0.22)',headerBg:'rgba(2,10,4,0.90)',  modalBg:'rgba(4,14,6,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'beach',  label:'Beach',  emoji:'🌊',image:'/wallpaper/beach.jpg',  accent:'#68c4c2',accentLight:'#a0dcda',overlay:'rgba(2,12,18,0.77)', isLight:false,bg:'#020c12',text:'#dceff0',textMuted:'rgba(220,239,240,0.54)', border:'rgba(104,196,194,0.22)', headerBg:'rgba(2,12,18,0.90)', modalBg:'rgba(4,16,22,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
   { id:'light',  label:'Light',  emoji:'☀️',image:'none',                  accent:'#9a6f2a',accentLight:'#c9a84c',overlay:'none',              isLight:true, bg:'#faf6ef',text:'#2a1f0e',textMuted:'rgba(42,31,14,0.5)',   border:'rgba(154,111,42,0.2)', headerBg:'rgba(250,246,239,0.96)',modalBg:'rgba(252,249,243,0.99)',surface:'rgba(154,111,42,0.06)',inputBg:'rgba(154,111,42,0.05)' },
   { id:'dark',   label:'Dark',   emoji:'🌙',image:'none',                  accent:'#c9a84c',accentLight:'#e8c97a',overlay:'none',              isLight:false,bg:'#0d0d0d',text:'#e8e4d9',textMuted:'rgba(232,228,217,0.42)',border:'rgba(201,168,76,0.16)', headerBg:'rgba(13,13,13,0.98)', modalBg:'rgba(16,16,16,0.99)',  surface:'rgba(255,255,255,0.03)',inputBg:'rgba(255,255,255,0.03)' },
 ]
@@ -681,7 +681,7 @@ FocusCard.displayName = 'FocusCard'
 
 // ── Expanded reader panel ─────────────────────────────────────────
 // ── Audio Summary player (ElevenLabs via /api/voice) ─────────────
-function AudioSummary({ text, bookId }: { text?: string; bookId: string }) {
+function AudioSummary({ text, bookId, category }: { text?: string; bookId: string; category?: string }) {
   const [state, setState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -708,7 +708,7 @@ function AudioSummary({ text, bookId }: { text?: string; bookId: string }) {
       const r = await fetch('/api/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, category }),
         signal: AbortSignal.timeout(75000),
       })
       if (!r.ok) {
@@ -973,7 +973,7 @@ function ExpandedPanel({
             <div style={{fontSize:'13px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Audio Summary
             </div>
-            <AudioSummary text={book.summary} bookId={book.id} />
+            <AudioSummary text={book.summary} bookId={book.id} category={book.category} />
           </div>
         )}
 
