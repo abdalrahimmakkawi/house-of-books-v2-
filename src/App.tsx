@@ -709,6 +709,7 @@ function AudioSummary({ text, bookId }: { text?: string; bookId: string }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(75000),
       })
       if (!r.ok) {
         const j = await r.json().catch(() => ({}))
@@ -723,10 +724,19 @@ function AudioSummary({ text, bookId }: { text?: string; bookId: string }) {
       audio.onended = () => setState('paused')
       audioRef.current = audio
       loadedForRef.current = bookId
-      await audio.play()
-      setState('playing')
+      try {
+        await audio.play()
+        setState('playing')
+      } catch {
+        // Autoplay blocked (the click "gesture" expired during generation).
+        // Audio is ready — the next tap plays instantly.
+        setState('paused')
+      }
     } catch (e: any) {
-      setState('error'); setErrorMsg(e.message || 'Audio unavailable right now.')
+      setState('error')
+      setErrorMsg(e?.name === 'TimeoutError'
+        ? 'Audio is taking too long — please try again.'
+        : (e.message || 'Audio unavailable right now.'))
     }
   }
 
@@ -750,6 +760,7 @@ function AudioSummary({ text, bookId }: { text?: string; bookId: string }) {
       >
         {state === 'loading' ? '⏳ Preparing audio…'
           : state === 'playing' ? '⏸ Pause narration'
+          : state === 'paused' ? '▶ Play narration'
           : disabled ? '🎧 Generate the AI summary first to listen'
           : '🎧 Listen to this summary'}
       </button>
