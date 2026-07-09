@@ -1210,6 +1210,8 @@ export default function App() {
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [loginError, setLoginError] = useState('')
+  const [booksError, setBooksError] = useState(false)
+  const [booksRetryNonce, setBooksRetryNonce] = useState(0)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [showIOSInstall, setShowIOSInstall] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -1314,13 +1316,19 @@ export default function App() {
   // }, [chatMessages.length, feedbackGiven])
 
   useEffect(()=>{
-    const load=async()=>{
+    // Load books with retry + backoff so a transient Supabase hiccup
+    // (cold start, network blip) doesn't leave visitors with an empty library.
+    let cancelled=false
+    const load=async(attempt=0)=>{
       const {data,error}=await supabase.from('books').select('*').order('title')
-      if(!error&&data)setBooks(data)
-      setLoading(false)
+      if(cancelled)return
+      if(!error&&data&&data.length){setBooks(data);setBooksError(false);setLoading(false);return}
+      if(attempt<3){setTimeout(()=>load(attempt+1),1500*(attempt+1));return}
+      setBooksError(true);setLoading(false)
     }
     load()
-  },[])
+    return()=>{cancelled=true}
+  },[booksRetryNonce])
   useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:'smooth'})},[chatMessages])
   useEffect(()=>{
     const h=(e:MouseEvent)=>{
@@ -1543,7 +1551,14 @@ export default function App() {
       <div className="search-inside-wrap"><span className="search-inside-icon">🔍</span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
       {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{t.unlockTitle}</h3><p>{t.unlockDesc}</p></div><button className="btn-premium" style={{cursor: 'default', opacity: 0.7}} onClick={e => e.preventDefault()}>{t.startFor}</button></div>}
 
-      {filteredBooks.length===0
+      {booksError&&(
+        <div style={{textAlign:'center',padding:'3rem 1rem',color:'var(--text-muted)'}}>
+          <div style={{fontSize:'2rem',marginBottom:'10px'}}>📡</div>
+          <div style={{marginBottom:'14px'}}>{t.connectionError} The library couldn't load.</div>
+          <button className="btn-premium" style={{padding:'10px 24px'}} onClick={()=>{setBooksError(false);setLoading(true);setBooksRetryNonce(n=>n+1)}}>↻ Try again</button>
+        </div>
+      )}
+      {!booksError&&(filteredBooks.length===0
         ? <div style={{textAlign:'center',padding:'4rem',color:'var(--text-muted)'}}>{t.noResults}</div>
         : <div className="books-grid">
             {filteredBooks.map((book,index)=>(
@@ -1561,7 +1576,7 @@ export default function App() {
               />
             ))}
           </div>
-      }
+      )}
     </>
   )
 
