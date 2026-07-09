@@ -6,11 +6,31 @@
 import { enforceRateLimit } from './_lib/ratelimit.js'
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
-// "George" — warm narrator voice; turbo model is ~5x faster and half the
+// Fallback narrator ("George"); turbo model is ~5x faster and half the
 // cost of multilingual_v2, still covers ar/fr/es/zh (32 languages).
 const DEFAULT_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'
 const MODEL_ID = 'eleven_turbo_v2_5'
 const MAX_CHARS = 2000 // keep per-request TTS latency and cost bounded
+
+// Voice assigned per book category (voice IDs are not secrets).
+const VOICE_BY_CATEGORY = {
+  'self-help':    'EST9Ui6982FZPSi7gCHi',
+  'productivity': 'EST9Ui6982FZPSi7gCHi',
+  'health':       'EST9Ui6982FZPSi7gCHi',
+  'creativity':   'EST9Ui6982FZPSi7gCHi',
+  'psychology':   'HKFOb9iktHA85uKXydRT',
+  'philosophy':   'HKFOb9iktHA85uKXydRT',
+  'leadership':   'HKFOb9iktHA85uKXydRT',
+  'finance':      'Yg7C1g7suzNt5TisIqkZ',
+  'business':     'Yg7C1g7suzNt5TisIqkZ',
+  'biography':    'Yg7C1g7suzNt5TisIqkZ',
+  'science':      'OIadkU6YLviNhuekXGly',
+}
+
+function pickVoice(category) {
+  const key = String(category || '').toLowerCase().trim()
+  return VOICE_BY_CATEGORY[key] || DEFAULT_VOICE_ID
+}
 
 export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -23,16 +43,17 @@ export default async function handler(req, res) {
   // 6 audio generations per IP per hour — strict by design.
   if (enforceRateLimit(req, res, 'voice', 6, 60 * 60 * 1000)) return
 
-  const { text } = req.body || {}
+  const { text, category } = req.body || {}
   if (typeof text !== 'string' || !text.trim()) {
     return res.status(400).json({ error: 'Missing text' })
   }
 
   const clean = text.replace(/\s+/g, ' ').trim().slice(0, MAX_CHARS)
+  const voiceId = pickVoice(category)
 
   try {
     const r = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_VOICE_ID}?output_format=mp3_44100_64`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`,
       {
         method: 'POST',
         headers: {
