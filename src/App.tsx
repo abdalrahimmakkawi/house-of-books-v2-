@@ -680,19 +680,18 @@ FocusCard.displayName = 'FocusCard'
 
 // ── Expanded reader panel ─────────────────────────────────────────
 // ── Audio Summary player (ElevenLabs via /api/voice) ─────────────
-function AudioSummary({ text, bookId, category }: { text?: string; bookId: string; category?: string }) {
+function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: string; bookId: string; category?: string; audioUrl?: string; onCached?: (bookId: string, url: string) => void }) {
   const [state, setState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const urlRef = useRef<string>('')
   const loadedForRef = useRef<string>('')
 
-  // Stop + cleanup when switching books or unmounting
+  // Stop + reset when switching books or unmounting (nothing to revoke —
+  // narration lives at a permanent Supabase Storage URL, not a blob).
   useEffect(() => {
     return () => {
       audioRef.current?.pause()
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
-      audioRef.current = null; urlRef.current = ''; loadedForRef.current = ''
+      audioRef.current = null; loadedForRef.current = ''
     }
   }, [bookId])
 
@@ -702,24 +701,35 @@ function AudioSummary({ text, bookId, category }: { text?: string; bookId: strin
     if (audioRef.current && loadedForRef.current === bookId) {
       audioRef.current.play(); setState('playing'); return
     }
+
+    // Already narrated and cached — play the stored file directly, no
+    // server round-trip and no ElevenLabs cost at all.
+    if (audioUrl) {
+      const audio = new Audio(audioUrl)
+      audio.onended = () => setState('paused')
+      audioRef.current = audio
+      loadedForRef.current = bookId
+      try { await audio.play(); setState('playing') } catch { setState('paused') }
+      return
+    }
+
     setState('loading'); setErrorMsg('')
     try {
       const r = await fetch('/api/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, category }),
+        body: JSON.stringify({ bookId, text, category }),
         signal: AbortSignal.timeout(75000),
       })
+      const j = await r.json().catch(() => ({}))
       if (!r.ok) {
-        const j = await r.json().catch(() => ({}))
         throw new Error(r.status === 429
           ? 'Listening limit reached — try again in a bit.'
           : (j.error || 'Audio unavailable right now.'))
       }
-      const blob = await r.blob()
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
-      urlRef.current = URL.createObjectURL(blob)
-      const audio = new Audio(urlRef.current)
+      if (!j.url) throw new Error('Audio unavailable right now.')
+      onCached?.(bookId, j.url)
+      const audio = new Audio(j.url)
       audio.onended = () => setState('paused')
       audioRef.current = audio
       loadedForRef.current = bookId
@@ -774,7 +784,7 @@ function ExpandedPanel({
   book, t, shelfStatus, progress, exportingPDF,
   currentNote, noteSaved, chatMessages, chatInput, chatLoading,
   summaryLoading, onClose, onShelf, onProgress, onExportPDF, onSaveNote,
-  onNoteChange, onToggleChat, onGenerateSummary, onSendMessage, onChatInput,
+  onNoteChange, onToggleChat, onGenerateSummary, onAudioCached, onSendMessage, onChatInput,
   chatEndRef
 }: any) {
   const [activeTab, setActiveTab] = useState<'about'|'insights'|'shelf'|'chat'>('about')
@@ -975,7 +985,7 @@ function ExpandedPanel({
             <div style={{fontSize:'13px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Audio Summary
             </div>
-            <AudioSummary text={book.summary} bookId={book.id} category={book.category} />
+            <AudioSummary text={book.summary} bookId={book.id} category={book.category} audioUrl={book.audio_url} onCached={onAudioCached} />
           </div>
         )}
 
@@ -1444,14 +1454,24 @@ export default function App() {
       if(win){win.document.write(html);win.document.close();win.print()}
     }finally{setExportingPDF(false)}
   }
+  // Shared updater: a book's summary/audio_url is generated once and cached
+  // server-side. Reflect that in both the list and the open panel so it's
+  // never re-requested for the rest of the session.
+  const updateBookField=(bookId:string, patch: Partial<Book>)=>{
+    setBooks(prev=>prev.map(b=>b.id===bookId?{...b,...patch}:b))
+    setSelectedBook(prev=>prev&&prev.id===bookId?{...prev,...patch}:prev)
+  }
+  const updateBookAudio=(bookId:string, url:string)=>updateBookField(bookId,{audio_url:url} as Partial<Book>)
+
   const generateAISummary=async()=>{
     if(!selectedBook||summaryLoading)return
     setSummaryLoading(true);setChatMessages([{role:'assistant',content:t.summarizing}])
     try{
-      const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'summary',bookTitle:selectedBook.title,bookAuthor:selectedBook.author,langId})})
+      const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'summary',bookId:selectedBook.id,bookTitle:selectedBook.title,bookAuthor:selectedBook.author,langId})})
       const data=await res.json()
       setChatMessages([{role:'assistant',content:data.content||t.noResponse}])
-      
+      if(data.content) updateBookField(selectedBook.id,{summary:data.content} as Partial<Book>)
+
       // Collect feedback silently
       collectChatFeedback({
         message: `summary request for ${selectedBook.category}`,
@@ -1923,6 +1943,7 @@ export default function App() {
           onNoteChange={setCurrentNote}
           onToggleChat={()=>{}}
           onGenerateSummary={generateAISummary}
+          onAudioCached={updateBookAudio}
           onSendMessage={sendMessage}
           onChatInput={setChatInput}
           chatEndRef={chatEndRef as React.RefObject<HTMLDivElement>}

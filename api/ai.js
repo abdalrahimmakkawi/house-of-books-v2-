@@ -3,10 +3,24 @@
 // ✅ Rate limiting: 20 requests per IP per hour
 // ✅ Input validation and sanitization
 
+import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
+
+// Used to persist a generated summary once, so it's never regenerated for
+// the same book again (matches the pre-generated 304 books already stored).
+const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(
+      process.env.SUPABASE_URL || 'https://ulxzyjqmvzyqjynmqywe.supabase.co',
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+  : null
+
+function isUuid(v) {
+  return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+}
 
 const LANG_PROMPTS = {
   en:'Respond in English.', ar:'أجب باللغة العربية فقط.',
@@ -21,14 +35,28 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'AI service not configured' })
   }
 
-  // 20 AI requests per IP per hour.
-  if (enforceRateLimit(req, res, 'ai', 20, 60 * 60 * 1000)) return
-
   if (JSON.stringify(req.body).length > 8000) return res.status(413).json({ error: 'Request too large' })
 
-  const { type, bookTitle, bookAuthor, langId, messages, finishedTitles, remainingTitles } = req.body
+  const { type, bookId, bookTitle, bookAuthor, langId, messages, finishedTitles, remainingTitles } = req.body
 
   if (!['chat', 'summary', 'recommendations'].includes(type)) return res.status(400).json({ error: 'Invalid type' })
+
+  // Generate-once, cache-forever: a summary is only ever generated a single
+  // time per book. Cache hits skip DeepSeek entirely and don't count against
+  // the rate limit — only real generations do.
+  if (type === 'summary' && isUuid(bookId) && supabase) {
+    try {
+      const { data: existing } = await supabase.from('books').select('summary').eq('id', bookId).single()
+      if (existing?.summary) {
+        return res.status(200).json({ content: existing.summary, cached: true })
+      }
+    } catch (e) {
+      console.error('[AI] summary cache check failed:', e.message)
+    }
+  }
+
+  // 20 AI requests per IP per hour (only reached on an actual generation).
+  if (enforceRateLimit(req, res, 'ai', 20, 60 * 60 * 1000)) return
 
   const langPrompt = LANG_PROMPTS[langId] || LANG_PROMPTS.en
 
@@ -90,6 +118,14 @@ export default async function handler(req, res) {
     if (type === 'recommendations') {
       try { const titles = JSON.parse(content.replace(/```json|```/g,'').trim()); return res.status(200).json({ titles: Array.isArray(titles)?titles:[] }) }
       catch { return res.status(200).json({ titles:[] }) }
+    }
+
+    if (type === 'summary' && isUuid(bookId) && supabase && content) {
+      const { error: saveError } = await supabase
+        .from('books')
+        .update({ summary: content, summary_generated: true })
+        .eq('id', bookId)
+      if (saveError) console.error('[AI] failed to persist summary:', saveError.message)
     }
 
     return res.status(200).json({ content })
