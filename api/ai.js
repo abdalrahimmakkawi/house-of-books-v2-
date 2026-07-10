@@ -37,8 +37,8 @@ export default async function handler(req, res) {
 
     if (type === 'summary') {
       body = { model:'deepseek-chat', max_tokens:600, messages:[
-        { role:'system', content:`You are a world-class literary expert on "${bookTitle}" by ${bookAuthor}. Be insightful. ${langPrompt} Respond in maximum 150 words. Be concise and direct.` },
-        { role:'user', content:`Write a comprehensive summary of "${bookTitle}" by ${bookAuthor}. Cover themes, key ideas, takeaways. ${langPrompt}` }
+        { role:'system', content:`You are a world-class literary commentator discussing "${bookTitle}" by ${bookAuthor}. Write an ORIGINAL thematic explanation in your own words — describe the book's core ideas, arguments, and structure at a conceptual level, then add brief original commentary on why the ideas matter or how they connect to other thinking. Do NOT paraphrase closely, reconstruct passages, or imitate the author's prose style or sentence structure — describe the ideas, don't rewrite the text. ${langPrompt} Respond in maximum 150 words. Be concise and direct.` },
+        { role:'user', content:`Write an original conceptual summary with brief commentary on "${bookTitle}" by ${bookAuthor}. Cover themes, key ideas, and takeaways in your own words — do not paraphrase or reconstruct the book's actual text. ${langPrompt}` }
       ]}
     } else if (type === 'chat') {
       if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'Invalid messages' })
