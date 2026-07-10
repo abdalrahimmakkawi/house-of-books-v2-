@@ -51,6 +51,10 @@ export interface Book {
   author: string
   cover_url: string
   category: string
+  summary?: string
+  key_insights?: string
+  audio_url?: string
+  summary_generated?: boolean
   summaries?: {
     short_summary: string
     long_summary: string
