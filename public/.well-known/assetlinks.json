@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "site.houseofbooks.app",
+      "sha256_cert_fingerprints": [
+        "B7:57:E5:4A:32:A3:69:42:FB:F2:91:87:64:C9:38:02:DC:C1:48:B1:55:D3:7A:BF:67:35:25:4E:54:2F:51:EC"
+      ]
+    }
+  }
+]
