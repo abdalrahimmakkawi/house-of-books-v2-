@@ -947,8 +947,11 @@ function ExpandedPanel({
         {/* ABOUT TAB */}
         {activeTab === 'about' && (
           <div>
-            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'12px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               What's it about?
+            </div>
+            <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+              AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
             <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.75',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
               {book.summary || 'Click ✦ AI Summary to generate a comprehensive summary of this book.'}
