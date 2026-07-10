@@ -699,12 +699,14 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
     if (!text?.trim()) return
     if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
     if (audioRef.current && loadedForRef.current === bookId) {
-      audioRef.current.play(); setState('playing'); return
+      try { await audioRef.current.play(); setState('playing') } catch { setState('paused') }
+      return
     }
 
     // Already narrated and cached — play the stored file directly, no
     // server round-trip and no ElevenLabs cost at all.
     if (audioUrl) {
+      setState('loading')
       const audio = new Audio(audioUrl)
       audio.onended = () => setState('paused')
       audioRef.current = audio
