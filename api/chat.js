@@ -1,9 +1,26 @@
-// api/chat.js — Groq chat proxy (key server-side only)
+// api/chat.js — book AI chat proxy (keys server-side only)
 // ✅ Strict per-IP rate limit
 // ✅ Input validation and size caps
 // ✅ No internal error details leaked to clients
+//
+// Two OpenAI-compatible providers. The public DEMO/sample chat runs on NVIDIA
+// (free tier, fast 8B model) so demo traffic never touches the paid Groq quota;
+// the full app keeps using Groq. Selected per-request via `demo: true`.
 
 import { enforceRateLimit } from './_lib/ratelimit.js'
+
+const PROVIDERS = {
+  groq: {
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    key: process.env.GROQ_API_KEY,
+    model: 'llama-3.3-70b-versatile',
+  },
+  nvidia: {
+    url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    key: process.env.NVIDIA_API_KEY,
+    model: 'meta/llama-3.1-8b-instruct',
+  },
+}
 
 export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -12,11 +29,17 @@ export default async function handler(req, res) {
   // 30 chat messages per IP per hour.
   if (enforceRateLimit(req, res, 'chat', 30, 60 * 60 * 1000)) return
 
-  if (!process.env.GROQ_API_KEY) {
+  const { messages, bookTitle, bookCategory, systemPrompt, demo } = req.body || {}
+
+  // Demo/sample chat → NVIDIA (free); everything else → Groq. Fall back to the
+  // other provider if the preferred one has no key configured.
+  const provider = (demo && PROVIDERS.nvidia.key)
+    ? PROVIDERS.nvidia
+    : (PROVIDERS.groq.key ? PROVIDERS.groq : PROVIDERS.nvidia)
+
+  if (!provider.key) {
     return res.status(503).json({ error: 'Chat service not configured' })
   }
-
-  const { messages, bookTitle, bookCategory, systemPrompt } = req.body || {}
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Missing messages' })
@@ -32,33 +55,37 @@ export default async function handler(req, res) {
       content: String(m?.content || '').slice(0, 2000),
     }))
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(provider.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        'Authorization': `Bearer ${provider.key}`,
       },
+      // Guard against a slow/cold model hanging the serverless function.
+      signal: AbortSignal.timeout(25000),
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: provider.model,
         max_tokens: 500,
         temperature: 0.7,
         messages: [
           {
             role: 'system',
-            content: String(systemPrompt || `You are an expert on the book "${bookTitle}" (${bookCategory}). Answer questions clearly and helpfully in 2-3 paragraphs maximum. Be conversational and insightful.`).slice(0, 1500)
+            content: String(systemPrompt || `You are an expert on the book "${bookTitle}" (${bookCategory}). Answer questions clearly and helpfully in 2-3 paragraphs maximum. Be conversational and insightful.`).slice(0, 1500),
           },
-          ...recentMessages
-        ]
-      })
+          ...recentMessages,
+        ],
+      }),
     })
 
     const data = await response.json()
-    if (data.error) throw new Error(data.error.message)
+    if (data.error) throw new Error(data.error.message || 'provider error')
+    const content = data.choices?.[0]?.message?.content
+    if (!content) throw new Error('empty completion')
 
-    res.json({ content: data.choices[0].message.content })
+    res.json({ content })
 
   } catch (e) {
-    console.error('Groq chat error:', e.message)
+    console.error('[chat] error:', e.message)
     res.status(500).json({ error: 'Chat is temporarily unavailable. Please try again.' })
   }
 }
