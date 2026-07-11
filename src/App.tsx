@@ -194,6 +194,12 @@ const TRACKS = [
 ]
 
 const FREE_BOOKS = 84
+
+// Vercel Web Analytics custom event helper (no-op until the script loads /
+// Web Analytics is on a plan that records custom events; safe to call always).
+const track = (name: string, data?: Record<string, any>) => {
+  try { (window as any).va?.('event', { name, ...(data || {}) }) } catch {}
+}
 const FREE_AI_CHATS = 10
 
 // ── CSS ───────────────────────────────────────────────────────────
@@ -694,6 +700,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
       return
     }
     setError(''); setLoading(true)
+    track('subscribe_click', { plan })
     try {
       const r = await fetch('/api/payments', {
         method: 'POST',
@@ -798,6 +805,7 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
   const toggle = async () => {
     if (!text?.trim()) return
     if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
+    if (state === 'idle') track('listen_narration', { category })
     if (audioRef.current && loadedForRef.current === bookId) {
       try { await audioRef.current.play(); setState('playing') } catch { setState('paused') }
       return
@@ -1679,11 +1687,13 @@ export default function App() {
   }
   const handleGoogleLogin = async () => {
     setLoginError('')
+    track('signin_click', { provider: 'google' })
     const { error } = await signInWithGoogle()
     if (error) setLoginError(error.message || 'Google sign-in failed. Please try again.')
   }
   const handleTwitterLogin = async () => {
     setLoginError('')
+    track('signin_click', { provider: 'twitter' })
     const { error } = await signInWithTwitter()
     if (error) setLoginError(error.message || 'X sign-in failed. Please try again.')
   }
@@ -1761,7 +1771,8 @@ export default function App() {
   }
   const openBook=(book:Book)=>{
     const idx=books.findIndex(b=>b.id===book.id)
-    if(idx>=FREE_BOOKS&&!isPremium){setShowEmailModal(true);return}
+    if(idx>=FREE_BOOKS&&!isPremium){track('locked_book_click',{category:book.category});setShowEmailModal(true);return}
+    track('book_open',{category:book.category})
     setSelectedBook(book);setChatMessages([])
     setCurrentNote(notes[book.id]||'');setNoteSaved(false)
   }
@@ -1825,7 +1836,7 @@ export default function App() {
       </div>
       <div className="cat-tabs">{categories.map(c=><button key={c} className={`cat-tab${activeCategory===c?' active':''}`} onClick={()=>setActiveCategory(c)}>{c}</button>)}</div>
       <div className="search-inside-wrap"><span className="search-inside-icon">🔍</span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
-      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{t.unlockTitle}</h3><p>{t.unlockDesc}</p></div><button className="btn-premium" onClick={()=>setShowPaymentModal(true)}>{t.startFor}</button></div>}
+      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{t.unlockTitle}</h3><p>{t.unlockDesc}</p></div><button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.startFor}</button></div>}
 
       {booksError&&(
         <div style={{textAlign:'center',padding:'3rem 1rem',color:'var(--text-muted)'}}>
@@ -2172,7 +2183,7 @@ export default function App() {
             {userEmail.slice(0,2).toUpperCase()}
           </button>
         )}
-        <button className="btn-premium" onClick={()=>setShowPaymentModal(true)}>{t.upgrade}</button>
+        <button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.upgrade}</button>
       </div>
     </header>
 
@@ -2240,7 +2251,7 @@ export default function App() {
           <input type="email" placeholder="your@email.com" value={userEmail} onChange={e=>setUserEmail(e.target.value)} style={{width:'100%',padding:'9px 13px',background:'var(--input-bg)',border:'1px solid var(--gold-border)',borderRadius:'6px',color:'var(--text)',fontSize:'13px',outline:'none',marginBottom:'10px',direction:'ltr'}}/>
           <div style={{display:'flex',gap:'8px'}}>
             <button className="btn-ai" style={{flex:1}} onClick={()=>{checkPremium(userEmail);setShowEmailModal(false)}}>{t.unlockAccess}</button>
-            <button className="btn-premium" style={{flex:1}} onClick={()=>{setShowEmailModal(false);setShowPaymentModal(true)}}>{t.upgradePremium}</button>
+            <button className="btn-premium" style={{flex:1}} onClick={()=>{track('upgrade_click');setShowEmailModal(false);setShowPaymentModal(true)}}>{t.upgradePremium}</button>
           </div>
         </div>
       </div>
