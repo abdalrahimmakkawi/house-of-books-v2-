@@ -47,6 +47,10 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
+    <!-- Vercel Web Analytics (page views; custom events used elsewhere via window.va) -->
+    <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
+    <script defer src="/_vercel/insights/script.js"></script>
+
     <!-- PWA install prompt (service-worker registration intentionally removed to avoid stale-cache stuck-loading) -->
     <script>
       // Proactively unregister any previously-installed service worker so returning
