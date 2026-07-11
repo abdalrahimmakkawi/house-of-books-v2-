@@ -200,6 +200,22 @@ const FREE_BOOKS = 84
 const track = (name: string, data?: Record<string, any>) => {
   try { (window as any).va?.('event', { name, ...(data || {}) }) } catch {}
 }
+
+// ── Demo / sample mode (reached from the marketing site's "Start free") ──
+// Open, no login, read-only. Loads only the curated books below (all have
+// pre-cached audio + summaries, so nothing is generated or written), and its
+// AI chat runs on NVIDIA's free tier. Keeps public traffic off the paid full
+// app while still showing the real experience.
+const IS_DEMO = typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('demo') === '1'
+const DEMO_BOOK_IDS = [
+  'f0ed41ad-95de-4c2e-abee-87f21aed8133', // The Psychology of Money
+  '5f4f3bb2-5f54-4a13-9976-b7af46604654', // 21 Lessons for the 21st Century
+  'e8988b3e-dd76-4688-a56d-7584cded8553', // A Short History of Nearly Everything
+  'e08e73ce-e1d5-4031-90fb-9f6bf7a57c96', // A Brief History of Time
+  'b8529ced-d52d-49aa-9e19-afe9eb9cf921', // Being and Nothingness
+  '4302be3f-f272-4496-9e2d-027add76ad8e', // Beyond Good and Evil
+]
 const FREE_AI_CHATS = 10
 
 // ── CSS ───────────────────────────────────────────────────────────
@@ -693,9 +709,13 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
   const [plan, setPlan] = useState<'monthly' | 'yearly'>('monthly')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Logged-out demo/sample visitors have no email yet — capture it here so they
+  // can subscribe straight from the sample.
+  const [emailInput, setEmailInput] = useState(email || '')
+  const effEmail = (email || emailInput).trim()
 
   const startCheckout = async () => {
-    if (!email || !email.includes('@')) {
+    if (!effEmail || !effEmail.includes('@')) {
       setError('Enter your email first so we know who to unlock.')
       return
     }
@@ -705,7 +725,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
       const r = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create-paypal-subscription', plan, email }),
+        body: JSON.stringify({ action: 'create-paypal-subscription', plan, email: effEmail }),
       })
       const j = await r.json().catch(() => null)
       if (!r.ok || !j?.approveUrl) throw new Error(j?.error || 'PayPal checkout unavailable right now.')
@@ -720,7 +740,18 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
     <div className="email-modal-wrap" onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'16px',padding:'2rem',maxWidth:'420px',width:'100%'}}>
         <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.5rem',color:'var(--gold)',marginBottom:'4px'}}>House of Books Premium</h3>
-        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>Unlimited AI chat, full library, PDF exports</p>
+        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>All 304 books · Unlimited AI chat · Offline audio</p>
+
+        {!email && (
+          <input
+            type="email"
+            placeholder="your@email.com"
+            value={emailInput}
+            onChange={e=>setEmailInput(e.target.value)}
+            autoComplete="email"
+            style={{width:'100%',padding:'11px 13px',background:'var(--input-bg)',border:'1px solid var(--gold-border)',borderRadius:'10px',color:'var(--text)',fontSize:'14px',outline:'none',marginBottom:'1rem',direction:'ltr',boxSizing:'border-box'}}
+          />
+        )}
 
         <div style={{display:'flex',gap:'8px',marginBottom:'1.25rem'}}>
           <button
@@ -1468,7 +1499,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('library')
   const [emailInput, setEmailInput] = useState('')
   const [appFlow, setAppFlow] = useState<AppFlow>(
-    () => localStorage.getItem('userEmail') ? 'app' : 'login'
+    () => IS_DEMO ? 'app' : (localStorage.getItem('userEmail') ? 'app' : 'login')
   )
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [loginError, setLoginError] = useState('')
@@ -1564,7 +1595,12 @@ export default function App() {
     // (cold start, network blip) doesn't leave visitors with an empty library.
     let cancelled=false
     const load=async(attempt=0)=>{
-      const {data,error}=await supabase.from('books').select('*').order('title')
+      // Demo loads only the curated sample books (tiny, cached) so public
+      // sample traffic barely touches the DB; full app loads the whole library.
+      const query=supabase.from('books').select('*')
+      const {data,error}=await (IS_DEMO
+        ? query.in('id',DEMO_BOOK_IDS).order('title')
+        : query.order('title'))
       if(cancelled)return
       if(!error&&data&&data.length){setBooks(data);setBooksError(false);setLoading(false);return}
       if(attempt<3){setTimeout(()=>load(attempt+1),1500*(attempt+1));return}
@@ -1790,7 +1826,8 @@ export default function App() {
           messages:[...chatMessages,msg],
           bookTitle:selectedBook.title,
           bookCategory:selectedBook.category,
-          systemPrompt:`You are an expert on "${selectedBook.title}" by ${selectedBook.author}. Answer in 2-3 paragraphs maximum. Be conversational, insightful and specific to this book.` 
+          demo:IS_DEMO, // demo chat runs on NVIDIA's free tier
+          systemPrompt:`You are an expert on "${selectedBook.title}" by ${selectedBook.author}. Answer in 2-3 paragraphs maximum. Be conversational, insightful and specific to this book.`
         })
       })
       const data=await res.json()
@@ -1836,7 +1873,7 @@ export default function App() {
       </div>
       <div className="cat-tabs">{categories.map(c=><button key={c} className={`cat-tab${activeCategory===c?' active':''}`} onClick={()=>setActiveCategory(c)}>{c}</button>)}</div>
       <div className="search-inside-wrap"><span className="search-inside-icon">🔍</span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
-      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{t.unlockTitle}</h3><p>{t.unlockDesc}</p></div><button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.startFor}</button></div>}
+      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{IS_DEMO?'🎁 You’re exploring a free sample':t.unlockTitle}</h3><p>{IS_DEMO?'6 sample books · Subscribe to unlock all 304 books, offline audio & unlimited AI chat':t.unlockDesc}</p></div><button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{IS_DEMO?'✦ Get Full Access':t.startFor}</button></div>}
 
       {booksError&&(
         <div style={{textAlign:'center',padding:'3rem 1rem',color:'var(--text-muted)'}}>
