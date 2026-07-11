@@ -1,8 +1,12 @@
-// api/_lib/paypal.js — shared PayPal REST helpers (Orders v2 API).
+// api/_lib/paypal.js — shared PayPal REST helpers (Subscriptions v1 API).
 //
 // PAYPAL_MODE controls which PayPal environment we talk to: 'sandbox' (default,
 // safe to test with) or 'live'. Never hardcode credentials — PAYPAL_CLIENT_ID /
 // PAYPAL_CLIENT_SECRET live in Vercel env vars only.
+//
+// PayPal is the sole payment provider (Stripe was removed — no Stripe account
+// available). Subscriptions give real auto-renewal instead of one-time,
+// manually-renewed charges.
 
 const PAYPAL_MODE = process.env.PAYPAL_MODE === 'live' ? 'live' : 'sandbox'
 const PAYPAL_BASE = PAYPAL_MODE === 'live'
@@ -56,10 +60,12 @@ export async function paypalFetch(path, options = {}) {
 export const PAYPAL_MODE_ACTIVE = PAYPAL_MODE
 export const PAYPAL_BASE_URL = PAYPAL_BASE
 
-// Plan pricing — pay-per-period (one-time PayPal order), matches the Stripe prices.
-export const PLAN_PRICES = {
-  monthly: { amount: '8.99', label: 'House of Books Premium — Monthly' },
-  yearly: { amount: '80.00', label: 'House of Books Premium — Yearly' },
+// Billing Plan IDs — created once via scripts/setup-paypal-plans.mjs
+// (the Subscriptions API needs a pre-created Plan; amounts aren't passed
+// inline the way the one-time Orders API allows).
+export const PLAN_IDS = {
+  monthly: process.env.PAYPAL_PLAN_MONTHLY_ID,
+  yearly: process.env.PAYPAL_PLAN_YEARLY_ID,
 }
 
 export function periodEndFromPlan(plan) {

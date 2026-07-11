@@ -678,64 +678,36 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: 
 })
 FocusCard.displayName = 'FocusCard'
 
-// ── Payment modal — plan + method picker (Stripe card/Alipay/WeChat, PayPal) ──
-type PaymentMethod = 'card' | 'alipay' | 'wechat_pay' | 'paypal'
-
+// ── Payment modal — plan picker + PayPal Subscriptions checkout ──
+// PayPal is the sole payment provider (Stripe was removed). PayPal's own
+// checkout still lets a payer without a PayPal account pay by card as guest
+// in most countries, so this isn't a card-payment regression — just one
+// checkout brand instead of several.
 function PaymentModal({ email, onClose }: { email: string; onClose: () => void }) {
   const [plan, setPlan] = useState<'monthly' | 'yearly'>('monthly')
-  const [loadingMethod, setLoadingMethod] = useState<PaymentMethod | null>(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const startCheckout = async (method: PaymentMethod) => {
+  const startCheckout = async () => {
     if (!email || !email.includes('@')) {
       setError('Enter your email first so we know who to unlock.')
       return
     }
-    setError(''); setLoadingMethod(method)
+    setError(''); setLoading(true)
     try {
-      if (method === 'paypal') {
-        sessionStorage.setItem('pendingPlan', plan)
-        const r = await fetch('/api/payments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create-paypal-order', plan, email }),
-        })
-        const j = await r.json().catch(() => null)
-        if (!r.ok || !j?.approveUrl) throw new Error(j?.error || 'PayPal checkout unavailable right now.')
-        window.location.href = j.approveUrl
-        return
-      }
       const r = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create-checkout', plan, email, method }),
+        body: JSON.stringify({ action: 'create-paypal-subscription', plan, email }),
       })
       const j = await r.json().catch(() => null)
-      if (!r.ok || !j?.url) throw new Error(j?.error || 'Checkout unavailable right now.')
-      window.location.href = j.url
+      if (!r.ok || !j?.approveUrl) throw new Error(j?.error || 'PayPal checkout unavailable right now.')
+      window.location.href = j.approveUrl
     } catch {
       setError('Something went wrong starting checkout. Please try again.')
-      setLoadingMethod(null)
+      setLoading(false)
     }
   }
-
-  const methodBtn = (method: PaymentMethod, label: string, icon: string) => (
-    <button
-      key={method}
-      onClick={() => startCheckout(method)}
-      disabled={loadingMethod !== null}
-      style={{
-        width:'100%',padding:'13px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-        background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(201,168,76,0.25)',borderRadius:'12px',
-        color:'#e8e4d9',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
-        cursor: loadingMethod ? 'default' : 'pointer', opacity: loadingMethod && loadingMethod !== method ? 0.5 : 1,
-        marginBottom:'10px',
-      }}
-    >
-      <span style={{fontSize:'16px'}}>{icon}</span>
-      {loadingMethod === method ? 'Redirecting…' : label}
-    </button>
-  )
 
   return (
     <div className="email-modal-wrap" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -760,13 +732,23 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
           >Yearly<br/><strong style={{fontSize:'15px'}}>$80</strong> <span style={{fontSize:'10px',opacity:0.7}}>(save 26%)</span></button>
         </div>
 
-        {methodBtn('card', 'Credit / Debit Card', '💳')}
-        {methodBtn('paypal', 'PayPal', '🅿️')}
-        {methodBtn('alipay', 'Alipay', '支')}
-        {methodBtn('wechat_pay', 'WeChat Pay', '微')}
+        <button
+          onClick={startCheckout}
+          disabled={loading}
+          style={{
+            width:'100%',padding:'13px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+            background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(201,168,76,0.25)',borderRadius:'12px',
+            color:'#e8e4d9',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
+            cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1,
+            marginBottom:'10px',
+          }}
+        >
+          <span style={{fontSize:'16px'}}>🅿️</span>
+          {loading ? 'Redirecting…' : 'Continue with PayPal'}
+        </button>
 
         <p style={{fontSize:'10px',color:'var(--text-muted)',lineHeight:1.5,marginTop:'4px'}}>
-          Card renews automatically. PayPal, Alipay, and WeChat Pay charge once per period — renew manually before it ends.
+          Renews automatically each period — cancel anytime from your PayPal account. You can also pay by card as a guest through PayPal's checkout.
         </p>
         {error && <p style={{fontSize:'12px',color:'#e07a7a',marginTop:'10px'}}>{error}</p>}
         <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'12px',cursor:'pointer',marginTop:'14px',display:'block',width:'100%'}}>Cancel</button>
@@ -1532,7 +1514,8 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // PayPal redirects back here after approval with ?paypal_return=1&plan=...&token=<orderID>&PayerID=...
+  // PayPal redirects back here after subscription approval with
+  // ?paypal_return=1&plan=...&subscription_id=I-XXXXX&ba_token=...&token=...
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('paypal_cancel')) {
@@ -1540,17 +1523,17 @@ export default function App() {
       return
     }
     if (!params.get('paypal_return')) return
-    const orderID = params.get('token')
+    const subscriptionID = params.get('subscription_id')
     const plan = params.get('plan')
     const email = localStorage.getItem('userEmail')
     window.history.replaceState({}, '', window.location.pathname)
-    if (!orderID || !plan || !email) return
+    if (!subscriptionID || !plan || !email) return
 
     setPaypalReturnStatus('confirming')
     fetch('/api/payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'capture-paypal-order', orderID, plan, email }),
+      body: JSON.stringify({ action: 'confirm-paypal-subscription', subscriptionID, plan, email }),
     })
       .then(r => r.json())
       .then(j => {
