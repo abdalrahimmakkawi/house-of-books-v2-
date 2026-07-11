@@ -35,12 +35,20 @@ export default async function handler(req, res) {
   try {
     const { data, error } = await supabase
       .from('premium_users')
-      .select('active')
+      .select('active, plan, provider, current_period_end')
       .eq('email', email.toLowerCase().trim())
       .single()
 
     if (error || !data) return res.status(200).json({ active: false })
-    return res.status(200).json({ active: data.active === true })
+
+    // Card subscriptions (auto-renewing) are governed by `active`, kept in sync
+    // by the Stripe webhook on cancel/renew. Pay-per-period methods (Alipay,
+    // WeChat Pay, PayPal) have no renewal signal, so they also expire once
+    // current_period_end has passed even if `active` was never flipped off.
+    const notExpired = !data.current_period_end || new Date(data.current_period_end) > new Date()
+    const active = data.active === true && notExpired
+
+    return res.status(200).json({ active, plan: data.plan || null, provider: data.provider || null })
 
   } catch (err) {
     console.error('[CheckPremium] Error:', err)

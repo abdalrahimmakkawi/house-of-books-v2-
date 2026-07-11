@@ -169,11 +169,11 @@ const LANGUAGES = [
 ]
 
 const T: Record<string,Record<string,string>> = {
-  en:{ appName:'House of Books',appSub:'AI-Powered Reading',searchPlaceholder:'Search books, authors, topics…',upgrade:'Upgrade',wallpaper:'Theme',music:'Ambient Music',language:'Language',sectionTitle:"The World's Greatest Books,",sectionTitleSpan:'Distilled by AI',books:'books',unlockTitle:'✦ Premium Coming Soon',unlockDesc:'Full library · Unlimited AI chat · PDF exports — coming soon',startFor:'✦ Coming Soon',overview:'Overview',fullSummary:'Full Summary',keyInsights:'Key Insights',aboutBook:'About This Book',aboutBookDesc:'Click ✦ AI Summary to generate a comprehensive summary, or open ✦ AI Chat to ask any question.',aiSummary:'✦ AI Summary',generating:'✦ Generating…',aiChat:'✦ AI Chat',hideChat:'Hide Chat',aiExpert:'AI Book Expert',askAnything:'Ask me anything about this book.',askPlaceholder:'Ask a question…',send:'→',premium:'Premium',audioComingSoon:'Audio Summary — Coming Soon',minRead:'min read',loading:'House of Books',alreadyMember:'Already a member? Enter your email to unlock.',unlockAccess:'Unlock Access',upgradePremium:'Premium',premiumBook:'Premium Book',connectionError:'Connection error.',noResponse:'No response.',failedSummary:'Failed to generate summary.',summarizing:'✦ Generating summary…',by:'by',vol:'Vol',wantRead:'Want to Read',reading:'Reading',finished:'Finished',myShelf:'My Shelf',allBooks:'All Books',notes:'My Notes',notesPlaceholder:'Write your personal notes about this book…',saveNotes:'Save Notes',notesSaved:'Saved ✓',streak:'day streak',dailyQuote:'Quote of the Day',recommendations:'Recommended for You',loadingRecs:'Finding books for you…',searchInside:'Search inside summaries',noResults:'No results found.',readProgress:'Reading Progress',exportPDF:'Export Insights PDF',exportingPDF:'Exporting…',pdfPremium:'PDF export is a premium feature' },
-  ar:{ appName:'بيت الكتب',appSub:'قراءة مدعومة بالذكاء الاصطناعي',searchPlaceholder:'ابحث في الكتب…',upgrade:'ترقية',wallpaper:'المظهر',music:'موسيقى محيطية',language:'اللغة',sectionTitle:'أعظم كتب العالم،',sectionTitleSpan:'مُقطَّرة بالذكاء الاصطناعي',books:'كتاب',unlockTitle:'✦ Premium قريباً',unlockDesc:'مكتبة كاملة · دردشة ذكاء اصطناعي غير محدودة · تصدير PDF — قريباً',startFor:'✦ قريباً',overview:'نظرة عامة',fullSummary:'الملخص الكامل',keyInsights:'الأفكار الرئيسية',aboutBook:'عن هذا الكتاب',aboutBookDesc:'اضغط ✦ ملخص ذكاء اصطناعي.',aiSummary:'✦ ملخص',generating:'✦ جارٍ…',aiChat:'✦ دردشة',hideChat:'إخفاء',aiExpert:'خبير الكتاب',askAnything:'اسألني أي شيء.',askPlaceholder:'اطرح سؤالاً…',send:'→',premium:'مميز',audioComingSoon:'الملخص الصوتي — قريباً',minRead:'دقيقة',loading:'بيت الكتب',alreadyMember:'عضو بالفعل؟ أدخل بريدك.',unlockAccess:'فتح الوصول',upgradePremium:'Premium',premiumBook:'كتاب مميز',connectionError:'خطأ في الاتصال.',noResponse:'لا يوجد رد.',failedSummary:'فشل.',summarizing:'✦ جارٍ…',by:'بقلم',vol:'صوت',wantRead:'أريد قراءته',reading:'أقرأه',finished:'أنهيته',myShelf:'رفي',allBooks:'كل الكتب',notes:'ملاحظاتي',notesPlaceholder:'اكتب ملاحظاتك…',saveNotes:'حفظ',notesSaved:'تم ✓',streak:'أيام',dailyQuote:'اقتباس اليوم',recommendations:'موصى لك',loadingRecs:'جارٍ البحث…',searchInside:'البحث داخل الملخصات',noResults:'لا توجد نتائج.',readProgress:'تقدم القراءة',exportPDF:'تصدير ملف PDF',exportingPDF:'جا...',pdfPremium:'PDF export is a premium feature' },
-  fr:{ appName:'House of Books',appSub:'Lecture par IA',searchPlaceholder:'Rechercher…',upgrade:'Premium',wallpaper:'Thème',music:"Musique d'ambiance",language:'Langue',sectionTitle:'Les Plus Grands Livres,',sectionTitleSpan:"Distillés par l'IA",books:'livres',unlockTitle:'✦ Premium Bientôt',unlockDesc:'Bibliothèque complète · Chat IA illimité · Exports PDF — bientôt',startFor:'✦ Bientôt',overview:'Aperçu',fullSummary:'Résumé Complet',keyInsights:'Points Clés',aboutBook:'À Propos',aboutBookDesc:'Cliquez ✦ Résumé IA.',aiSummary:'✦ Résumé IA',generating:'✦ Génération…',aiChat:'✦ Chat IA',hideChat:'Masquer',aiExpert:'Expert IA',askAnything:'Posez une question.',askPlaceholder:'Question…',send:'→',premium:'Premium',audioComingSoon:'Audio — Bientôt',minRead:'min',loading:'House of Books',alreadyMember:'Déjà membre?',unlockAccess:'Débloquer',upgradePremium:'Premium',premiumBook:'Livre Premium',connectionError:'Erreur.',noResponse:'Pas de réponse.',failedSummary:'Échec.',summarizing:'✦ Génération…',by:'par',vol:'Vol',wantRead:'À lire',reading:'En cours',finished:'Terminé',myShelf:'Ma Bibliothèque',allBooks:'Tous',notes:'Notes',notesPlaceholder:'Vos notes…',saveNotes:'Sauvegarder',notesSaved:'Sauvegardé ✓',streak:'jours',dailyQuote:'Citation du Jour',recommendations:'Recommandé',loadingRecs:'Recherche…',searchInside:'Rechercher',noResults:'Aucun résultat.',readProgress:'Progression',exportPDF:'Exporter PDF',exportingPDF:'Exportation…',pdfPremium:'Export PDF est premium' },
-  es:{ appName:'House of Books',appSub:'Lectura con IA',searchPlaceholder:'Buscar…',upgrade:'Premium',wallpaper:'Tema',music:'Música',language:'Idioma',sectionTitle:'Los Mejores Libros,',sectionTitleSpan:'Destilados por IA',books:'libros',unlockTitle:'✦ Premium Próximamente',unlockDesc:'Biblioteca completa · Chat IA ilimitado · Exports PDF — próximamente',startFor:'✦ Próximamente',overview:'Resumen',fullSummary:'Resumen Completo',keyInsights:'Ideas Clave',aboutBook:'Sobre el Libro',aboutBookDesc:'Haz clic en ✦ Resumen IA.',aiSummary:'✦ Resumen IA',generating:'✦ Generando…',aiChat:'✦ Chat IA',hideChat:'Ocultar',aiExpert:'Experto IA',askAnything:'Pregúntame.',askPlaceholder:'Pregunta…',send:'→',premium:'Premium',audioComingSoon:'Audio — Próximamente',minRead:'min',loading:'House of Books',alreadyMember:'¿Ya eres miembro?',unlockAccess:'Desbloquear',upgradePremium:'Premium',premiumBook:'Libro Premium',connectionError:'Error.',noResponse:'Sin respuesta.',failedSummary:'Error.',summarizing:'✦ Generando…',by:'por',vol:'Vol',wantRead:'Quiero leer',reading:'Leyendo',finished:'Terminado',myShelf:'Mi Biblioteca',allBooks:'Todos',notes:'Notas',notesPlaceholder:'Tus notas…',saveNotes:'Guardar',notesSaved:'Guardado ✓',streak:'días',dailyQuote:'Cita del Día',recommendations:'Recomendado',loadingRecs:'Buscando…',searchInside:'Buscar',noResults:'Sin resultados.',readProgress:'Progreso',exportPDF:'Exportar PDF',exportingPDF:'Exportando…',pdfPremium:'Export PDF es premium' },
-  zh:{ appName:'书之屋',appSub:'AI 智能阅读',searchPlaceholder:'搜索书籍…',upgrade:'升级',wallpaper:'主题',music:'环境音乐',language:'语言',sectionTitle:'世界最伟大的书籍，',sectionTitleSpan:'由AI精炼提取',books:'本书',unlockTitle:'✦ Premium 即将推出',unlockDesc:'完整书库 · 无限AI聊天 · PDF导出 — 即将推出',startFor:'✦ 即将推出',overview:'概述',fullSummary:'完整摘要',keyInsights:'核心洞见',aboutBook:'关于本书',aboutBookDesc:'点击 ✦ AI摘要。',aiSummary:'✦ AI摘要',generating:'✦ 生成中…',aiChat:'✦ AI对话',hideChat:'隐藏',aiExpert:'AI图书专家',askAnything:'向我提问。',askPlaceholder:'提问…',send:'→',premium:'高级',audioComingSoon:'语音摘要 — 即将推出',minRead:'分钟',loading:'书之屋',alreadyMember:'已是会员？',unlockAccess:'解锁',upgradePremium:'Premium',premiumBook:'高级书籍',connectionError:'连接错误。',noResponse:'无响应。',failedSummary:'生成失败。',summarizing:'✦ 生成中…',by:'作者',vol:'音量',wantRead:'想读',reading:'正在读',finished:'已读完',myShelf:'我的书架',allBooks:'全部',notes:'笔记',notesPlaceholder:'写下笔记…',saveNotes:'保存',notesSaved:'已保存 ✓',streak:'天',dailyQuote:'每日书摘',recommendations:'为你推荐',loadingRecs:'搜索中…',searchInside:'搜索摘要',noResults:'未找到。',readProgress:'阅读进度',exportPDF:'导出PDF',exportingPDF:'导出中…',pdfPremium:'PDF导出是高级功能' },
+  en:{ appName:'House of Books',appSub:'AI-Powered Reading',searchPlaceholder:'Search books, authors, topics…',upgrade:'Upgrade',wallpaper:'Theme',music:'Ambient Music',language:'Language',sectionTitle:"The World's Greatest Books,",sectionTitleSpan:'Distilled by AI',books:'books',unlockTitle:'✦ Go Premium',unlockDesc:'Full library · Unlimited AI chat · PDF exports',startFor:'✦ Upgrade',overview:'Overview',fullSummary:'Full Summary',keyInsights:'Key Insights',aboutBook:'About This Book',aboutBookDesc:'Click ✦ AI Summary to generate a comprehensive summary, or open ✦ AI Chat to ask any question.',aiSummary:'✦ AI Summary',generating:'✦ Generating…',aiChat:'✦ AI Chat',hideChat:'Hide Chat',aiExpert:'AI Book Expert',askAnything:'Ask me anything about this book.',askPlaceholder:'Ask a question…',send:'→',premium:'Premium',audioComingSoon:'Audio Summary — Coming Soon',minRead:'min read',loading:'House of Books',alreadyMember:'Already a member? Enter your email to unlock.',unlockAccess:'Unlock Access',upgradePremium:'Premium',premiumBook:'Premium Book',connectionError:'Connection error.',noResponse:'No response.',failedSummary:'Failed to generate summary.',summarizing:'✦ Generating summary…',by:'by',vol:'Vol',wantRead:'Want to Read',reading:'Reading',finished:'Finished',myShelf:'My Shelf',allBooks:'All Books',notes:'My Notes',notesPlaceholder:'Write your personal notes about this book…',saveNotes:'Save Notes',notesSaved:'Saved ✓',streak:'day streak',dailyQuote:'Quote of the Day',recommendations:'Recommended for You',loadingRecs:'Finding books for you…',searchInside:'Search inside summaries',noResults:'No results found.',readProgress:'Reading Progress',exportPDF:'Export Insights PDF',exportingPDF:'Exporting…',pdfPremium:'PDF export is a premium feature' },
+  ar:{ appName:'بيت الكتب',appSub:'قراءة مدعومة بالذكاء الاصطناعي',searchPlaceholder:'ابحث في الكتب…',upgrade:'ترقية',wallpaper:'المظهر',music:'موسيقى محيطية',language:'اللغة',sectionTitle:'أعظم كتب العالم،',sectionTitleSpan:'مُقطَّرة بالذكاء الاصطناعي',books:'كتاب',unlockTitle:'✦ الترقية إلى Premium',unlockDesc:'مكتبة كاملة · دردشة ذكاء اصطناعي غير محدودة · تصدير PDF',startFor:'✦ ترقية',overview:'نظرة عامة',fullSummary:'الملخص الكامل',keyInsights:'الأفكار الرئيسية',aboutBook:'عن هذا الكتاب',aboutBookDesc:'اضغط ✦ ملخص ذكاء اصطناعي.',aiSummary:'✦ ملخص',generating:'✦ جارٍ…',aiChat:'✦ دردشة',hideChat:'إخفاء',aiExpert:'خبير الكتاب',askAnything:'اسألني أي شيء.',askPlaceholder:'اطرح سؤالاً…',send:'→',premium:'مميز',audioComingSoon:'الملخص الصوتي — قريباً',minRead:'دقيقة',loading:'بيت الكتب',alreadyMember:'عضو بالفعل؟ أدخل بريدك.',unlockAccess:'فتح الوصول',upgradePremium:'Premium',premiumBook:'كتاب مميز',connectionError:'خطأ في الاتصال.',noResponse:'لا يوجد رد.',failedSummary:'فشل.',summarizing:'✦ جارٍ…',by:'بقلم',vol:'صوت',wantRead:'أريد قراءته',reading:'أقرأه',finished:'أنهيته',myShelf:'رفي',allBooks:'كل الكتب',notes:'ملاحظاتي',notesPlaceholder:'اكتب ملاحظاتك…',saveNotes:'حفظ',notesSaved:'تم ✓',streak:'أيام',dailyQuote:'اقتباس اليوم',recommendations:'موصى لك',loadingRecs:'جارٍ البحث…',searchInside:'البحث داخل الملخصات',noResults:'لا توجد نتائج.',readProgress:'تقدم القراءة',exportPDF:'تصدير ملف PDF',exportingPDF:'جا...',pdfPremium:'PDF export is a premium feature' },
+  fr:{ appName:'House of Books',appSub:'Lecture par IA',searchPlaceholder:'Rechercher…',upgrade:'Premium',wallpaper:'Thème',music:"Musique d'ambiance",language:'Langue',sectionTitle:'Les Plus Grands Livres,',sectionTitleSpan:"Distillés par l'IA",books:'livres',unlockTitle:'✦ Passer à Premium',unlockDesc:'Bibliothèque complète · Chat IA illimité · Exports PDF',startFor:'✦ Mettre à niveau',overview:'Aperçu',fullSummary:'Résumé Complet',keyInsights:'Points Clés',aboutBook:'À Propos',aboutBookDesc:'Cliquez ✦ Résumé IA.',aiSummary:'✦ Résumé IA',generating:'✦ Génération…',aiChat:'✦ Chat IA',hideChat:'Masquer',aiExpert:'Expert IA',askAnything:'Posez une question.',askPlaceholder:'Question…',send:'→',premium:'Premium',audioComingSoon:'Audio — Bientôt',minRead:'min',loading:'House of Books',alreadyMember:'Déjà membre?',unlockAccess:'Débloquer',upgradePremium:'Premium',premiumBook:'Livre Premium',connectionError:'Erreur.',noResponse:'Pas de réponse.',failedSummary:'Échec.',summarizing:'✦ Génération…',by:'par',vol:'Vol',wantRead:'À lire',reading:'En cours',finished:'Terminé',myShelf:'Ma Bibliothèque',allBooks:'Tous',notes:'Notes',notesPlaceholder:'Vos notes…',saveNotes:'Sauvegarder',notesSaved:'Sauvegardé ✓',streak:'jours',dailyQuote:'Citation du Jour',recommendations:'Recommandé',loadingRecs:'Recherche…',searchInside:'Rechercher',noResults:'Aucun résultat.',readProgress:'Progression',exportPDF:'Exporter PDF',exportingPDF:'Exportation…',pdfPremium:'Export PDF est premium' },
+  es:{ appName:'House of Books',appSub:'Lectura con IA',searchPlaceholder:'Buscar…',upgrade:'Premium',wallpaper:'Tema',music:'Música',language:'Idioma',sectionTitle:'Los Mejores Libros,',sectionTitleSpan:'Destilados por IA',books:'libros',unlockTitle:'✦ Pasar a Premium',unlockDesc:'Biblioteca completa · Chat IA ilimitado · Exports PDF',startFor:'✦ Mejorar',overview:'Resumen',fullSummary:'Resumen Completo',keyInsights:'Ideas Clave',aboutBook:'Sobre el Libro',aboutBookDesc:'Haz clic en ✦ Resumen IA.',aiSummary:'✦ Resumen IA',generating:'✦ Generando…',aiChat:'✦ Chat IA',hideChat:'Ocultar',aiExpert:'Experto IA',askAnything:'Pregúntame.',askPlaceholder:'Pregunta…',send:'→',premium:'Premium',audioComingSoon:'Audio — Próximamente',minRead:'min',loading:'House of Books',alreadyMember:'¿Ya eres miembro?',unlockAccess:'Desbloquear',upgradePremium:'Premium',premiumBook:'Libro Premium',connectionError:'Error.',noResponse:'Sin respuesta.',failedSummary:'Error.',summarizing:'✦ Generando…',by:'por',vol:'Vol',wantRead:'Quiero leer',reading:'Leyendo',finished:'Terminado',myShelf:'Mi Biblioteca',allBooks:'Todos',notes:'Notas',notesPlaceholder:'Tus notas…',saveNotes:'Guardar',notesSaved:'Guardado ✓',streak:'días',dailyQuote:'Cita del Día',recommendations:'Recomendado',loadingRecs:'Buscando…',searchInside:'Buscar',noResults:'Sin resultados.',readProgress:'Progreso',exportPDF:'Exportar PDF',exportingPDF:'Exportando…',pdfPremium:'Export PDF es premium' },
+  zh:{ appName:'书之屋',appSub:'AI 智能阅读',searchPlaceholder:'搜索书籍…',upgrade:'升级',wallpaper:'主题',music:'环境音乐',language:'语言',sectionTitle:'世界最伟大的书籍，',sectionTitleSpan:'由AI精炼提取',books:'本书',unlockTitle:'✦ 升级到 Premium',unlockDesc:'完整书库 · 无限AI聊天 · PDF导出',startFor:'✦ 升级',overview:'概述',fullSummary:'完整摘要',keyInsights:'核心洞见',aboutBook:'关于本书',aboutBookDesc:'点击 ✦ AI摘要。',aiSummary:'✦ AI摘要',generating:'✦ 生成中…',aiChat:'✦ AI对话',hideChat:'隐藏',aiExpert:'AI图书专家',askAnything:'向我提问。',askPlaceholder:'提问…',send:'→',premium:'高级',audioComingSoon:'语音摘要 — 即将推出',minRead:'分钟',loading:'书之屋',alreadyMember:'已是会员？',unlockAccess:'解锁',upgradePremium:'Premium',premiumBook:'高级书籍',connectionError:'连接错误。',noResponse:'无响应。',failedSummary:'生成失败。',summarizing:'✦ 生成中…',by:'作者',vol:'音量',wantRead:'想读',reading:'正在读',finished:'已读完',myShelf:'我的书架',allBooks:'全部',notes:'笔记',notesPlaceholder:'写下笔记…',saveNotes:'保存',notesSaved:'已保存 ✓',streak:'天',dailyQuote:'每日书摘',recommendations:'为你推荐',loadingRecs:'搜索中…',searchInside:'搜索摘要',noResults:'未找到。',readProgress:'阅读进度',exportPDF:'导出PDF',exportingPDF:'导出中…',pdfPremium:'PDF导出是高级功能' },
 }
 
 const THEMES = [
@@ -678,13 +678,130 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: 
 })
 FocusCard.displayName = 'FocusCard'
 
+// ── Payment modal — plan + method picker (Stripe card/Alipay/WeChat, PayPal) ──
+type PaymentMethod = 'card' | 'alipay' | 'wechat_pay' | 'paypal'
+
+function PaymentModal({ email, onClose }: { email: string; onClose: () => void }) {
+  const [plan, setPlan] = useState<'monthly' | 'yearly'>('monthly')
+  const [loadingMethod, setLoadingMethod] = useState<PaymentMethod | null>(null)
+  const [error, setError] = useState('')
+
+  const startCheckout = async (method: PaymentMethod) => {
+    if (!email || !email.includes('@')) {
+      setError('Enter your email first so we know who to unlock.')
+      return
+    }
+    setError(''); setLoadingMethod(method)
+    try {
+      if (method === 'paypal') {
+        sessionStorage.setItem('pendingPlan', plan)
+        const r = await fetch('/api/paypal-create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan, email }),
+        })
+        const j = await r.json().catch(() => null)
+        if (!r.ok || !j?.approveUrl) throw new Error(j?.error || 'PayPal checkout unavailable right now.')
+        window.location.href = j.approveUrl
+        return
+      }
+      const r = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, email, method }),
+      })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.url) throw new Error(j?.error || 'Checkout unavailable right now.')
+      window.location.href = j.url
+    } catch {
+      setError('Something went wrong starting checkout. Please try again.')
+      setLoadingMethod(null)
+    }
+  }
+
+  const methodBtn = (method: PaymentMethod, label: string, icon: string) => (
+    <button
+      key={method}
+      onClick={() => startCheckout(method)}
+      disabled={loadingMethod !== null}
+      style={{
+        width:'100%',padding:'13px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
+        background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(201,168,76,0.25)',borderRadius:'12px',
+        color:'#e8e4d9',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
+        cursor: loadingMethod ? 'default' : 'pointer', opacity: loadingMethod && loadingMethod !== method ? 0.5 : 1,
+        marginBottom:'10px',
+      }}
+    >
+      <span style={{fontSize:'16px'}}>{icon}</span>
+      {loadingMethod === method ? 'Redirecting…' : label}
+    </button>
+  )
+
+  return (
+    <div className="email-modal-wrap" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'16px',padding:'2rem',maxWidth:'420px',width:'100%'}}>
+        <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.5rem',color:'var(--gold)',marginBottom:'4px'}}>House of Books Premium</h3>
+        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>Unlimited AI chat, full library, PDF exports</p>
+
+        <div style={{display:'flex',gap:'8px',marginBottom:'1.25rem'}}>
+          <button
+            onClick={() => setPlan('monthly')}
+            style={{flex:1,padding:'10px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',cursor:'pointer',
+              background: plan==='monthly' ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.03)',
+              border: plan==='monthly' ? '1px solid rgba(201,168,76,0.5)' : '1px solid rgba(255,255,255,0.08)',
+              color: plan==='monthly' ? '#c9a84c' : 'var(--text-muted)'}}
+          >Monthly<br/><strong style={{fontSize:'15px'}}>$8.99</strong></button>
+          <button
+            onClick={() => setPlan('yearly')}
+            style={{flex:1,padding:'10px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',cursor:'pointer',position:'relative',
+              background: plan==='yearly' ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.03)',
+              border: plan==='yearly' ? '1px solid rgba(201,168,76,0.5)' : '1px solid rgba(255,255,255,0.08)',
+              color: plan==='yearly' ? '#c9a84c' : 'var(--text-muted)'}}
+          >Yearly<br/><strong style={{fontSize:'15px'}}>$80</strong> <span style={{fontSize:'10px',opacity:0.7}}>(save 26%)</span></button>
+        </div>
+
+        {methodBtn('card', 'Credit / Debit Card', '💳')}
+        {methodBtn('paypal', 'PayPal', '🅿️')}
+        {methodBtn('alipay', 'Alipay', '支')}
+        {methodBtn('wechat_pay', 'WeChat Pay', '微')}
+
+        <p style={{fontSize:'10px',color:'var(--text-muted)',lineHeight:1.5,marginTop:'4px'}}>
+          Card renews automatically. PayPal, Alipay, and WeChat Pay charge once per period — renew manually before it ends.
+        </p>
+        {error && <p style={{fontSize:'12px',color:'#e07a7a',marginTop:'10px'}}>{error}</p>}
+        <button onClick={onClose} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'12px',cursor:'pointer',marginTop:'14px',display:'block',width:'100%'}}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 // ── Expanded reader panel ─────────────────────────────────────────
 // ── Audio Summary player (ElevenLabs via /api/voice) ─────────────
+function formatTime(sec: number): string {
+  if (!isFinite(sec) || sec < 0) return '0:00'
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: string; bookId: string; category?: string; audioUrl?: string; onCached?: (bookId: string, url: string) => void }) {
   const [state, setState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [scrubbing, setScrubbing] = useState(false)
+  const scrubbingRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const loadedForRef = useRef<string>('')
+  const barRef = useRef<HTMLDivElement | null>(null)
+
+  const setScrub = (v: boolean) => { scrubbingRef.current = v; setScrubbing(v) }
+
+  const attachTimeListeners = (audio: HTMLAudioElement) => {
+    audio.ontimeupdate = () => { if (!scrubbingRef.current) setCurrentTime(audio.currentTime) }
+    audio.onloadedmetadata = () => setDuration(audio.duration)
+    audio.ondurationchange = () => setDuration(audio.duration)
+  }
 
   // Stop + reset when switching books or unmounting (nothing to revoke —
   // narration lives at a permanent Supabase Storage URL, not a blob).
@@ -692,6 +809,7 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
     return () => {
       audioRef.current?.pause()
       audioRef.current = null; loadedForRef.current = ''
+      setCurrentTime(0); setDuration(0)
     }
   }, [bookId])
 
@@ -709,6 +827,7 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
       setState('loading')
       const audio = new Audio(audioUrl)
       audio.onended = () => setState('paused')
+      attachTimeListeners(audio)
       audioRef.current = audio
       loadedForRef.current = bookId
       try { await audio.play(); setState('playing') } catch { setState('paused') }
@@ -733,6 +852,7 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
       onCached?.(bookId, j.url)
       const audio = new Audio(j.url)
       audio.onended = () => setState('paused')
+      attachTimeListeners(audio)
       audioRef.current = audio
       loadedForRef.current = bookId
       try {
@@ -751,30 +871,114 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
     }
   }
 
+  const seekToClientX = (clientX: number) => {
+    const audio = audioRef.current
+    const bar = barRef.current
+    if (!audio || !bar || !duration) return
+    const rect = bar.getBoundingClientRect()
+    const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    const t = pct * duration
+    audio.currentTime = t
+    setCurrentTime(t)
+  }
+
+  const skip = (delta: number) => {
+    const audio = audioRef.current
+    if (!audio || !duration) return
+    const t = Math.min(duration, Math.max(0, audio.currentTime + delta))
+    audio.currentTime = t
+    setCurrentTime(t)
+  }
+
   const disabled = !text?.trim()
+  const hasAudio = !!audioRef.current && loadedForRef.current === bookId
+  const pct = duration ? (currentTime / duration) * 100 : 0
+
   return (
     <div style={{marginBottom:'16px'}}>
-      <button
-        onClick={toggle}
-        disabled={disabled || state === 'loading'}
-        style={{
-          width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-          background: state==='playing' ? 'rgba(201,168,76,0.2)' : 'rgba(201,168,76,0.1)',
-          border:'0.5px solid rgba(201,168,76,0.35)',
-          borderRadius:'12px',padding:'13px 14px',
-          fontSize:'13px',color: disabled ? '#6a6458' : '#c9a84c',
-          fontFamily:'Georgia,serif',
-          cursor: disabled || state==='loading' ? 'default' : 'pointer',
-          opacity: state==='loading' ? 0.75 : 1,
-          transition:'background .2s',
-        }}
-      >
-        {state === 'loading' ? '⏳ Preparing audio…'
-          : state === 'playing' ? '⏸ Pause narration'
-          : state === 'paused' ? '▶ Play narration'
-          : disabled ? '🎧 Generate the AI summary first to listen'
-          : '🎧 Listen to this summary'}
-      </button>
+      <div style={{
+        display:'flex',alignItems:'center',gap:'12px',
+        background: state==='playing' ? 'rgba(201,168,76,0.14)' : 'rgba(201,168,76,0.07)',
+        border:'0.5px solid rgba(201,168,76,0.3)',
+        borderRadius:'16px',padding:'14px 16px',
+        transition:'background .25s',
+      }}>
+        <button
+          onClick={toggle}
+          disabled={disabled || state === 'loading'}
+          aria-label={state === 'playing' ? 'Pause' : 'Play'}
+          style={{
+            width:'44px',height:'44px',flexShrink:0,borderRadius:'50%',
+            background: disabled ? 'rgba(255,255,255,0.06)' : '#c9a84c',
+            border:'none',display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:'16px',color: disabled ? '#6a6458' : '#0a0a0f',
+            cursor: disabled || state==='loading' ? 'default' : 'pointer',
+            opacity: state==='loading' ? 0.6 : 1,
+            transition:'transform .15s',
+            boxShadow: !disabled ? '0 4px 14px rgba(201,168,76,0.35)' : 'none',
+          }}
+          onMouseEnter={e=>{ if(!disabled) (e.currentTarget as HTMLButtonElement).style.transform='scale(1.06)' }}
+          onMouseLeave={e=>{ (e.currentTarget as HTMLButtonElement).style.transform='none' }}
+        >
+          {state === 'loading' ? '⏳' : state === 'playing' ? '⏸' : '▶'}
+        </button>
+
+        <div style={{flex:1,minWidth:0}}>
+          {disabled ? (
+            <div style={{fontSize:'13px',color:'#6a6458',fontFamily:'Georgia,serif'}}>Generate the AI summary first to listen</div>
+          ) : state === 'idle' ? (
+            <div style={{fontSize:'13px',color:'#c9a84c',fontFamily:'Georgia,serif'}}>Listen to this summary</div>
+          ) : (
+            <>
+              <div
+                ref={barRef}
+                onClick={e => seekToClientX(e.clientX)}
+                onMouseDown={e => { setScrub(true); seekToClientX(e.clientX) }}
+                onMouseMove={e => { if (e.buttons === 1 && scrubbingRef.current) seekToClientX(e.clientX) }}
+                onMouseUp={() => setScrub(false)}
+                onMouseLeave={() => setScrub(false)}
+                style={{
+                  position:'relative',width:'100%',height:'14px',
+                  cursor: hasAudio ? 'pointer' : 'default',
+                  display:'flex',alignItems:'center',
+                }}
+              >
+                <div style={{width:'100%',height:'4px',borderRadius:'4px',background:'rgba(255,255,255,0.12)',position:'relative',overflow:'visible'}}>
+                  <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,borderRadius:'4px',background:'#c9a84c',transition: scrubbing ? 'none' : 'width .1s linear'}}/>
+                  <div style={{
+                    position:'absolute',top:'50%',left:`${pct}%`,
+                    width:'11px',height:'11px',borderRadius:'50%',
+                    background:'#e8e4d9',transform:'translate(-50%,-50%)',
+                    boxShadow:'0 1px 4px rgba(0,0,0,0.5)',
+                    opacity: hasAudio ? 1 : 0,
+                  }}/>
+                </div>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#9a9080',marginTop:'2px',fontFamily:'Georgia,serif'}}>
+                <span>{formatTime(currentTime)}</span>
+                <span>{duration ? formatTime(duration) : '--:--'}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {!disabled && state !== 'idle' && (
+          <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+            <button
+              onClick={() => skip(-15)}
+              disabled={!hasAudio}
+              aria-label="Back 15 seconds"
+              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e8e4d9',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
+            >⟲15</button>
+            <button
+              onClick={() => skip(15)}
+              disabled={!hasAudio}
+              aria-label="Forward 15 seconds"
+              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e8e4d9',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
+            >15⟳</button>
+          </div>
+        )}
+      </div>
       {state === 'error' && (
         <div style={{fontSize:'11px',color:'#e07a7a',marginTop:'6px',fontFamily:'Georgia,serif'}}>{errorMsg}</div>
       )}
@@ -813,9 +1017,12 @@ function ExpandedPanel({
       <div style={{
         display:'flex',alignItems:'center',gap:'12px',
         padding:'14px 16px',
-        background:'#0f0e0b',
+        background:'rgba(15,14,11,0.85)',
+        backdropFilter:'blur(12px)',
+        WebkitBackdropFilter:'blur(12px)',
         borderBottom:'0.5px solid rgba(255,255,255,0.06)',
         flexShrink:0,
+        position:'relative',zIndex:2,
       }}>
         <button
           onClick={onClose}
@@ -827,7 +1034,10 @@ function ExpandedPanel({
             cursor:'pointer',display:'flex',
             alignItems:'center',justifyContent:'center',
             fontFamily:'Georgia,serif',
+            transition:'background .2s',
           }}
+          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(255,255,255,0.12)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(255,255,255,0.06)'}}
         >←</button>
         <div style={{
           fontSize:'15px',color:'#e8e4d9',fontWeight:'500',
@@ -844,48 +1054,59 @@ function ExpandedPanel({
               color: shelfStatus !== 'none' ? '#c9a84c' : '#e8e4d9',
               fontSize:'14px',cursor:'pointer',
               display:'flex',alignItems:'center',justifyContent:'center',
+              transition:'background .2s',
             }}
           >🔖</button>
         </div>
       </div>
 
-      {/* HERO — cover + info side by side */}
-      <div style={{
-        display:'flex',alignItems:'center',
-        padding:'20px',gap:'20px',
-        background:'linear-gradient(135deg,#1a1208,#0d0c09)',
-        borderBottom:'0.5px solid rgba(201,168,76,0.1)',
-        flexShrink:0,
-      }}>
-        <img
-          src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
-          alt={book.title}
-          onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${book.id}/200/300` }}
-          style={{
-            width:'90px',height:'130px',
-            objectFit:'cover',borderRadius:'10px',
-            border:'1.5px solid rgba(201,168,76,0.4)',
-            boxShadow:'0 8px 24px rgba(0,0,0,0.7)',
-            flexShrink:0,
-          }}
-        />
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:'11px',color:'#9a9080',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
-            {(book as any).read_time_mins || 15} min · AI Summary
-          </div>
-          <div style={{
-            fontSize:'1.1rem',color:'#e8e4d9',fontWeight:'500',
-            lineHeight:'1.3',marginBottom:'4px',fontFamily:'Georgia,serif',
-          }}>{book.title}</div>
-          <div style={{fontSize:'11px',color:'#9a9080',fontStyle:'italic',marginBottom:'10px',fontFamily:'Georgia,serif'}}>
-            by {book.author}
-          </div>
-          <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-            <div style={{background:'rgba(201,168,76,0.1)',border:'0.5px solid rgba(201,168,76,0.25)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#c9a84c'}}>
-              {book.category}
+      {/* HERO — blurred cover backdrop + cover + info */}
+      <div style={{position:'relative',overflow:'hidden',flexShrink:0}}>
+        <div style={{
+          position:'absolute',inset:0,
+          backgroundImage:`url(${book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`})`,
+          backgroundSize:'cover',backgroundPosition:'center',
+          filter:'blur(28px) saturate(1.4) brightness(0.55)',
+          transform:'scale(1.2)',
+        }}/>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg, rgba(10,9,7,0.35) 0%, rgba(10,9,7,0.88) 100%)'}}/>
+        <div style={{
+          position:'relative',zIndex:1,
+          display:'flex',alignItems:'center',
+          padding:'24px 20px',gap:'20px',
+          borderBottom:'0.5px solid rgba(201,168,76,0.12)',
+        }}>
+          <img
+            src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
+            alt={book.title}
+            onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${book.id}/200/300` }}
+            style={{
+              width:'96px',height:'138px',
+              objectFit:'cover',borderRadius:'12px',
+              border:'1.5px solid rgba(201,168,76,0.45)',
+              boxShadow:'0 12px 32px rgba(0,0,0,0.6)',
+              flexShrink:0,
+            }}
+          />
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:'11px',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'.04em'}}>
+              {(book as any).read_time_mins || 15} min · AI Summary
             </div>
-            <div style={{background:'rgba(201,168,76,0.1)',border:'0.5px solid rgba(201,168,76,0.25)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#c9a84c'}}>
-              ✦ AI Ready
+            <div style={{
+              fontSize:'1.3rem',color:'#f2efe6',fontWeight:'600',
+              lineHeight:'1.25',marginBottom:'6px',fontFamily:'Georgia,serif',
+              textShadow:'0 2px 12px rgba(0,0,0,0.4)',
+            }}>{book.title}</div>
+            <div style={{fontSize:'12px',color:'#c4bfb2',fontStyle:'italic',marginBottom:'12px',fontFamily:'Georgia,serif'}}>
+              by {book.author}
+            </div>
+            <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+              <div style={{background:'rgba(201,168,76,0.14)',border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#e8cf8a'}}>
+                {book.category}
+              </div>
+              <div style={{background:'rgba(201,168,76,0.14)',border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#e8cf8a'}}>
+                ✦ AI Ready
+              </div>
             </div>
           </div>
         </div>
@@ -893,37 +1114,44 @@ function ExpandedPanel({
 
       {/* ACTION BUTTONS */}
       <div style={{
-        display:'flex',gap:'10px',padding:'14px 16px',
+        display:'flex',gap:'10px',padding:'16px',
         flexShrink:0,
         borderBottom:'0.5px solid rgba(255,255,255,0.06)',
       }}>
         <button
           onClick={() => setActiveTab('about')}
           style={{
-            flex:2,padding:'12px',
-            background:'#c9a84c',color:'#0a0a0f',
-            border:'none',borderRadius:'12px',
+            flex:2,padding:'13px',
+            background:'linear-gradient(135deg,#e0be6f,#c9a84c)',color:'#0a0a0f',
+            border:'none',borderRadius:'13px',
             fontSize:'14px',cursor:'pointer',
-            fontFamily:'Georgia,serif',fontWeight:'600',
+            fontFamily:'Georgia,serif',fontWeight:'700',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',
+            boxShadow:'0 6px 18px rgba(201,168,76,0.3)',
+            transition:'transform .15s, box-shadow .15s',
           }}
+          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(201,168,76,0.42)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 6px 18px rgba(201,168,76,0.3)'}}
         >▶ Read Now</button>
         <button
           onClick={() => { setActiveTab('chat'); onToggleChat() }}
           style={{
-            flex:1,padding:'12px',
+            flex:1,padding:'13px',
             background:'rgba(201,168,76,0.12)',color:'#c9a84c',
-            border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'12px',
+            border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'13px',
             fontSize:'13px',cursor:'pointer',
             fontFamily:'Georgia,serif',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',
+            transition:'background .2s',
           }}
+          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(201,168,76,0.2)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(201,168,76,0.12)'}}
         >✦ AI Chat</button>
       </div>
 
       {/* TABS */}
       <div style={{
-        display:'flex',
+        display:'flex',position:'relative',
         borderBottom:'0.5px solid rgba(255,255,255,0.06)',
         flexShrink:0,padding:'0 16px',
         overflowX:'auto',
@@ -934,17 +1162,24 @@ function ExpandedPanel({
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
+              position:'relative',
               padding:'12px 16px',
               fontSize:'13px',
               color: activeTab === tab ? '#c9a84c' : '#9a9080',
               cursor:'pointer',border:'none',background:'none',
               fontFamily:'Georgia,serif',
-              borderBottom: activeTab === tab ? '2px solid #c9a84c' : '2px solid transparent',
               transition:'color .2s',
               whiteSpace:'nowrap',flexShrink:0,
             }}
           >
             {tab === 'about' ? 'About' : tab === 'insights' ? 'Key Insights' : tab === 'shelf' ? 'My Shelf' : '✦ AI Chat'}
+            {activeTab === tab && (
+              <motion.div
+                layoutId="tab-indicator"
+                transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                style={{position:'absolute',left:8,right:8,bottom:0,height:'2px',background:'#c9a84c',borderRadius:'2px'}}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -955,17 +1190,17 @@ function ExpandedPanel({
         padding:'20px 16px',
         WebkitOverflowScrolling:'touch' as any,
       }}>
-
+      <AnimatePresence mode="wait">
         {/* ABOUT TAB */}
         {activeTab === 'about' && (
-          <div>
+          <motion.div key="about" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               What's it about?
             </div>
             <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
-            <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.75',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
               {book.summary || 'Click ✦ AI Summary to generate a comprehensive summary of this book.'}
             </div>
             {!book.summary && (
@@ -988,12 +1223,12 @@ function ExpandedPanel({
               Audio Summary
             </div>
             <AudioSummary text={book.summary} bookId={book.id} category={book.category} audioUrl={book.audio_url} onCached={onAudioCached} />
-          </div>
+          </motion.div>
         )}
 
         {/* KEY INSIGHTS TAB */}
         {activeTab === 'insights' && (
-          <div>
+          <motion.div key="insights" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Key Insights
             </div>
@@ -1003,18 +1238,22 @@ function ExpandedPanel({
             {book.key_insights ? (
               book.key_insights.split('\n').filter((i: string) => i.trim()).map((insight: string, idx: number) => (
                 <div key={idx} style={{
-                  display:'flex',gap:'10px',
+                  display:'flex',gap:'12px',alignItems:'flex-start',
                   background:'rgba(201,168,76,0.05)',
                   border:'0.5px solid rgba(201,168,76,0.15)',
-                  borderRadius:'12px',padding:'12px 14px',
-                  fontSize:'13px',color:'#e8e4d9',lineHeight:'1.6',
+                  borderRadius:'14px',padding:'14px 16px',
+                  fontSize:'13px',color:'#e8e4d9',lineHeight:'1.65',
                   marginBottom:'10px',fontFamily:'Georgia,serif',
+                  transition:'background .2s, border-color .2s',
                 }}>
-                  <div style={{width:'6px',height:'6px',borderRadius:'50%',background:'#c9a84c',marginTop:'6px',flexShrink:0}}/>
-                  <div>
-                    <strong style={{color:'#c9a84c',fontSize:'10px',letterSpacing:'.08em',textTransform:'uppercase'}}>Insight {idx+1}</strong>
-                    <br/>{insight.replace(/^[-•*]\s*/,'')}
-                  </div>
+                  <div style={{
+                    width:'24px',height:'24px',borderRadius:'50%',flexShrink:0,
+                    background:'linear-gradient(135deg,#e0be6f,#c9a84c)',
+                    color:'#0a0a0f',fontSize:'11px',fontWeight:'700',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    marginTop:'1px',
+                  }}>{idx+1}</div>
+                  <div>{insight.replace(/^[-•*]\s*/,'')}</div>
                 </div>
               ))
             ) : (
@@ -1031,12 +1270,12 @@ function ExpandedPanel({
                 {summaryLoading ? '✦ Generating...' : '✦ Generate Key Insights'}
               </button>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* MY SHELF TAB */}
         {activeTab === 'shelf' && (
-          <div>
+          <motion.div key="shelf" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
               My Reading
             </div>
@@ -1067,8 +1306,8 @@ function ExpandedPanel({
                 <span>Reading Progress</span>
                 <span style={{color:'#c9a84c'}}>{progress}%</span>
               </div>
-              <div style={{width:'100%',background:'rgba(255,255,255,0.06)',borderRadius:'4px',height:'4px',marginBottom:'10px'}}>
-                <div style={{height:'4px',background:'#c9a84c',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
+              <div style={{width:'100%',background:'rgba(255,255,255,0.06)',borderRadius:'4px',height:'5px',marginBottom:'10px'}}>
+                <div style={{height:'5px',background:'linear-gradient(90deg,#c9a84c,#e0be6f)',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
               </div>
               <input
                 type="range" min="0" max="100" value={progress}
@@ -1111,12 +1350,12 @@ function ExpandedPanel({
                 fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',
               }}
             >{exportingPDF ? 'Exporting…' : 'Export Insights PDF'}</button>
-          </div>
+          </motion.div>
         )}
 
         {/* AI CHAT TAB */}
         {activeTab === 'chat' && (
-          <div>
+          <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               ✦ AI Book Expert
             </div>
@@ -1131,9 +1370,10 @@ function ExpandedPanel({
               {chatMessages.length === 0 && (
                 <div style={{
                   fontSize:'13px',color:'#9a9080',lineHeight:'1.6',
-                  padding:'10px 12px',borderRadius:'10px',
+                  padding:'10px 12px',borderRadius:'14px 14px 14px 4px',
                   background:'rgba(255,255,255,0.04)',
                   marginBottom:'8px',fontFamily:'Georgia,serif',
+                  marginRight:'20px',
                 }}>
                   Hello! I have read every word of "{book.title}". What would you like to explore?
                 </div>
@@ -1141,9 +1381,10 @@ function ExpandedPanel({
               {chatMessages.map((msg: any, i: number) => (
                 <div key={i} style={{
                   fontSize:'13px',color:'#e8e4d9',lineHeight:'1.6',
-                  padding:'10px 12px',borderRadius:'10px',
+                  padding:'10px 12px',
+                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                   marginBottom:'8px',fontFamily:'Georgia,serif',
-                  background: msg.role === 'user' ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.04)',
+                  background: msg.role === 'user' ? 'rgba(201,168,76,0.14)' : 'rgba(255,255,255,0.04)',
                   marginLeft: msg.role === 'user' ? '20px' : '0',
                   marginRight: msg.role === 'assistant' ? '20px' : '0',
                 }}>
@@ -1185,8 +1426,9 @@ function ExpandedPanel({
             <div style={{fontSize:'10px',color:'#9a9080',textAlign:'center',paddingBottom:'1rem',fontFamily:'Georgia,serif'}}>
               10 free AI chats · Resets every 6 hours
             </div>
-          </div>
+          </motion.div>
         )}
+      </AnimatePresence>
       </div>
     </motion.div>
   )
@@ -1207,6 +1449,8 @@ export default function App() {
   const [chatLoading,setChatLoading]=useState(false)
   const [summaryLoading,setSummaryLoading]=useState(false)
   const [showEmailModal,setShowEmailModal]=useState(false)
+  const [showPaymentModal,setShowPaymentModal]=useState(false)
+  const [paypalReturnStatus,setPaypalReturnStatus]=useState<'idle'|'confirming'|'done'|'error'>('idle')
   const [themeId,setThemeId]=useState('classic')
   const [langId,setLangId]=useState('en')
   const [showThemeMenu,setShowThemeMenu]=useState(false)
@@ -1288,6 +1532,34 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // PayPal redirects back here after approval with ?paypal_return=1&plan=...&token=<orderID>&PayerID=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('paypal_cancel')) {
+      window.history.replaceState({}, '', window.location.pathname)
+      return
+    }
+    if (!params.get('paypal_return')) return
+    const orderID = params.get('token')
+    const plan = params.get('plan')
+    const email = localStorage.getItem('userEmail')
+    window.history.replaceState({}, '', window.location.pathname)
+    if (!orderID || !plan || !email) return
+
+    setPaypalReturnStatus('confirming')
+    fetch('/api/paypal-capture-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderID, plan, email }),
+    })
+      .then(r => r.json())
+      .then(j => {
+        if (j.success) { setPaypalReturnStatus('done'); checkPremium(email) }
+        else setPaypalReturnStatus('error')
+      })
+      .catch(() => setPaypalReturnStatus('error'))
+  }, [])
+
   // PWA install detection
   // Show feedback widget after every 3rd message
   // useEffect(() => {
@@ -1359,13 +1631,19 @@ export default function App() {
   const selectLang=(id:string)=>{setLangId(id);setShowLangMenu(false)}
   const toggleTrack=(id:string)=>{setCurrentTrack(currentTrack===id?'':id)}
   const checkPremium=async(email:string)=>{
+    if (isAdmin(email)) { setIsPremium(true); return }
     try{
-      const {data}=await supabase.from('users').select('email').eq('email',email).single()
-      setIsPremium(!!data)
-      if(data)setShowEmailModal(false)
-    }catch{}
-    // Admin bypass
-    if (isAdmin(email)) setIsPremium(true)
+      const r = await fetch('/api/check-premium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const j = await r.json().catch(() => ({ active: false }))
+      setIsPremium(!!j.active)
+      if (j.active) setShowEmailModal(false)
+    }catch{
+      setIsPremium(false)
+    }
   }
   const logout = async () => {
   await signOut()
@@ -1564,7 +1842,7 @@ export default function App() {
       </div>
       <div className="cat-tabs">{categories.map(c=><button key={c} className={`cat-tab${activeCategory===c?' active':''}`} onClick={()=>setActiveCategory(c)}>{c}</button>)}</div>
       <div className="search-inside-wrap"><span className="search-inside-icon">🔍</span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
-      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{t.unlockTitle}</h3><p>{t.unlockDesc}</p></div><button className="btn-premium" style={{cursor: 'default', opacity: 0.7}} onClick={e => e.preventDefault()}>{t.startFor}</button></div>}
+      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{t.unlockTitle}</h3><p>{t.unlockDesc}</p></div><button className="btn-premium" onClick={()=>setShowPaymentModal(true)}>{t.startFor}</button></div>}
 
       {booksError&&(
         <div style={{textAlign:'center',padding:'3rem 1rem',color:'var(--text-muted)'}}>
@@ -1709,7 +1987,7 @@ export default function App() {
               ['📚','304 Books','Classics and modern titles from 15+ countries in 5 languages'],
               ['✦','AI Book Chat','10 free AI chats per session — ask anything about any book'],
               ['🎧','Audio Summaries','Listen to any book, narrated by a natural AI voice'],
-              ['⭐','Premium Soon','Unlimited AI, full library access, PDF exports and more']
+              ['⭐','Go Premium','Unlimited AI, full library access, PDF exports and more']
             ].map(([icon, title, desc]) => (
               <div key={title} className="landing-feature">
                 <div style={{fontSize:'1.5rem', marginBottom:'8px'}}>{icon}</div>
@@ -1911,7 +2189,7 @@ export default function App() {
             {userEmail.slice(0,2).toUpperCase()}
           </button>
         )}
-        <button className="btn-premium" onClick={()=>window.open('https://house-of-books.lemonsqueezy.com/checkout/buy/df5fc3da-2939-4d0e-afaa-1f15b56610aa?variant=1370006','_blank')}>{t.upgrade}</button>
+        <button className="btn-premium" onClick={()=>setShowPaymentModal(true)}>{t.upgrade}</button>
       </div>
     </header>
 
@@ -1979,9 +2257,23 @@ export default function App() {
           <input type="email" placeholder="your@email.com" value={userEmail} onChange={e=>setUserEmail(e.target.value)} style={{width:'100%',padding:'9px 13px',background:'var(--input-bg)',border:'1px solid var(--gold-border)',borderRadius:'6px',color:'var(--text)',fontSize:'13px',outline:'none',marginBottom:'10px',direction:'ltr'}}/>
           <div style={{display:'flex',gap:'8px'}}>
             <button className="btn-ai" style={{flex:1}} onClick={()=>{checkPremium(userEmail);setShowEmailModal(false)}}>{t.unlockAccess}</button>
-            <button className="btn-premium" style={{flex:1}} onClick={()=>window.open('https://house-of-books.lemonsqueezy.com/checkout/buy/df5fc3da-2939-4d0e-afaa-1f15b56610aa?variant=1370006','_blank')}>{t.upgradePremium}</button>
+            <button className="btn-premium" style={{flex:1}} onClick={()=>{setShowEmailModal(false);setShowPaymentModal(true)}}>{t.upgradePremium}</button>
           </div>
         </div>
+      </div>
+    )}
+
+    {/* PAYMENT MODAL */}
+    {showPaymentModal && (
+      <PaymentModal email={userEmail} onClose={()=>setShowPaymentModal(false)} />
+    )}
+
+    {/* PAYPAL RETURN STATUS TOAST */}
+    {paypalReturnStatus !== 'idle' && (
+      <div style={{position:'fixed',bottom:'20px',left:'50%',transform:'translateX(-50%)',zIndex:400,background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'10px',padding:'12px 20px',fontFamily:'Georgia,serif',fontSize:'13px',color: paypalReturnStatus==='error' ? '#e07a7a' : 'var(--gold)'}}>
+        {paypalReturnStatus === 'confirming' && '⏳ Confirming your PayPal payment…'}
+        {paypalReturnStatus === 'done' && '✅ Premium unlocked — welcome aboard!'}
+        {paypalReturnStatus === 'error' && '⚠️ Could not confirm payment. Contact support if you were charged.'}
       </div>
     )}
 
