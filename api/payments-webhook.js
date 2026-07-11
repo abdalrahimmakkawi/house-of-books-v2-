@@ -1,10 +1,11 @@
-// api/payments-webhook.js — one raw-body webhook endpoint for both providers,
-// merged to stay under Vercel Hobby's 12-function limit. Route by query param:
-//   /api/payments-webhook?provider=paypal
-//   /api/payments-webhook?provider=stripe
-// Register each provider's dashboard webhook at its matching URL.
+// api/payments-webhook.js — PayPal subscription webhook (raw body, signature
+// verified). PayPal is the sole payment provider — Stripe was removed (no
+// Stripe account available). Register this URL in PayPal Developer Dashboard
+// → Webhooks, subscribed to:
+//   BILLING.SUBSCRIPTION.ACTIVATED, BILLING.SUBSCRIPTION.CANCELLED,
+//   BILLING.SUBSCRIPTION.SUSPENDED, BILLING.SUBSCRIPTION.EXPIRED,
+//   PAYMENT.SALE.COMPLETED (fires on every renewal charge)
 
-import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { paypalFetch, periodEndFromPlan } from './_lib/paypal.js'
 
@@ -12,7 +13,6 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 
 export const config = { api: { bodyParser: false } }
 
@@ -32,8 +32,28 @@ async function upsertPremium(fields) {
   if (error) throw error
 }
 
-// ── PayPal ───────────────────────────────────────────────────────
-async function handlePaypal(req, res, rawBody) {
+// resource is a PayPal subscription object: has custom_id ("plan:email"),
+// id, status, and billing_info.next_billing_time once active.
+async function upsertFromSubscriptionResource(resource, activeOverride) {
+  const [plan, email] = (resource.custom_id || '').split(':')
+  if (!email || !plan) return
+  const active = activeOverride !== undefined ? activeOverride : resource.status === 'ACTIVE'
+  await upsertPremium({
+    email: email.toLowerCase().trim(),
+    active,
+    plan,
+    provider: 'paypal_subscription',
+    current_period_end: resource.billing_info?.next_billing_time || periodEndFromPlan(plan),
+    paypal_subscription_id: resource.id,
+  })
+  console.log(`[payments-webhook paypal] ${resource.id} → active=${active} for ${email}`)
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  let rawBody
+  try { rawBody = await getRawBody(req) } catch { return res.status(400).json({ error: 'Failed to read body' }) }
+
   const webhookId = process.env.PAYPAL_WEBHOOK_ID
   let verified = true
   if (webhookId) {
@@ -52,94 +72,34 @@ async function handlePaypal(req, res, rawBody) {
       })
       verified = v.verification_status === 'SUCCESS'
     } catch (err) {
-      console.error('[payments-webhook paypal] verify error', err.message)
+      console.error('[payments-webhook] verify error', err.message)
       return res.status(400).json({ error: 'Signature verification failed' })
     }
   } else {
-    console.warn('[payments-webhook paypal] PAYPAL_WEBHOOK_ID not set — skipping verification')
+    console.warn('[payments-webhook] PAYPAL_WEBHOOK_ID not set — skipping verification')
   }
   if (!verified) return res.status(401).json({ error: 'Invalid signature' })
 
   const payload = JSON.parse(rawBody.toString())
-  if (payload.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
-    const [plan, email] = (payload.resource?.custom_id || '').split(':')
-    if (email && plan) {
-      await upsertPremium({
-        email: email.toLowerCase().trim(),
-        active: true,
-        plan,
-        provider: 'paypal',
-        current_period_end: periodEndFromPlan(plan),
-        paypal_order_id: payload.resource?.id,
-      })
-      console.log(`[payments-webhook paypal] premium activated for ${email}`)
-    }
-  }
-  return res.status(200).json({ received: true })
-}
+  const type = payload.event_type
+  const resource = payload.resource || {}
 
-// ── Stripe ───────────────────────────────────────────────────────
-async function handleStripe(req, res, rawBody) {
-  if (!stripe) return res.status(503).json({ error: 'Stripe not configured' })
-  let event
   try {
-    event = stripe.webhooks.constructEvent(rawBody, req.headers['stripe-signature'], process.env.STRIPE_WEBHOOK_SECRET)
-  } catch (err) {
-    console.warn('[payments-webhook stripe] bad signature', err.message)
-    return res.status(400).json({ error: 'Invalid signature' })
-  }
-
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const s = event.data.object
-      const { plan, email, one_time } = s.metadata || {}
-      if (plan && email && one_time === 'true') {
-        const method = s.payment_method_types?.[0] || 'unknown'
-        await upsertPremium({
-          email, active: true, plan,
-          provider: `stripe_${method}`,
-          current_period_end: periodEndFromPlan(plan),
-          stripe_customer_id: s.customer || null,
-        })
-      }
-      break
+    if (type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
+      await upsertFromSubscriptionResource(resource, true)
+    } else if (
+      type === 'BILLING.SUBSCRIPTION.CANCELLED' ||
+      type === 'BILLING.SUBSCRIPTION.SUSPENDED' ||
+      type === 'BILLING.SUBSCRIPTION.EXPIRED'
+    ) {
+      await upsertFromSubscriptionResource(resource, false)
+    } else if (type === 'PAYMENT.SALE.COMPLETED' && resource.billing_agreement_id) {
+      // A renewal charge succeeded — look up the subscription for the
+      // custom_id (plan/email) and the fresh next_billing_time.
+      const sub = await paypalFetch(`/v1/billing/subscriptions/${resource.billing_agreement_id}`)
+      await upsertFromSubscriptionResource(sub, true)
     }
-    case 'customer.subscription.created':
-    case 'customer.subscription.updated': {
-      const sub = event.data.object
-      const { plan, email } = sub.metadata || {}
-      if (plan && email) {
-        await upsertPremium({
-          email,
-          active: sub.status === 'active' || sub.status === 'trialing',
-          plan,
-          provider: 'stripe_card',
-          current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-          stripe_customer_id: sub.customer,
-          stripe_subscription_id: sub.id,
-        })
-      }
-      break
-    }
-    case 'customer.subscription.deleted': {
-      const { email } = event.data.object.metadata || {}
-      if (email) await upsertPremium({ email, active: false })
-      break
-    }
-  }
-  return res.status(200).json({ received: true })
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  let rawBody
-  try { rawBody = await getRawBody(req) } catch { return res.status(400).json({ error: 'Failed to read body' }) }
-
-  const provider = req.query?.provider
-  try {
-    if (provider === 'paypal') return await handlePaypal(req, res, rawBody)
-    if (provider === 'stripe') return await handleStripe(req, res, rawBody)
-    return res.status(400).json({ error: 'Unknown provider' })
+    return res.status(200).json({ received: true })
   } catch (err) {
     console.error('[payments-webhook] db error', err)
     return res.status(500).json({ error: 'Server error' })
