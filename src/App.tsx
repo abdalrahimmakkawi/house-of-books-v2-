@@ -193,7 +193,7 @@ const TRACKS = [
   { id:'cosmos', label:'Cosmos', emoji:'🚀',src:'/music/cosmos.mp3'  },
 ]
 
-const FREE_BOOKS = 220
+const FREE_BOOKS = 84
 const FREE_AI_CHATS = 10
 
 // ── CSS ───────────────────────────────────────────────────────────
@@ -729,7 +729,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
               background: plan==='yearly' ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.03)',
               border: plan==='yearly' ? '1px solid rgba(201,168,76,0.5)' : '1px solid rgba(255,255,255,0.08)',
               color: plan==='yearly' ? '#c9a84c' : 'var(--text-muted)'}}
-          >Yearly<br/><strong style={{fontSize:'15px'}}>$80</strong> <span style={{fontSize:'10px',opacity:0.7}}>(save 26%)</span></button>
+          >Yearly<br/><strong style={{fontSize:'15px'}}>$85</strong> <span style={{fontSize:'10px',opacity:0.7}}>(save 21%)</span></button>
         </div>
 
         <button
