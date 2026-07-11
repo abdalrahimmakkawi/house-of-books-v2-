@@ -695,20 +695,20 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
     try {
       if (method === 'paypal') {
         sessionStorage.setItem('pendingPlan', plan)
-        const r = await fetch('/api/paypal-create-order', {
+        const r = await fetch('/api/payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan, email }),
+          body: JSON.stringify({ action: 'create-paypal-order', plan, email }),
         })
         const j = await r.json().catch(() => null)
         if (!r.ok || !j?.approveUrl) throw new Error(j?.error || 'PayPal checkout unavailable right now.')
         window.location.href = j.approveUrl
         return
       }
-      const r = await fetch('/api/create-checkout', {
+      const r = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, email, method }),
+        body: JSON.stringify({ action: 'create-checkout', plan, email, method }),
       })
       const j = await r.json().catch(() => null)
       if (!r.ok || !j?.url) throw new Error(j?.error || 'Checkout unavailable right now.')
@@ -1547,10 +1547,10 @@ export default function App() {
     if (!orderID || !plan || !email) return
 
     setPaypalReturnStatus('confirming')
-    fetch('/api/paypal-capture-order', {
+    fetch('/api/payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderID, plan, email }),
+      body: JSON.stringify({ action: 'capture-paypal-order', orderID, plan, email }),
     })
       .then(r => r.json())
       .then(j => {
@@ -1633,10 +1633,10 @@ export default function App() {
   const checkPremium=async(email:string)=>{
     if (isAdmin(email)) { setIsPremium(true); return }
     try{
-      const r = await fetch('/api/check-premium', {
+      const r = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ action: 'check-premium', email }),
       })
       const j = await r.json().catch(() => ({ active: false }))
       setIsPremium(!!j.active)
