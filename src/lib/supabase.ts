@@ -56,6 +56,9 @@ export interface Book {
   key_insights?: string | null
   audio_url?: string | null
   summary_generated?: boolean
+  // long-form (~2000-2500 word) text summary, batch-generated separately —
+  // null until scripts/backfill-long-summaries.mjs has run for this book
+  long_summary?: string | null
   // true once the per-book detail fetch (summary/key_insights/audio_url)
   // has run for this session — prevents refetching books with no summary yet
   detail_loaded?: boolean

@@ -645,6 +645,22 @@ function updateStreak() {
   const s=last===today?n:last===yesterday?n+1:1
   localStorage.setItem('hob_last_visit',today); localStorage.setItem('hob_streak',String(s)); return s
 }
+// Splits a long-form summary into book-like "pages" — groups whole paragraphs
+// (never splitting mid-paragraph) into ~150-200 word chunks.
+function paginateSummary(text: string): string[] {
+  const paragraphs = text.split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean)
+  const pages: string[] = []
+  let current: string[] = [], wordCount = 0
+  for (const p of paragraphs) {
+    const words = p.split(/\s+/).length
+    if (current.length && wordCount + words > 200) {
+      pages.push(current.join('\n\n')); current = []; wordCount = 0
+    }
+    current.push(p); wordCount += words
+  }
+  if (current.length) pages.push(current.join('\n\n'))
+  return pages.length ? pages : [text]
+}
 
 // ── Focus Card ───────────────────────────────────────────────────────
 const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: any) => {
@@ -1033,7 +1049,9 @@ function ExpandedPanel({
   onNoteChange, onToggleChat, onGenerateSummary, onAudioCached, onSendMessage, onChatInput,
   chatEndRef
 }: any) {
-  const [activeTab, setActiveTab] = useState<'about'|'insights'|'shelf'|'chat'>('about')
+  const [activeTab, setActiveTab] = useState<'about'|'full'|'insights'|'shelf'|'chat'>('about')
+  const [fullSummaryPage, setFullSummaryPage] = useState(0)
+  useEffect(()=>{setFullSummaryPage(0)},[book.id])
 
   return (
     <motion.div
@@ -1197,7 +1215,7 @@ function ExpandedPanel({
         overflowX:'auto',
         scrollbarWidth:'none' as any,
       }}>
-        {(['about','insights','shelf','chat'] as const).map(tab => (
+        {(['about','full','insights','shelf','chat'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1212,7 +1230,7 @@ function ExpandedPanel({
               whiteSpace:'nowrap',flexShrink:0,
             }}
           >
-            {tab === 'about' ? 'About' : tab === 'insights' ? 'Key Insights' : tab === 'shelf' ? 'My Shelf' : '✦ AI Chat'}
+            {tab === 'about' ? 'About' : tab === 'full' ? t.fullSummary : tab === 'insights' ? 'Key Insights' : tab === 'shelf' ? 'My Shelf' : '✦ AI Chat'}
             {activeTab === tab && (
               <motion.div
                 layoutId="tab-indicator"
@@ -1265,6 +1283,73 @@ function ExpandedPanel({
               Audio Summary
             </div>
             <AudioSummary text={book.summary} bookId={book.id} category={book.category} audioUrl={book.audio_url} onCached={onAudioCached} />
+          </motion.div>
+        )}
+
+        {/* FULL SUMMARY TAB — long-form, paginated */}
+        {activeTab === 'full' && (
+          <motion.div key="full" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
+            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
+              {t.fullSummary}
+            </div>
+            <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'16px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+              AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
+            </div>
+            {book.long_summary ? (() => {
+              const pages = paginateSummary(book.long_summary)
+              const page = Math.min(fullSummaryPage, pages.length - 1)
+              return (
+                <>
+                  <div style={{
+                    background:'rgba(201,168,76,0.05)',
+                    border:'0.5px solid rgba(201,168,76,0.15)',
+                    borderRadius:'14px',padding:'18px 20px',marginBottom:'14px',
+                    fontSize:'14px',color:'#e8e4d9',lineHeight:'1.85',
+                    fontFamily:'Georgia,serif',whiteSpace:'pre-line',
+                    minHeight:'240px',
+                  }}>
+                    {pages[page]}
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'20px'}}>
+                    <button
+                      onClick={() => setFullSummaryPage(p => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      style={{
+                        padding:'9px 16px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',
+                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(201,168,76,0.25)',
+                        color: page === 0 ? '#4a463d' : '#c9a84c',
+                        cursor: page === 0 ? 'default' : 'pointer',
+                      }}
+                    >← Previous</button>
+                    <div style={{fontSize:'11px',color:'#9a9080',letterSpacing:'.05em'}}>
+                      Page {page + 1} of {pages.length}
+                    </div>
+                    <button
+                      onClick={() => setFullSummaryPage(p => Math.min(pages.length - 1, p + 1))}
+                      disabled={page === pages.length - 1}
+                      style={{
+                        padding:'9px 16px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',
+                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(201,168,76,0.25)',
+                        color: page === pages.length - 1 ? '#4a463d' : '#c9a84c',
+                        cursor: page === pages.length - 1 ? 'default' : 'pointer',
+                      }}
+                    >Next →</button>
+                  </div>
+                </>
+              )
+            })() : (
+              <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
+                Full summary not available yet — check back soon.
+              </div>
+            )}
+            <div style={{
+              display:'flex',alignItems:'center',gap:'10px',
+              background:'rgba(201,168,76,0.07)',border:'0.5px solid rgba(201,168,76,0.2)',
+              borderRadius:'14px',padding:'14px 16px',
+            }}>
+              <span style={{fontSize:'16px'}}>🎧</span>
+              <span style={{fontSize:'13px',color:'#c9a84c',fontFamily:'Georgia,serif'}}>{t.audioComingSoon}</span>
+            </div>
           </motion.div>
         )}
 
@@ -1903,7 +1988,7 @@ export default function App() {
       setDetailLoading(true)
       ;(async()=>{
         try{
-          const {data}=await supabase.from('books').select('summary,key_insights,audio_url').eq('id',book.id).single()
+          const {data}=await supabase.from('books').select('summary,key_insights,audio_url,long_summary').eq('id',book.id).single()
           updateBookField(book.id,{...(data||{}),detail_loaded:true})
         }catch{}
         finally{setDetailLoading(false)}
