@@ -3,23 +3,15 @@
 // ✅ Input validation and size caps
 // ✅ No internal error details leaked to clients
 //
-// Two OpenAI-compatible providers. The public DEMO/sample chat runs on NVIDIA
-// (free tier, fast 8B model) so demo traffic never touches the paid Groq quota;
-// the full app keeps using Groq. Selected per-request via `demo: true`.
+// NVIDIA (free tier, fast 8B model) is the sole provider for all book chat —
+// demo and full app alike.
 
 import { enforceRateLimit } from './_lib/ratelimit.js'
 
-const PROVIDERS = {
-  groq: {
-    url: 'https://api.groq.com/openai/v1/chat/completions',
-    key: process.env.GROQ_API_KEY,
-    model: 'llama-3.3-70b-versatile',
-  },
-  nvidia: {
-    url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-    key: process.env.NVIDIA_API_KEY,
-    model: 'meta/llama-3.1-8b-instruct',
-  },
+const PROVIDER = {
+  url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+  key: process.env.NVIDIA_API_KEY,
+  model: 'meta/llama-3.1-8b-instruct',
 }
 
 export default async function handler(req, res) {
@@ -29,14 +21,9 @@ export default async function handler(req, res) {
   // 30 chat messages per IP per hour.
   if (enforceRateLimit(req, res, 'chat', 30, 60 * 60 * 1000)) return
 
-  const { messages, bookTitle, bookCategory, systemPrompt, demo } = req.body || {}
+  const { messages, bookTitle, bookCategory, systemPrompt } = req.body || {}
 
-  // Demo/sample chat → NVIDIA (free); everything else → Groq. Fall back to the
-  // other provider if the preferred one has no key configured.
-  const provider = (demo && PROVIDERS.nvidia.key)
-    ? PROVIDERS.nvidia
-    : (PROVIDERS.groq.key ? PROVIDERS.groq : PROVIDERS.nvidia)
-
+  const provider = PROVIDER
   if (!provider.key) {
     return res.status(503).json({ error: 'Chat service not configured' })
   }

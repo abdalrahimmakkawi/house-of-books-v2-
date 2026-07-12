@@ -1,4 +1,4 @@
-// api/ai.js — Secure server-side DeepSeek proxy
+// api/ai.js — Secure server-side NVIDIA NIM proxy (summary/chat/recommendations)
 // ✅ API key never exposed to browser
 // ✅ Rate limiting: 20 requests per IP per hour
 // ✅ Input validation and sanitization
@@ -6,8 +6,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.VITE_DEEPSEEK_API_KEY
-const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
+// Dedicated key for higher-quality generation (summaries/recommendations),
+// separate from NVIDIA_API_KEY which api/chat.js uses for the smaller/cheaper
+// book-chat model.
+const NVIDIA_API_KEY = process.env.NVIDIA_SUMMARY_API_KEY
+const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
+const MODEL = 'meta/llama-3.3-70b-instruct'
 
 // Used to persist a generated summary once, so it's never regenerated for
 // the same book again (matches the pre-generated 304 books already stored).
@@ -31,7 +35,7 @@ export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!DEEPSEEK_API_KEY) {
+  if (!NVIDIA_API_KEY) {
     return res.status(503).json({ error: 'AI service not configured' })
   }
 
@@ -42,8 +46,8 @@ export default async function handler(req, res) {
   if (!['chat', 'summary', 'recommendations'].includes(type)) return res.status(400).json({ error: 'Invalid type' })
 
   // Generate-once, cache-forever: a summary is only ever generated a single
-  // time per book. Cache hits skip DeepSeek entirely and don't count against
-  // the rate limit — only real generations do.
+  // time per book. Cache hits skip the AI call entirely and don't count
+  // against the rate limit — only real generations do.
   if (type === 'summary' && isUuid(bookId) && supabase) {
     try {
       const { data: existing } = await supabase.from('books').select('summary').eq('id', bookId).single()
@@ -64,34 +68,34 @@ export default async function handler(req, res) {
     let body
 
     if (type === 'summary') {
-      body = { model:'deepseek-chat', max_tokens:600, messages:[
+      body = { model:MODEL, max_tokens:600, messages:[
         { role:'system', content:`You are a world-class literary commentator discussing "${bookTitle}" by ${bookAuthor}. Write an ORIGINAL thematic explanation in your own words — describe the book's core ideas, arguments, and structure at a conceptual level, then add brief original commentary on why the ideas matter or how they connect to other thinking. Do NOT paraphrase closely, reconstruct passages, or imitate the author's prose style or sentence structure — describe the ideas, don't rewrite the text. ${langPrompt} Respond in maximum 150 words. Be concise and direct.` },
         { role:'user', content:`Write an original conceptual summary with brief commentary on "${bookTitle}" by ${bookAuthor}. Cover themes, key ideas, and takeaways in your own words — do not paraphrase or reconstruct the book's actual text. ${langPrompt}` }
       ]}
     } else if (type === 'chat') {
       if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'Invalid messages' })
       const clean = messages.slice(-4).filter(m=>m.role&&m.content&&typeof m.content==='string').map(m=>({ role:m.role==='user'?'user':'assistant', content:m.content.slice(0,2000) }))
-      body = { model:'deepseek-chat', max_tokens:600, messages:[
+      body = { model:MODEL, max_tokens:600, messages:[
         { role:'system', content:`You are a world-class literary expert on "${bookTitle}" by ${bookAuthor}. ${langPrompt}` },
         ...clean
       ]}
     } else if (type === 'recommendations') {
       if (!Array.isArray(finishedTitles)||!Array.isArray(remainingTitles)) return res.status(400).json({ error: 'Invalid data' })
-      body = { model:'deepseek-chat', max_tokens:200, messages:[{ role:'user', content:`Based on these read books: ${finishedTitles.slice(0,5).join(', ')}\nFrom this list: ${remainingTitles.slice(0,30).join(', ')}\nReturn ONLY a JSON array of 5 titles, no explanation:\n["title1","title2","title3","title4","title5"]` }]}
+      body = { model:MODEL, max_tokens:200, messages:[{ role:'user', content:`Based on these read books: ${finishedTitles.slice(0,5).join(', ')}\nFrom this list: ${remainingTitles.slice(0,30).join(', ')}\nReturn ONLY a JSON array of 5 titles, no explanation:\n["title1","title2","title3","title4","title5"]` }]}
     }
 
-    const response = await fetch(DEEPSEEK_URL, {
+    const response = await fetch(NVIDIA_URL, {
       method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${DEEPSEEK_API_KEY}` },
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${NVIDIA_API_KEY}` },
       signal: AbortSignal.timeout(30000), // 30 second timeout
       body: JSON.stringify(body)
     })
 
-    if (!response.ok) { 
+    if (!response.ok) {
       const err = await response.text()
-      console.error('DeepSeek error:', response.status, err)
-      
-      // Specific handling for common DeepSeek errors. Never echo the raw
+      console.error('NVIDIA error:', response.status, err)
+
+      // Specific handling for common upstream errors. Never echo the raw
       // upstream error body to clients — it can contain internal details.
       let errorMessage = `AI service error: ${response.status}`
       let userFriendlyMessage = 'AI request failed. Please try again.'
@@ -106,7 +110,7 @@ export default async function handler(req, res) {
         errorMessage = 'AI service rate limited'
         userFriendlyMessage = 'Too many requests, please try again later'
       }
-      
+
       return res.status(response.status >= 500 ? 502 : response.status).json({
         error: errorMessage,
         details: userFriendlyMessage

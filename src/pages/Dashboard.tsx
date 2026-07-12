@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 // HOUSE OF BOOKS — BUSINESS INTELLIGENCE PLATFORM
 // 7 modules: Revenue · Pricing · Growth · Feature Gap ·
 //            Positioning · Content · Marketing Agent
-// Powered by DeepSeek AI
+// Powered by NVIDIA AI
 // ═════════════════════════════════════════════════════════════════
 
 const G    = "#c9a84c"
@@ -145,7 +145,7 @@ function AIOut({ text, loading }: AIOutProps) {
       style={{ marginTop:14, background:"rgba(201,168,76,0.04)", border:`1px solid rgba(201,168,76,0.14)`, borderRadius:10, padding:"14px 16px" }}>
       <div style={{ fontSize:8, color:G, letterSpacing:".14em", textTransform:"uppercase", marginBottom:9, display:"flex", alignItems:"center", gap:5 }}>
         <span style={{ width:5, height:5, borderRadius:"50%", background:GRN, display:"inline-block", animation:"pulse 2s infinite" }}/>
-        DeepSeek AI Analysis
+        NVIDIA AI Analysis
       </div>
       {loading
         ? <div style={{ display:"flex", gap:4 }}>{[0,1,2].map(i=>(<motion.div key={i} style={{ width:6, height:6, borderRadius:"50%", background:G }} animate={{ y:[0,-5,0], opacity:[.4,1,.4] }} transition={{ duration:.8, repeat:Infinity, delay:i*.18 }}/>))}</div>
@@ -887,12 +887,12 @@ export default function BusinessDashboard() {
             <div style={{ width:31, height:31, border:`1px solid ${G}`, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, background:GD }}>📊</div>
             <div>
               <div style={{ fontFamily:"Georgia, serif", fontSize:"1rem", fontWeight:700, color:G, letterSpacing:".06em" }}>House of Books</div>
-              <div style={{ fontSize:7.5, color:TM, letterSpacing:".14em", textTransform:"uppercase" }}>Business Intelligence Platform · DeepSeek AI · 7 Modules</div>
+              <div style={{ fontSize:7.5, color:TM, letterSpacing:".14em", textTransform:"uppercase" }}>Business Intelligence Platform · NVIDIA AI · 7 Modules</div>
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5 }}>
             <div style={{ width:5, height:5, borderRadius:"50%", background:GRN, animation:"pulse 2s infinite" }}/>
-            <span style={{ fontSize:8, color:TM, letterSpacing:".08em" }}>AI READY · DEEPSEEK</span>
+            <span style={{ fontSize:8, color:TM, letterSpacing:".08em" }}>AI READY · NVIDIA</span>
           </div>
         </div>
       </div>
