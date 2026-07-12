@@ -100,6 +100,9 @@ export default async function handler(req, res) {
           'xi-api-key': ELEVENLABS_API_KEY,
           'Content-Type': 'application/json',
         },
+        // Bail before Vercel's 60s maxDuration kills the function with an
+        // opaque 504 — the client shows a friendly retry message instead.
+        signal: AbortSignal.timeout(50000),
         body: JSON.stringify({
           text: clean,
           model_id: MODEL_ID,

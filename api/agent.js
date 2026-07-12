@@ -20,7 +20,7 @@ async function gatherWorldData(query) {
     if (newsRes.status === 'fulfilled' && newsRes.value.articles?.length) {
       articles = newsRes.value.articles
         .slice(0, 3)
-        .map(a => `- ${a.title} (${a.source.name})`)
+        .map(a => `- ${a.title} (${a.source})`)
         .join('\n')
     }
 

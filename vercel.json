@@ -31,6 +31,8 @@
     "api/voice.js": { "maxDuration": 60 },
     "api/delete-account.js": { "maxDuration": 20 },
     "api/news.js": { "maxDuration": 15 },
-    "api/trends.js": { "maxDuration": 15 }
+    "api/trends.js": { "maxDuration": 15 },
+    "api/payments.js": { "maxDuration": 25 },
+    "api/payments-webhook.js": { "maxDuration": 25 }
   }
 }

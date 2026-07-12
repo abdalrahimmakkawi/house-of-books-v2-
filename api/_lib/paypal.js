@@ -29,6 +29,7 @@ export async function getPayPalAccessToken() {
       Authorization: `Basic ${auth}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
+    signal: AbortSignal.timeout(10000),
     body: 'grant_type=client_credentials',
   })
   if (!r.ok) throw new Error(`PayPal auth failed (${r.status})`)
@@ -40,6 +41,7 @@ export async function getPayPalAccessToken() {
 export async function paypalFetch(path, options = {}) {
   const token = await getPayPalAccessToken()
   const r = await fetch(`${PAYPAL_BASE}${path}`, {
+    signal: AbortSignal.timeout(15000),
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
