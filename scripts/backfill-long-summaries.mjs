@@ -38,25 +38,56 @@ Structure (separate each part with a blank line so it reads as distinct sections
 Target length: 2,000-2,500 words total. Be substantive and specific to this book, not generic.`
 }
 
+// The free-tier meta/llama-3.3-70b-instruct endpoint has a shared worker pool
+// that returns 503 ("Worker local total request limit reached") or 504 under
+// load — transient, not a real failure. Retry with backoff before giving up.
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+const MAX_ATTEMPTS = 5
+
 async function generateLongSummary(title, author) {
-  const r = await fetch(NVIDIA_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${NVIDIA_API_KEY}` },
-    signal: AbortSignal.timeout(120000),
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4000,
-      messages: [
-        { role: 'system', content: buildPrompt(title, author) },
-        { role: 'user', content: `Write the long-form original exploration of "${title}" by ${author} now.` },
-      ],
-    }),
-  })
-  if (!r.ok) throw new Error(`NVIDIA ${r.status}: ${(await r.text()).slice(0, 200)}`)
-  const data = await r.json()
-  const content = data.choices?.[0]?.message?.content
-  if (!content) throw new Error('empty completion')
-  return content
+  let lastErr
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const r = await fetch(NVIDIA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${NVIDIA_API_KEY}` },
+        signal: AbortSignal.timeout(120000),
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: 4000,
+          messages: [
+            { role: 'system', content: buildPrompt(title, author) },
+            { role: 'user', content: `Write the long-form original exploration of "${title}" by ${author} now.` },
+          ],
+        }),
+      })
+      if (!r.ok) {
+        const detail = (await r.text()).slice(0, 200)
+        if (RETRYABLE_STATUS.has(r.status) && attempt < MAX_ATTEMPTS) {
+          const backoff = 2000 * 2 ** (attempt - 1) // 2s, 4s, 8s, 16s
+          console.log(`  ↻ NVIDIA ${r.status} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying in ${backoff / 1000}s: ${detail}`)
+          await sleep(backoff)
+          continue
+        }
+        throw new Error(`NVIDIA ${r.status}: ${detail}`)
+      }
+      const data = await r.json()
+      const content = data.choices?.[0]?.message?.content
+      if (!content) throw new Error('empty completion')
+      return content
+    } catch (e) {
+      lastErr = e
+      // AbortSignal timeout / network errors — also worth a retry.
+      if (attempt < MAX_ATTEMPTS && (e.name === 'TimeoutError' || e.message?.includes('fetch failed'))) {
+        const backoff = 2000 * 2 ** (attempt - 1)
+        console.log(`  ↻ ${e.message} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying in ${backoff / 1000}s`)
+        await sleep(backoff)
+        continue
+      }
+      throw e
+    }
+  }
+  throw lastErr
 }
 
 async function main() {
