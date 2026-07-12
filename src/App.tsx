@@ -1873,7 +1873,7 @@ export default function App() {
       </div>
       <div className="cat-tabs">{categories.map(c=><button key={c} className={`cat-tab${activeCategory===c?' active':''}`} onClick={()=>setActiveCategory(c)}>{c}</button>)}</div>
       <div className="search-inside-wrap"><span className="search-inside-icon">🔍</span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
-      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{IS_DEMO?'🎁 You’re exploring a free sample':t.unlockTitle}</h3><p>{IS_DEMO?'6 sample books · Subscribe to unlock all 304 books, offline audio & unlimited AI chat':t.unlockDesc}</p></div><button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{IS_DEMO?'✦ Get Full Access':t.startFor}</button></div>}
+      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{IS_DEMO?'🚀 App coming soon':t.unlockTitle}</h3><p>{IS_DEMO?"You're exploring an early preview of House of Books":t.unlockDesc}</p></div>{!IS_DEMO&&<button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.startFor}</button>}</div>}
 
       {booksError&&(
         <div style={{textAlign:'center',padding:'3rem 1rem',color:'var(--text-muted)'}}>
@@ -2220,7 +2220,7 @@ export default function App() {
             {userEmail.slice(0,2).toUpperCase()}
           </button>
         )}
-        <button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.upgrade}</button>
+        {!IS_DEMO&&<button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.upgrade}</button>}
       </div>
     </header>
 
