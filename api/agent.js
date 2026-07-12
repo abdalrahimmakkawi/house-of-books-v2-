@@ -120,23 +120,23 @@ Use this data to give more accurate, data-driven advice.`
     ? `\n\n${userInsights}\n---` 
     : '')
 
-  // Try DeepSeek first for agents (better reasoning)
+  // NVIDIA (meta/llama-3.3-70b-instruct — the same model used for book
+  // summaries, chosen here for its stronger reasoning on agent tasks).
   try {
-    const deepseekApiKey = process.env.VITE_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY
-    
-    if (!deepseekApiKey) {
-      throw new Error('DeepSeek API key not configured')
+    const nvidiaApiKey = process.env.NVIDIA_SUMMARY_API_KEY
+    if (!nvidiaApiKey) {
+      throw new Error('NVIDIA API key not configured')
     }
 
-    const res1 = await fetch('https://api.deepseek.com/chat/completions', {
+    const res1 = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${deepseekApiKey}` 
+        'Authorization': `Bearer ${nvidiaApiKey}`
       },
       signal: AbortSignal.timeout(30000), // 30 second timeout
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'meta/llama-3.3-70b-instruct',
         max_tokens: 600,
         temperature: 0.7,
         messages: [
@@ -148,57 +148,16 @@ Use this data to give more accurate, data-driven advice.`
 
     if (!res1.ok) {
       const err = await res1.text()
-      throw new Error(`DeepSeek error: ${res1.status} - ${err}`)
+      throw new Error(`NVIDIA error: ${res1.status} - ${err}`)
     }
 
     const data = await res1.json()
     const content = data.choices?.[0]?.message?.content || ''
-    
-    return res.json({ content, provider: 'deepseek' })
 
-  } catch(deepseekError) {
-    console.log('DeepSeek failed, falling back to Groq:', deepseekError.message)
+    return res.json({ content, provider: 'nvidia' })
 
-    // Fallback to Groq if DeepSeek fails or balance is low
-    try {
-      if (!process.env.GROQ_API_KEY) {
-        throw new Error('Groq API key not configured')
-      }
-
-      const res2 = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}` 
-        },
-        signal: AbortSignal.timeout(30000), // 30 second timeout
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 600,
-          temperature: 0.7,
-          messages: [
-            { role: 'system', content: enhancedPrompt },
-            ...messages.slice(-4)
-          ]
-        })
-      })
-
-      if (!res2.ok) {
-        const err = await res2.text()
-        throw new Error(`Groq error: ${res2.status} - ${err}`)
-      }
-
-      const data2 = await res2.json()
-      const content = data2.choices?.[0]?.message?.content || ''
-
-      return res.json({
-        content,
-        provider: 'groq_fallback'
-      })
-
-    } catch(groqError) {
-      console.error('Both AI providers failed:', { deepseek: deepseekError.message, groq: groqError.message })
-      return res.status(500).json({ error: 'Both AI providers failed. Please try again.' })
-    }
+  } catch(nvidiaError) {
+    console.error('AI provider failed:', nvidiaError.message)
+    return res.status(500).json({ error: 'AI provider failed. Please try again.' })
   }
 }

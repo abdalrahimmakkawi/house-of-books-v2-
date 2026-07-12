@@ -1,27 +1,28 @@
 // scripts/backfill-long-summaries.mjs — one-off batch: generate a long-form
-// (~2,000-2,500 word) text summary for every book via DeepSeek, saved to the
-// new `long_summary` column. Text-only — no audio is generated here (that's
-// the deliberately-deferred "coming soon" piece, see api/voice.js / the app's
-// Full Summary tab).
+// (~2,000-2,500 word) text summary for every book via NVIDIA
+// (meta/llama-3.3-70b-instruct), saved to the new `long_summary` column.
+// Text-only — no audio is generated here (that's the deliberately-deferred
+// "coming soon" piece, see api/voice.js / the app's Full Summary tab).
 //
 // Bypasses the live /api/ai route (20 req/hour per IP) for the same reason
-// as backfill-short-audio.mjs — talks to Supabase + DeepSeek directly.
+// as backfill-short-audio.mjs — talks to Supabase + NVIDIA directly.
 //
-// Cost is trivial (~$2-5 total for all 304 books). Re-run safely any time —
-// only touches rows where long_summary IS NULL.
+// Cost: free tier (NVIDIA NIM). Re-run safely any time — only touches rows
+// where long_summary IS NULL.
 //
 // Usage:
-//   SUPABASE_SERVICE_ROLE_KEY=... DEEPSEEK_API_KEY=... node scripts/backfill-long-summaries.mjs
+//   SUPABASE_SERVICE_ROLE_KEY=... NVIDIA_SUMMARY_API_KEY=... node scripts/backfill-long-summaries.mjs
 
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ulxzyjqmvzyqjynmqywe.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
-const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
+const NVIDIA_API_KEY = process.env.NVIDIA_SUMMARY_API_KEY
+const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
+const MODEL = 'meta/llama-3.3-70b-instruct'
 
 if (!SERVICE_KEY) { console.error('Missing SUPABASE_SERVICE_ROLE_KEY'); process.exit(1) }
-if (!DEEPSEEK_API_KEY) { console.error('Missing DEEPSEEK_API_KEY'); process.exit(1) }
+if (!NVIDIA_API_KEY) { console.error('Missing NVIDIA_SUMMARY_API_KEY'); process.exit(1) }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -38,12 +39,12 @@ Target length: 2,000-2,500 words total. Be substantive and specific to this book
 }
 
 async function generateLongSummary(title, author) {
-  const r = await fetch(DEEPSEEK_URL, {
+  const r = await fetch(NVIDIA_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_API_KEY}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${NVIDIA_API_KEY}` },
     signal: AbortSignal.timeout(120000),
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: MODEL,
       max_tokens: 4000,
       messages: [
         { role: 'system', content: buildPrompt(title, author) },
@@ -51,7 +52,7 @@ async function generateLongSummary(title, author) {
       ],
     }),
   })
-  if (!r.ok) throw new Error(`DeepSeek ${r.status}: ${(await r.text()).slice(0, 200)}`)
+  if (!r.ok) throw new Error(`NVIDIA ${r.status}: ${(await r.text()).slice(0, 200)}`)
   const data = await r.json()
   const content = data.choices?.[0]?.message?.content
   if (!content) throw new Error('empty completion')

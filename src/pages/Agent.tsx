@@ -200,7 +200,7 @@ Give specific, implementable churn reduction tactics. Include email copy, in-app
     systemPrompt: `You are a sharp startup strategist and market analyst specializing in EdTech, book apps, and subscription businesses.
 
 House of Books:
-✦ AI summaries + deep AI chat per book (DeepSeek-powered, ~$0 cost)
+✦ AI summaries + deep AI chat per book (NVIDIA-powered, ~$0 cost)
 ✦ 210+ curated books across 10 categories
 ✦ 5 languages including Arabic RTL
 ✦ Community: book discussions, reading groups, private chat
@@ -488,7 +488,7 @@ function AgentChat({ agent, selComps, onToggleComp }: any) {
 
     // Set loading steps
     setLoadingStep('🌐 Gathering live news & trends...')
-    setTimeout(() => setLoadingStep('⚡ Analyzing with DeepSeek AI...'), 2000)
+    setTimeout(() => setLoadingStep('⚡ Analyzing with NVIDIA AI...'), 2000)
 
     const userMsg = { role:"user", content:prefix+c, ts:Date.now() }
     const next = [...messages, userMsg]
@@ -659,7 +659,7 @@ export default function BookAgent() {
             <div style={{ width:26, height:26, border:"1px solid " + G, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12 }}>✦</div>
             <div style={{ fontSize:"0.9rem", fontWeight:700, color:G, letterSpacing:".06em" }}>Book Agent</div>
           </div>
-          <div style={{ fontSize:7.5, color:TM, letterSpacing:".1em", textTransform:"uppercase", paddingLeft:34 }}>DeepSeek AI · All saved</div>
+          <div style={{ fontSize:7.5, color:TM, letterSpacing:".1em", textTransform:"uppercase", paddingLeft:34 }}>NVIDIA AI · All saved</div>
         </div>
 
         {/* Agent list */}
@@ -700,7 +700,7 @@ export default function BookAgent() {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5 }}>
             <div style={{ width:5, height:5, borderRadius:"50%", background:GRN, animation:"pulse 2s infinite" }}/>
-            <span style={{ fontSize:8, color:TM, letterSpacing:".08em" }}>DEEPSEEK</span>
+            <span style={{ fontSize:8, color:TM, letterSpacing:".08em" }}>NVIDIA</span>
           </div>
         </div>
 
