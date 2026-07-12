@@ -217,6 +217,22 @@ const DEMO_BOOK_IDS = [
   '4302be3f-f272-4496-9e2d-027add76ad8e', // Beyond Good and Evil
 ]
 const FREE_AI_CHATS = 10
+// Free AI chats reset window (matches the "resets every 6 hours" promise in the UI)
+const CHAT_WINDOW_MS = 6 * 60 * 60 * 1000
+const CHAT_USES_KEY = 'hob_chat_uses'
+function getChatUses(): { count: number; resetAt: number } {
+  try {
+    const j = JSON.parse(localStorage.getItem(CHAT_USES_KEY) || 'null')
+    if (j && typeof j.count === 'number' && Date.now() < j.resetAt) return j
+  } catch {}
+  return { count: 0, resetAt: Date.now() + CHAT_WINDOW_MS }
+}
+
+// Light columns for the library grid — summaries/insights are fetched per
+// book on open, keeping the initial load ~93% smaller than select('*').
+const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,audio_url'
+const BOOKS_CACHE_KEY = 'hob_books_cache_v1'
+const BOOKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 // ── CSS ───────────────────────────────────────────────────────────
 const buildStyles = (th: typeof THEMES[0], dir: string) => `
@@ -616,7 +632,10 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 // ── Helpers ───────────────────────────────────────────────────────
 function getDailyQuote(books: Book[]) {
   const all: {text:string;source:string}[] = []
-  books.forEach(b => ((b as any).summaries?.[0]?.key_insights||[]).forEach((i:string)=>all.push({text:i,source:b.title})))
+  books.forEach(b => (b.key_insights||'').split('\n').forEach(line => {
+    const s = line.trim().replace(/^[-•*]\s*/,'')
+    if (s) all.push({ text: s, source: b.title })
+  }))
   if(!all.length) return null
   return all[Math.floor(Date.now()/86400000) % all.length]
 }
@@ -1008,7 +1027,7 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
 }
 
 function ExpandedPanel({
-  book, t, shelfStatus, progress, exportingPDF,
+  book, t, shelfStatus, progress, exportingPDF, detailLoading,
   currentNote, noteSaved, chatMessages, chatInput, chatLoading,
   summaryLoading, onClose, onShelf, onProgress, onExportPDF, onSaveNote,
   onNoteChange, onToggleChat, onGenerateSummary, onAudioCached, onSendMessage, onChatInput,
@@ -1211,10 +1230,12 @@ function ExpandedPanel({
         padding:'20px 16px',
         WebkitOverflowScrolling:'touch' as any,
       }}>
-      <AnimatePresence mode="wait">
+      {/* Tab content renders as plain keyed conditionals — this was wrapped in
+          <AnimatePresence mode="wait">, whose exit step never completed and
+          permanently froze the panel on the About tab (tabs unreachable). */}
         {/* ABOUT TAB */}
         {activeTab === 'about' && (
-          <motion.div key="about" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
+          <motion.div key="about" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               What's it about?
             </div>
@@ -1222,9 +1243,9 @@ function ExpandedPanel({
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
             <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
-              {book.summary || 'Click ✦ AI Summary to generate a comprehensive summary of this book.'}
+              {book.summary || (detailLoading ? '✦ Loading summary…' : 'Click ✦ AI Summary to generate a comprehensive summary of this book.')}
             </div>
-            {!book.summary && (
+            {!book.summary && !detailLoading && (
               <button
                 onClick={onGenerateSummary}
                 style={{
@@ -1249,7 +1270,7 @@ function ExpandedPanel({
 
         {/* KEY INSIGHTS TAB */}
         {activeTab === 'insights' && (
-          <motion.div key="insights" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
+          <motion.div key="insights" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Key Insights
             </div>
@@ -1277,6 +1298,8 @@ function ExpandedPanel({
                   <div>{insight.replace(/^[-•*]\s*/,'')}</div>
                 </div>
               ))
+            ) : detailLoading ? (
+              <div style={{fontSize:'13px',color:'#c9a84c',fontFamily:'Georgia,serif',padding:'8px 0'}}>✦ Loading insights…</div>
             ) : (
               <button
                 onClick={onGenerateSummary}
@@ -1296,7 +1319,7 @@ function ExpandedPanel({
 
         {/* MY SHELF TAB */}
         {activeTab === 'shelf' && (
-          <motion.div key="shelf" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
+          <motion.div key="shelf" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
               My Reading
             </div>
@@ -1376,7 +1399,7 @@ function ExpandedPanel({
 
         {/* AI CHAT TAB */}
         {activeTab === 'chat' && (
-          <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
+          <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
             <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               ✦ AI Book Expert
             </div>
@@ -1449,7 +1472,6 @@ function ExpandedPanel({
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
       </div>
     </motion.div>
   )
@@ -1494,7 +1516,7 @@ export default function App() {
   const [readingProgress,setReadingProgress]=useState<ReadingProgress>({})
   const [exportingPDF,setExportingPDF]=useState(false)
   const [showUserDashboard,setShowUserDashboard]=useState(false)
-  const [aiChatCount,setAiChatCount]=useState(0)
+  const [aiChatCount,setAiChatCount]=useState(()=>getChatUses().count)
   const [isTrial,setIsTrial]=useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('library')
   const [emailInput, setEmailInput] = useState('')
@@ -1507,6 +1529,9 @@ export default function App() {
   const [booksRetryNonce, setBooksRetryNonce] = useState(0)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [dailyQuote, setDailyQuote] = useState<{text:string;source:string}|null>(null)
+  const [insideIds, setInsideIds] = useState<Set<string>|null>(null)
 
   const audioRef=useRef<HTMLAudioElement|null>(null)
   const chatEndRef=useRef<HTMLDivElement|null>(null)
@@ -1519,7 +1544,10 @@ export default function App() {
   const t=T[langId]||T.en
 
   useEffect(() => {
-    // Check for existing Supabase session
+    // Check for existing Supabase session. The app must become interactive no
+    // matter what this returns — a rejected/hung session check used to leave
+    // visitors on the loading screen forever.
+    const readyFallback = setTimeout(() => setAppReady(true), 4000)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) {
         const email = session.user.email
@@ -1529,6 +1557,8 @@ export default function App() {
         else checkPremium(email)
         setAppFlow('app')
       }
+    }).catch(() => {}).finally(() => {
+      clearTimeout(readyFallback)
       setAppReady(true)
     })
 
@@ -1593,22 +1623,77 @@ export default function App() {
   useEffect(()=>{
     // Load books with retry + backoff so a transient Supabase hiccup
     // (cold start, network blip) doesn't leave visitors with an empty library.
+    //
+    // Load-isolation: the list query only fetches the light columns needed to
+    // render the grid (~75KB) instead of select('*') which shipped every
+    // summary + insights (~1MB per visitor). summary/key_insights are fetched
+    // per book on open. The list is also cached in localStorage for an hour,
+    // so returning visitors within the window don't hit the DB at all.
     let cancelled=false
+    if(!IS_DEMO){
+      try{
+        const c=JSON.parse(localStorage.getItem(BOOKS_CACHE_KEY)||'null')
+        if(c && Date.now()-c.at<BOOKS_CACHE_TTL && Array.isArray(c.books) && c.books.length){
+          setBooks(c.books);setBooksError(false);setLoading(false)
+          return
+        }
+      }catch{}
+    }
     const load=async(attempt=0)=>{
-      // Demo loads only the curated sample books (tiny, cached) so public
-      // sample traffic barely touches the DB; full app loads the whole library.
-      const query=supabase.from('books').select('*')
+      // Demo loads only the curated sample books (tiny, cached, full columns —
+      // 6 rows) so public sample traffic barely touches the DB.
       const {data,error}=await (IS_DEMO
-        ? query.in('id',DEMO_BOOK_IDS).order('title')
-        : query.order('title'))
+        ? supabase.from('books').select('*').in('id',DEMO_BOOK_IDS).order('title')
+        : supabase.from('books').select(BOOK_LIST_COLUMNS).order('title'))
       if(cancelled)return
-      if(!error&&data&&data.length){setBooks(data);setBooksError(false);setLoading(false);return}
+      if(!error&&data&&data.length){
+        setBooks(data as Book[]);setBooksError(false);setLoading(false)
+        if(!IS_DEMO){
+          try{localStorage.setItem(BOOKS_CACHE_KEY,JSON.stringify({at:Date.now(),books:data}))}catch{}
+        }
+        return
+      }
       if(attempt<3){setTimeout(()=>load(attempt+1),1500*(attempt+1));return}
       setBooksError(true);setLoading(false)
     }
     load()
     return()=>{cancelled=true}
   },[booksRetryNonce])
+  useEffect(()=>{
+    // Daily quote. Demo books carry key_insights already; the full app picks
+    // one deterministic book per day and fetches just that row's insights.
+    if(!books.length)return
+    if(IS_DEMO){setDailyQuote(getDailyQuote(books));return}
+    const b=books[Math.floor(Date.now()/86400000)%books.length]
+    if(b.key_insights){setDailyQuote(getDailyQuote([b]));return}
+    let cancelled=false
+    ;(async()=>{
+      try{
+        const {data}=await supabase.from('books').select('key_insights').eq('id',b.id).single()
+        if(cancelled)return
+        const line=(data?.key_insights||'').split('\n').map((s:string)=>s.trim().replace(/^[-•*]\s*/,'')).filter(Boolean)[0]
+        if(line)setDailyQuote({text:line,source:b.title})
+      }catch{}
+    })()
+    return()=>{cancelled=true}
+  },[books.length])
+  useEffect(()=>{
+    // "Search inside summaries": summaries aren't shipped with the list
+    // anymore, so search server-side (debounced) and keep just matching ids.
+    const q=searchInside.trim()
+    if(!q||IS_DEMO){setInsideIds(null);return}
+    const h=setTimeout(async()=>{
+      try{
+        const esc=q.replace(/[%_\\]/g,'\\$&')
+        const [r1,r2]=await Promise.all([
+          supabase.from('books').select('id').ilike('summary',`%${esc}%`),
+          supabase.from('books').select('id').ilike('key_insights',`%${esc}%`),
+        ])
+        setInsideIds(new Set([...(r1.data||[]),...(r2.data||[])].map(r=>r.id)))
+      }catch{setInsideIds(null)} // fail open — show everything rather than nothing
+    },400)
+    return()=>clearTimeout(h)
+  },[searchInside])
   useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:'smooth'})},[chatMessages])
   useEffect(()=>{
     const h=(e:MouseEvent)=>{
@@ -1740,8 +1825,8 @@ export default function App() {
     if(!selectedBook||!isPremium)return
     setExportingPDF(true)
     try{
-      const summary=(selectedBook as any).summaries?.[0]
-      const insights:string[]=summary?.key_insights||[]
+      const insights:string[]=(selectedBook.key_insights||'').split('\n').map(s=>s.trim().replace(/^[-•*]\s*/,'')).filter(Boolean)
+      if(!insights.length){window.alert('This book has no key insights yet — open it and generate the AI summary first.');return}
       const html=`<!DOCTYPE html>
       <html><head><meta charset="UTF-8"><title>${selectedBook.title} — Insights</title>
       <style>
@@ -1811,12 +1896,38 @@ export default function App() {
     track('book_open',{category:book.category})
     setSelectedBook(book);setChatMessages([])
     setCurrentNote(notes[book.id]||'');setNoteSaved(false)
+    // The list ships without summary/insights — fetch this one book's detail
+    // on open (single cached row). If it fails, the Generate button still
+    // works: /api/ai returns the stored summary from its own DB cache check.
+    if(!IS_DEMO && book.summary===undefined && !book.detail_loaded){
+      setDetailLoading(true)
+      ;(async()=>{
+        try{
+          const {data}=await supabase.from('books').select('summary,key_insights,audio_url').eq('id',book.id).single()
+          updateBookField(book.id,{...(data||{}),detail_loaded:true})
+        }catch{}
+        finally{setDetailLoading(false)}
+      })()
+    }
   }
   const closeBook=()=>{setSelectedBook(null);setChatMessages([])}
   const sendMessage=async(messageValue?: string)=>{
     const content = messageValue ?? chatInput
     if(!content.trim()||chatLoading||!selectedBook)return
     const msg:ChatMessage={role:'user',content}
+    // Enforce the advertised free-chat allowance (10 per 6h) client-side —
+    // the per-IP server rate limit stays as the hard backstop.
+    if(!isPremium&&!isAdmin(userEmail)){
+      const uses=getChatUses()
+      if(uses.count>=FREE_AI_CHATS){
+        setChatMessages(p=>[...p,msg,{role:'assistant',content:`You've used all ${FREE_AI_CHATS} free AI chats for now — they reset every 6 hours. ✦`}])
+        setChatInput('')
+        return
+      }
+      const next={count:uses.count+1,resetAt:uses.resetAt}
+      try{localStorage.setItem(CHAT_USES_KEY,JSON.stringify(next))}catch{}
+      setAiChatCount(next.count)
+    }
     setChatMessages(p=>[...p,msg]);setChatInput('');setChatLoading(true)
     try{
       const res=await fetch('/api/chat',{
@@ -1844,14 +1955,19 @@ export default function App() {
   }
 
   const categories=['All',...Array.from(new Set(books.map(b=>b.category).filter(Boolean))).sort()]
-  const dailyQuote=getDailyQuote(books)
   const shelfCount=Object.values(shelf).filter(v=>v&&v!=='none').length
 
   const filteredBooks=books.filter(book=>{
     const matchesSearch=book.title.toLowerCase().includes(searchQuery.toLowerCase())||book.author.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory=activeCategory==='All'||book.category===activeCategory
     const matchesView=activeView==='all'||(activeView==='shelf'&&shelf[book.id]&&shelf[book.id]!=='none')
-    const matchesInside=!searchInside||((book as any).summaries?.[0]?.short_summary||'').toLowerCase().includes(searchInside.toLowerCase())||((book as any).summaries?.[0]?.key_insights||[]).some((i:string)=>i.toLowerCase().includes(searchInside.toLowerCase()))
+    // Demo books carry their summaries locally; the full app matches against
+    // the ids the debounced server-side search returned (null = still typing
+    // or search failed → don't filter anything out).
+    const insideQ=searchInside.trim().toLowerCase()
+    const matchesInside=!insideQ||(IS_DEMO
+      ? `${book.summary||''}\n${book.key_insights||''}`.toLowerCase().includes(insideQ)
+      : (insideIds?insideIds.has(book.id):true))
     return matchesSearch&&matchesCategory&&matchesView&&matchesInside
   })
 
@@ -2115,7 +2231,9 @@ export default function App() {
   }
 
   if (appFlow === 'login') {
-    return <LoginScreen />
+    // Called as a function for the same reason as LibraryPage below — an
+    // inline component type would remount (and drop input focus) per keystroke.
+    return LoginScreen()
   }
 
   return(<><style>{buildStyles(theme,lang.dir)}</style>
@@ -2246,7 +2364,10 @@ export default function App() {
     )}
 
     <main className="main-content">
-      {currentPage === 'library' && <LibraryPage />}
+      {/* Called as a function, not <LibraryPage/> — a component type defined
+          inside render remounts its whole subtree (and drops input focus)
+          on every keystroke. */}
+      {currentPage === 'library' && LibraryPage()}
       {currentPage === 'agent' && isAdmin(userEmail) && <Agent />}
       {currentPage === 'dashboard' && isAdmin(userEmail) && <Dashboard />}
     </main>
@@ -2259,6 +2380,7 @@ export default function App() {
           isPremium={isPremium} shelfStatus={shelf[selectedBook.id]||'none'}
           progress={readingProgress[selectedBook.id]||0}
           exportingPDF={exportingPDF}
+          detailLoading={detailLoading}
           currentNote={currentNote} noteSaved={noteSaved}
           chatMessages={chatMessages}
           chatInput={chatInput} chatLoading={chatLoading}
@@ -2392,7 +2514,7 @@ export default function App() {
           <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
             {isAdmin(userEmail) && (
               <button
-                onClick={() => { setShowUserDashboard(false); window.location.href='/dashboard' }}
+                onClick={() => { setShowUserDashboard(false); setCurrentPage('dashboard') }}
                 style={{
                   background:'var(--surface)', border:'0.5px solid var(--gold-border)',
                   borderRadius:'10px', padding:'11px', color:'var(--text)',
@@ -2404,7 +2526,7 @@ export default function App() {
             )}
             {isAdmin(userEmail) && (
               <button
-                onClick={() => { setShowUserDashboard(false); window.location.href='/agent' }}
+                onClick={() => { setShowUserDashboard(false); setCurrentPage('agent') }}
                 style={{
                   background:'var(--surface)', border:'0.5px solid var(--gold-border)',
                   borderRadius:'10px', padding:'11px', color:'var(--text)',

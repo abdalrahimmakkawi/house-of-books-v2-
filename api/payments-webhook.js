@@ -80,7 +80,8 @@ export default async function handler(req, res) {
   }
   if (!verified) return res.status(401).json({ error: 'Invalid signature' })
 
-  const payload = JSON.parse(rawBody.toString())
+  let payload
+  try { payload = JSON.parse(rawBody.toString()) } catch { return res.status(400).json({ error: 'Invalid JSON' }) }
   const type = payload.event_type
   const resource = payload.resource || {}
 

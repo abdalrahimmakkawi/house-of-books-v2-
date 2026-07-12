@@ -51,13 +51,12 @@ export interface Book {
   author: string
   cover_url: string
   category: string
-  summary?: string
-  key_insights?: string
-  audio_url?: string
+  read_time_mins?: number
+  summary?: string | null
+  key_insights?: string | null
+  audio_url?: string | null
   summary_generated?: boolean
-  summaries?: {
-    short_summary: string
-    long_summary: string
-    key_insights: string[]
-  }
+  // true once the per-book detail fetch (summary/key_insights/audio_url)
+  // has run for this session — prevents refetching books with no summary yet
+  detail_loaded?: boolean
 }

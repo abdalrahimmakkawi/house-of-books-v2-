@@ -91,10 +91,11 @@ export default async function handler(req, res) {
       const err = await response.text()
       console.error('DeepSeek error:', response.status, err)
       
-      // Specific handling for common DeepSeek errors
+      // Specific handling for common DeepSeek errors. Never echo the raw
+      // upstream error body to clients — it can contain internal details.
       let errorMessage = `AI service error: ${response.status}`
-      let userFriendlyMessage = err
-      
+      let userFriendlyMessage = 'AI request failed. Please try again.'
+
       if (response.status === 402) {
         errorMessage = 'AI service payment required'
         userFriendlyMessage = 'AI API quota exceeded or invalid API key'

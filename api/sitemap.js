@@ -5,22 +5,24 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const baseUrl = 'https://house-of-books-gamma.vercel.app'
+    const baseUrl = process.env.SITE_URL || 'https://house-of-books-v2.vercel.app'
     const currentDate = new Date().toISOString().split('T')[0]
 
-    // Fetch all books from Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    // Fetch all books from Supabase (was reading NEXT_PUBLIC_SUPABASE_URL,
+    // which is never set in this project, so the sitemap always 500'd)
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://ulxzyjqmvzyqjynmqywe.supabase.co'
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!supabaseUrl || !supabaseKey) {
-      return res.status(500).json({ error: 'Database configuration missing' })
+    if (!supabaseKey) {
+      return res.status(503).json({ error: 'Database configuration missing' })
     }
 
     const booksResponse = await fetch(`${supabaseUrl}/rest/v1/books?select=id,title,author,category,created_at&order=title.asc`, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`
-      }
+      },
+      signal: AbortSignal.timeout(10000)
     })
 
     if (!booksResponse.ok) {
