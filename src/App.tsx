@@ -276,6 +276,7 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .track-bar{width:3px;background:var(--gold);border-radius:1px;animation:eq .8s ease-in-out infinite alternate}
 .track-bar:nth-child(1){height:6px}.track-bar:nth-child(2){height:10px;animation-delay:.2s}.track-bar:nth-child(3){height:13px;animation-delay:.4s}
 @keyframes eq{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+@keyframes hobBlink{0%,100%{opacity:1}50%{opacity:0}}
 .volume-row{padding:8px 8px 2px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--gold-border);margin-top:8px}
 .volume-label{font-size:11px;color:var(--text-muted);flex-shrink:0}
 .volume-slider{flex:1;-webkit-appearance:none;height:3px;background:var(--gold-border);border-radius:2px;outline:none;cursor:pointer}
@@ -1044,11 +1045,12 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
 
 function ExpandedPanel({
   book, t, shelfStatus, progress, exportingPDF, detailLoading,
-  currentNote, noteSaved, chatMessages, chatInput, chatLoading,
+  currentNote, noteSaved, chatMessages, chatInput, chatLoading, chatStreaming,
   summaryLoading, onClose, onShelf, onProgress, onExportPDF, onSaveNote,
   onNoteChange, onToggleChat, onGenerateSummary, onAudioCached, onSendMessage, onChatInput,
   chatEndRef
 }: any) {
+  const chatBusy = chatLoading || chatStreaming
   const [activeTab, setActiveTab] = useState<'about'|'full'|'insights'|'shelf'|'chat'>('about')
   const [fullSummaryPage, setFullSummaryPage] = useState(0)
   useEffect(()=>{setFullSummaryPage(0)},[book.id])
@@ -1507,7 +1509,9 @@ function ExpandedPanel({
                   Hello! I have read every word of "{book.title}". What would you like to explore?
                 </div>
               )}
-              {chatMessages.map((msg: any, i: number) => (
+              {chatMessages.map((msg: any, i: number) => {
+                const isTyping = chatStreaming && msg.role === 'assistant' && i === chatMessages.length - 1
+                return (
                 <div key={i} style={{
                   fontSize:'13px',color:'#e8e4d9',lineHeight:'1.6',
                   padding:'10px 12px',
@@ -1518,8 +1522,9 @@ function ExpandedPanel({
                   marginRight: msg.role === 'assistant' ? '20px' : '0',
                 }}>
                   {msg.content}
+                  {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#c9a84c',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
                 </div>
-              ))}
+              )})}
               {chatLoading && (
                 <div style={{fontSize:'12px',color:'#c9a84c',padding:'8px',fontFamily:'Georgia,serif'}}>✦ Thinking...</div>
               )}
@@ -1528,7 +1533,7 @@ function ExpandedPanel({
                 <textarea
                   value={chatInput}
                   onChange={e => onChatInput(e.target.value)}
-                  onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();onSendMessage(chatInput)} }}
+                  onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!chatBusy)onSendMessage(chatInput)} }}
                   placeholder={t.askPlaceholder}
                   rows={2}
                   style={{
@@ -1541,13 +1546,13 @@ function ExpandedPanel({
                 />
                 <button
                   onClick={() => onSendMessage(chatInput)}
-                  disabled={chatLoading || !chatInput.trim()}
+                  disabled={chatBusy || !chatInput.trim()}
                   style={{
                     background:'#c9a84c',border:'none',
                     borderRadius:'10px',width:'40px',
                     cursor:'pointer',fontSize:'16px',
                     color:'#0a0a0f',flexShrink:0,
-                    opacity: chatLoading || !chatInput.trim() ? 0.5 : 1,
+                    opacity: chatBusy || !chatInput.trim() ? 0.5 : 1,
                   }}
                 >→</button>
               </div>
@@ -1575,6 +1580,7 @@ export default function App() {
   const [chatMessages,setChatMessages]=useState<ChatMessage[]>([])
   const [chatInput,setChatInput]=useState('')
   const [chatLoading,setChatLoading]=useState(false)
+  const [chatStreaming,setChatStreaming]=useState(false)
   const [summaryLoading,setSummaryLoading]=useState(false)
   const [showEmailModal,setShowEmailModal]=useState(false)
   const [showPaymentModal,setShowPaymentModal]=useState(false)
@@ -1996,9 +2002,32 @@ export default function App() {
     }
   }
   const closeBook=()=>{setSelectedBook(null);setChatMessages([])}
+  // Reveal an assistant reply word-by-word (typewriter) instead of dropping the
+  // whole block at once — feels like the AI is typing. The reveal pace is
+  // effectively a display rate limit on the response.
+  const streamAssistant=(full:string)=>new Promise<void>(resolve=>{
+    const tokens=full.split(/(\s+)/) // keep whitespace so spacing is preserved
+    let i=0
+    setChatStreaming(true)
+    setChatMessages(p=>[...p,{role:'assistant',content:''}])
+    const step=()=>{
+      const chunk=tokens.slice(i,i+2).join('') // ~one word + its space per tick
+      i+=2
+      setChatMessages(p=>{
+        const copy=p.slice()
+        const last=copy[copy.length-1]
+        if(last&&last.role==='assistant')copy[copy.length-1]={...last,content:last.content+chunk}
+        return copy
+      })
+      if(i<tokens.length){setTimeout(step,35)}
+      else{setChatStreaming(false);resolve()}
+    }
+    setTimeout(step,35)
+  }
+)
   const sendMessage=async(messageValue?: string)=>{
     const content = messageValue ?? chatInput
-    if(!content.trim()||chatLoading||!selectedBook)return
+    if(!content.trim()||chatLoading||chatStreaming||!selectedBook)return
     const msg:ChatMessage={role:'user',content}
     // Enforce the advertised free-chat allowance (10 per 6h) client-side —
     // the per-IP server rate limit stays as the hard backstop.
@@ -2027,16 +2056,19 @@ export default function App() {
         })
       })
       const data=await res.json()
-      setChatMessages(p=>[...p,{role:'assistant',content:data.content||t.noResponse}])
-      
+      setChatLoading(false)
+      await streamAssistant(data.content||t.noResponse) // typewriter reveal
+
       // Collect feedback silently
       collectChatFeedback({
         message: content,
         bookCategory: selectedBook.category,
         messageCount: chatMessages.length,
       })
-    }catch{setChatMessages(p=>[...p,{role:'assistant',content:t.connectionError}])}
-    finally{setChatLoading(false)}
+    }catch{
+      setChatLoading(false)
+      setChatMessages(p=>[...p,{role:'assistant',content:t.connectionError}])
+    }
   }
 
   const categories=['All',...Array.from(new Set(books.map(b=>b.category).filter(Boolean))).sort()]
@@ -2468,7 +2500,7 @@ export default function App() {
           detailLoading={detailLoading}
           currentNote={currentNote} noteSaved={noteSaved}
           chatMessages={chatMessages}
-          chatInput={chatInput} chatLoading={chatLoading}
+          chatInput={chatInput} chatLoading={chatLoading} chatStreaming={chatStreaming}
           summaryLoading={summaryLoading}
           onClose={closeBook}
           onShelf={s=>updateShelf(selectedBook.id,s)}
