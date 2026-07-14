@@ -1903,6 +1903,34 @@ export default function App() {
     setShowUserDashboard(false); setCurrentPage('library'); setAppFlow('login')
     window.alert('Your account and data have been deleted.')
   }
+  const [cancelling,setCancelling]=useState(false)
+  const cancelSubscription = async () => {
+    if (!window.confirm("Cancel your subscription? You'll keep Premium until the end of your current paid period, and it won't renew after that.")) return
+    setCancelling(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        window.alert('Please sign in again to cancel, or cancel directly from your PayPal account.')
+        return
+      }
+      const r = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel-paypal-subscription', accessToken: session.access_token }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (r.ok && j.success) {
+        setIsPremium(false)
+        window.alert("Your subscription has been cancelled. You'll keep Premium access until your current period ends.")
+      } else {
+        window.alert(j.error || 'Could not cancel. You can also cancel from your PayPal account, or contact support.')
+      }
+    } catch {
+      window.alert('Could not cancel right now. Please try again or contact support.')
+    } finally {
+      setCancelling(false)
+    }
+  }
   const handleLogin = async () => {
     const email = emailInput.trim().toLowerCase()
     if (!email || !email.includes('@')) {
@@ -2675,6 +2703,26 @@ export default function App() {
                 }}>
                 🤖 AI Agents
               </button>
+            )}
+            {/* Premium subscribers: cancel + refund info */}
+            {isPremium && !isAdmin(userEmail) && (
+              <>
+                <button
+                  onClick={cancelSubscription}
+                  disabled={cancelling}
+                  style={{
+                    background:'var(--surface)', border:'0.5px solid var(--gold-border)',
+                    borderRadius:'10px', padding:'11px', color:'var(--text)',
+                    fontSize:'13px', cursor: cancelling ? 'default' : 'pointer', fontFamily:'Georgia, serif',
+                    textAlign:'left', paddingLeft:'16px', marginTop:'4px', opacity: cancelling ? 0.6 : 1
+                  }}>
+                  {cancelling ? '⏳ Cancelling…' : '✕ Cancel subscription'}
+                </button>
+                <div style={{fontSize:'11px', color:'var(--text-muted)', padding:'2px 4px 2px 16px', lineHeight:1.5}}>
+                  Cancel anytime — you keep Premium until your period ends. Need a refund? Email{' '}
+                  <a href="mailto:abdalrahimmakkawi@gmail.com" style={{color:'var(--gold)'}}>support</a>.
+                </div>
+              </>
             )}
             <button
               onClick={logout}
