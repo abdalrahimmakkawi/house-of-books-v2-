@@ -1,7 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = 'https://ulxzyjqmvzyqjynmqywe.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVseHp5anFtdnp5cWp5bm1xeXdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTcyNzYsImV4cCI6MjA4Nzg3MzI3Nn0.WWW2H8JmDjVgpaUEiaKbXDcqWWtmFTD9omrEWVMG8AI'
+// Publishable key (safe to expose in a browser bundle — RLS is what actually
+// protects the data, not secrecy of this key). Rotated 2026-07-14 after the
+// old legacy anon key was found exposed in this repo's public git history;
+// the new key system's keys are independently revocable, unlike the old
+// shared-JWT-secret anon/service_role pair.
+const supabaseKey = 'sb_publishable_I_-Cu0SkBkJAQcU1c2mqqA__lKBABRt'
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
