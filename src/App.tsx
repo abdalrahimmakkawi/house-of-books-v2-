@@ -664,7 +664,8 @@ function paginateSummary(text: string): string[] {
 }
 
 // ── Focus Card ───────────────────────────────────────────────────────
-const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: any) => {
+const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, shelfStatus, onToggleShelf, onOpen }: any) => {
+  const onShelf = shelfStatus && shelfStatus !== 'none'
   return (
     <div
       onClick={onOpen}
@@ -683,9 +684,10 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: 
         userSelect: 'none' as any,
       }}
     >
+      {/* FREE / lock badge — top-left */}
       {isLocked ? (
         <div style={{
-          position:'absolute',top:'8px',right:'8px',
+          position:'absolute',top:'8px',left:'8px',
           width:'22px',height:'22px',
           background:'rgba(10,10,15,0.9)',
           border:'0.5px solid rgba(201,168,76,0.4)',
@@ -702,6 +704,25 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, onOpen }: 
           fontWeight:'600',zIndex:2
         }}>FREE</div>
       )}
+      {/* Save-to-shelf bookmark — top-right; stops propagation so it doesn't open the book */}
+      <button
+        onClick={e => { e.stopPropagation(); onToggleShelf && onToggleShelf() }}
+        title={onShelf ? 'Remove from My Shelf' : 'Save to My Shelf'}
+        aria-label={onShelf ? 'Remove from My Shelf' : 'Save to My Shelf'}
+        style={{
+          position:'absolute',top:'8px',right:'8px',
+          width:'26px',height:'26px',zIndex:3,
+          background: onShelf ? '#c9a84c' : 'rgba(10,10,15,0.78)',
+          border:'0.5px solid rgba(201,168,76,0.5)',
+          borderRadius:'50%',cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:'12px',lineHeight:1,
+          color: onShelf ? '#0a0a0f' : '#e8cf8a',
+          transition:'background .18s, transform .18s',
+        }}
+        onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.transform='scale(1.12)'}}
+        onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none'}}
+      >🔖</button>
       <img
         src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
         alt={book.title}
@@ -1818,6 +1839,7 @@ export default function App() {
       if(track){
         if(audioRef.current)audioRef.current.src=track.src
         else audioRef.current=new Audio(track.src)
+        audioRef.current.loop=true // ambient music repeats until the user stops it
         audioRef.current.volume=volume
         audioRef.current.play().catch(()=>{})
         setIsPlaying(true)
@@ -2127,6 +2149,7 @@ export default function App() {
                 setHovered={setHovered}
                 isLocked={books.findIndex(b=>b.id===book.id)>=FREE_BOOKS&&!isPremium&&!isAdmin(userEmail)}
                 shelfStatus={shelf[book.id]||'none'}
+                onToggleShelf={()=>updateShelf(book.id,(shelf[book.id]&&shelf[book.id]!=='none')?'none':'want')}
                 progress={readingProgress[book.id]||0}
                 onOpen={()=>openBook(book)}
                 t={t}
