@@ -7,7 +7,8 @@
 //   PAYMENT.SALE.COMPLETED (fires on every renewal charge)
 
 import { createClient } from '@supabase/supabase-js'
-import { paypalFetch, periodEndFromPlan } from './_lib/paypal.js'
+import { paypalFetch, periodEndFromPlan, PAYPAL_MODE_ACTIVE } from './_lib/paypal.js'
+import { sendRenewalReceipt, sendCancellationEmail } from './_lib/email.js'
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -55,8 +56,17 @@ export default async function handler(req, res) {
   try { rawBody = await getRawBody(req) } catch { return res.status(400).json({ error: 'Failed to read body' }) }
 
   const webhookId = process.env.PAYPAL_WEBHOOK_ID
-  let verified = true
-  if (webhookId) {
+  if (!webhookId) {
+    // FAIL CLOSED in live mode: an unverified webhook lets anyone POST a fake
+    // "payment succeeded" event and grant themselves premium. Only tolerate a
+    // missing webhook id in sandbox (for local/dev testing).
+    if (PAYPAL_MODE_ACTIVE === 'live') {
+      console.error('[payments-webhook] PAYPAL_WEBHOOK_ID missing in LIVE mode — rejecting')
+      return res.status(503).json({ error: 'Webhook not configured' })
+    }
+    console.warn('[payments-webhook] PAYPAL_WEBHOOK_ID not set — skipping verification (sandbox only)')
+  } else {
+    let verified = false
     try {
       const v = await paypalFetch('/v1/notifications/verify-webhook-signature', {
         method: 'POST',
@@ -75,10 +85,8 @@ export default async function handler(req, res) {
       console.error('[payments-webhook] verify error', err.message)
       return res.status(400).json({ error: 'Signature verification failed' })
     }
-  } else {
-    console.warn('[payments-webhook] PAYPAL_WEBHOOK_ID not set — skipping verification')
+    if (!verified) return res.status(401).json({ error: 'Invalid signature' })
   }
-  if (!verified) return res.status(401).json({ error: 'Invalid signature' })
 
   let payload
   try { payload = JSON.parse(rawBody.toString()) } catch { return res.status(400).json({ error: 'Invalid JSON' }) }
@@ -94,11 +102,25 @@ export default async function handler(req, res) {
       type === 'BILLING.SUBSCRIPTION.EXPIRED'
     ) {
       await upsertFromSubscriptionResource(resource, false)
+      // Email on a genuine cancel (from PayPal side). Idempotent-ish: if the
+      // user cancelled in-app they already got one, but a second is harmless.
+      const [plan, email] = (resource.custom_id || '').split(':')
+      if (email && type === 'BILLING.SUBSCRIPTION.CANCELLED') {
+        sendCancellationEmail({ to: email.toLowerCase().trim(), plan }).catch(() => {})
+      }
     } else if (type === 'PAYMENT.SALE.COMPLETED' && resource.billing_agreement_id) {
       // A renewal charge succeeded — look up the subscription for the
       // custom_id (plan/email) and the fresh next_billing_time.
       const sub = await paypalFetch(`/v1/billing/subscriptions/${resource.billing_agreement_id}`)
       await upsertFromSubscriptionResource(sub, true)
+      const [plan, email] = (sub.custom_id || '').split(':')
+      // Only email on RENEWALS, not the first charge (confirm-subscription
+      // already sent the welcome receipt). PayPal sends this ~immediately for
+      // the first payment too, so skip if the sub was created moments ago.
+      const isFirstCharge = sub.create_time && (Date.now() - new Date(sub.create_time).getTime()) < 10 * 60 * 1000
+      if (email && !isFirstCharge) {
+        sendRenewalReceipt({ to: email.toLowerCase().trim(), plan }).catch(() => {})
+      }
     }
     return res.status(200).json({ received: true })
   } catch (err) {
