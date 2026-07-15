@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, signInWithGoogle, signInWithTwitter, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
@@ -1075,6 +1075,13 @@ function ExpandedPanel({
   const [activeTab, setActiveTab] = useState<'about'|'full'|'insights'|'shelf'|'chat'>('about')
   const [fullSummaryPage, setFullSummaryPage] = useState(0)
   useEffect(()=>{setFullSummaryPage(0)},[book.id])
+  // Memoized so the ~2000+ word long_summary isn't re-paginated on every
+  // chat-stream tick (chatMessages, a prop here, mutates ~every 35ms during
+  // the typewriter reveal regardless of which tab is active).
+  const fullSummaryPages = useMemo(
+    () => book.long_summary ? paginateSummary(book.long_summary) : [],
+    [book.long_summary]
+  )
 
   return (
     <motion.div
@@ -1319,7 +1326,7 @@ function ExpandedPanel({
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
             {book.long_summary ? (() => {
-              const pages = paginateSummary(book.long_summary)
+              const pages = fullSummaryPages
               const page = Math.min(fullSummaryPage, pages.length - 1)
               return (
                 <>
@@ -1617,6 +1624,12 @@ export default function App() {
   const [userEmail,setUserEmail]=useState<string>(
     () => localStorage.getItem('userEmail') || ''
   )
+  // Set ONLY from a verified Supabase session (never from localStorage on
+  // mount, a typed input, or any other client-controlled source). This is
+  // the sole source of truth for admin gating — `userEmail` above is also
+  // used for the self-serve "check premium by email" flow and is trivially
+  // editable by the user, so it must never be trusted for admin access.
+  const [authedEmail,setAuthedEmail]=useState<string>('')
   const [isPremium,setIsPremium]=useState(false)
   const [shelf,setShelf]=useState<BookShelf>({})
   const [notes,setNotes]=useState<BookNotes>({})
@@ -1646,6 +1659,7 @@ export default function App() {
   const [insideIds, setInsideIds] = useState<Set<string>|null>(null)
 
   const audioRef=useRef<HTMLAudioElement|null>(null)
+  const lastRecsFinishedCount=useRef(0)
   const chatEndRef=useRef<HTMLDivElement|null>(null)
   const themeMenuRef=useRef<HTMLDivElement>(null!)
   const musicMenuRef=useRef<HTMLDivElement>(null!)
@@ -1664,6 +1678,7 @@ export default function App() {
       if (session?.user?.email) {
         const email = session.user.email
         setUserEmail(email)
+        setAuthedEmail(email)
         localStorage.setItem('userEmail', email)
         if (isAdmin(email)) setIsPremium(true)
         else checkPremium(email)
@@ -1680,6 +1695,7 @@ export default function App() {
         if (event === 'SIGNED_IN' && session?.user?.email) {
           const email = session.user.email
           setUserEmail(email)
+          setAuthedEmail(email)
           localStorage.setItem('userEmail', email)
           if (isAdmin(email)) setIsPremium(true)
           else checkPremium(email)
@@ -1687,8 +1703,14 @@ export default function App() {
         }
         if (event === 'SIGNED_OUT') {
           setUserEmail('')
+          setAuthedEmail('')
           setAppFlow('landing')
-          localStorage.clear()
+          // Only clear auth-related keys — SIGNED_OUT can fire involuntarily
+          // (expired/invalidated refresh token), and wiping hob_shelf/hob_notes/
+          // hob_progress here would silently destroy reading data that only
+          // ever lives in localStorage, with no way to recover it.
+          localStorage.removeItem('userEmail')
+          localStorage.removeItem('hob_email')
         }
       }
     )
@@ -1823,8 +1845,11 @@ export default function App() {
     const savedNotes=localStorage.getItem('hob_notes');if(savedNotes)setNotes(JSON.parse(savedNotes))
     const savedProgress=localStorage.getItem('hob_progress');if(savedProgress)setReadingProgress(JSON.parse(savedProgress))
     const savedEmail=localStorage.getItem('hob_email');if(savedEmail)setUserEmail(savedEmail)
-    // Admin bypass - set premium immediately for admin email
-    if (savedEmail && isAdmin(savedEmail)) setIsPremium(true)
+    // NOTE: no admin bypass here — hob_email is a user-editable localStorage
+    // value (also used for the self-serve "check premium by email" box), so
+    // it must never grant admin/premium on its own. Admin status is set only
+    // from a verified Supabase session (see the auth effect above), and real
+    // premium status is confirmed server-side via checkPremium().
     setStreak(updateStreak())
   },[])
   useEffect(()=>{localStorage.setItem('hob_theme',themeId)},[themeId])
@@ -1845,18 +1870,29 @@ export default function App() {
         setIsPlaying(true)
       }
     }else if(audioRef.current){audioRef.current.pause();setIsPlaying(false)}
-  },[currentTrack,volume])
+  },[currentTrack])
   useEffect(()=>{if(audioRef.current)audioRef.current.volume=volume},[volume])
   useEffect(()=>{
     const ids=Object.keys(shelf).filter(id=>shelf[id]==='finished')
-    if(ids.length>0&&!recommendations.length)loadRecommendations(ids)
+    // Re-run whenever the finished-book count actually changes (not just
+    // once per session) so recommendations reflect the fuller reading
+    // history as the user finishes more books.
+    if(ids.length>0&&ids.length!==lastRecsFinishedCount.current){
+      lastRecsFinishedCount.current=ids.length
+      loadRecommendations(ids)
+    }
   },[shelf])
 
   const selectTheme=(id:string)=>{setThemeId(id);setShowThemeMenu(false)}
   const selectLang=(id:string)=>{setLangId(id);setShowLangMenu(false)}
   const toggleTrack=(id:string)=>{setCurrentTrack(currentTrack===id?'':id)}
   const checkPremium=async(email:string)=>{
-    if (isAdmin(email)) { setIsPremium(true); return }
+    // No client-side admin shortcut here — this fn is also reachable from a
+    // freely-typed input (the "unlock access" box), and ADMIN_EMAILS is
+    // public in the JS bundle, so trusting a passed-in `email` here would let
+    // anyone grant themselves premium by typing the admin's address. Real
+    // admin auto-premium happens in the auth effect above, gated on a
+    // verified Supabase session email.
     try{
       const r = await fetch('/api/payments', {
         method: 'POST',
@@ -1873,6 +1909,7 @@ export default function App() {
   const logout = async () => {
   await signOut()
   setUserEmail('')
+  setAuthedEmail('')
   setEmailInput('')
   setIsPremium(false)
   setIsTrial(false)
@@ -1963,13 +2000,21 @@ export default function App() {
   const updateProgress=(bookId:string,pct:number)=>{setReadingProgress(p=>({...p,[bookId]:pct}))}
   const saveNote=(bookId:string,text:string)=>{setNotes(p=>({...p,[bookId]:text}));setNoteSaved(true);setTimeout(()=>setNoteSaved(false),2000)}
   const exportPDF=async()=>{
-    if(!selectedBook||!isPremium)return
+    if(!selectedBook)return
+    if(!isPremium){window.alert(t.pdfPremium||'PDF export is a premium feature');return}
     setExportingPDF(true)
     try{
-      const insights:string[]=(selectedBook.key_insights||'').split('\n').map(s=>s.trim().replace(/^[-•*]\s*/,'')).filter(Boolean)
+      // Book title/author/insights come from the DB (LLM-generated content),
+      // never from a fixed set of literals — escape before building an HTML
+      // string for document.write, or a book row containing markup would
+      // execute as script in the app's own origin.
+      const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+      const insights:string[]=(selectedBook.key_insights||'').split('\n').map(s=>s.trim().replace(/^[-•*]\s*/,'')).filter(Boolean).map(esc)
       if(!insights.length){window.alert('This book has no key insights yet — open it and generate the AI summary first.');return}
+      const safeTitle=esc(selectedBook.title)
+      const safeAuthor=esc(selectedBook.author)
       const html=`<!DOCTYPE html>
-      <html><head><meta charset="UTF-8"><title>${selectedBook.title} — Insights</title>
+      <html><head><meta charset="UTF-8"><title>${safeTitle} — Insights</title>
       <style>
         body{font-family:Georgia,serif;line-height:1.6;max-width:700px;margin:40px auto;color:#333}
         h1{font-size:2rem;color:#c9a84c;margin-bottom:16px}
@@ -1982,8 +2027,8 @@ export default function App() {
         .footer{margin-top:48px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;text-align:center}
         @media print{body{margin:20px auto}}
       </style></head><body>
-      <h1>${selectedBook.title}</h1>
-      <div class="author">by ${selectedBook.author}</div>
+      <h1>${safeTitle}</h1>
+      <div class="author">by ${safeAuthor}</div>
       <div class="divider"></div>
       <h2>✦ Key Insights</h2>
       ${insights.map((ins,i)=>`<div class="insight"><div class="num">${String(i+1).padStart(2,'0')}</div><div class="text">${ins}</div></div>`).join('')}
@@ -2044,8 +2089,11 @@ export default function App() {
       setDetailLoading(true)
       ;(async()=>{
         try{
-          const {data}=await supabase.from('books').select('summary,key_insights,audio_url,long_summary').eq('id',book.id).single()
-          updateBookField(book.id,{...(data||{}),detail_loaded:true})
+          const {data,error}=await supabase.from('books').select('summary,key_insights,audio_url,long_summary').eq('id',book.id).single()
+          // Only mark detail_loaded on a real success — otherwise a transient
+          // network/DB blip permanently skips the fetch for this book for
+          // the rest of the session, leaving it stuck with no summary.
+          if(!error&&data) updateBookField(book.id,{...data,detail_loaded:true})
         }catch{}
         finally{setDetailLoading(false)}
       })()
@@ -2081,7 +2129,7 @@ export default function App() {
     const msg:ChatMessage={role:'user',content}
     // Enforce the advertised free-chat allowance (10 per 6h) client-side —
     // the per-IP server rate limit stays as the hard backstop.
-    if(!isPremium&&!isAdmin(userEmail)){
+    if(!isPremium&&!isAdmin(authedEmail)){
       const uses=getChatUses()
       if(uses.count>=FREE_AI_CHATS){
         setChatMessages(p=>[...p,msg,{role:'assistant',content:`You've used all ${FREE_AI_CHATS} free AI chats for now — they reset every 6 hours. ✦`}])
@@ -2175,7 +2223,7 @@ export default function App() {
                 index={index}
                 hovered={hovered}
                 setHovered={setHovered}
-                isLocked={books.findIndex(b=>b.id===book.id)>=FREE_BOOKS&&!isPremium&&!isAdmin(userEmail)}
+                isLocked={books.findIndex(b=>b.id===book.id)>=FREE_BOOKS&&!isPremium&&!isAdmin(authedEmail)}
                 shelfStatus={shelf[book.id]||'none'}
                 onToggleShelf={()=>updateShelf(book.id,(shelf[book.id]&&shelf[book.id]!=='none')?'none':'want')}
                 progress={readingProgress[book.id]||0}
@@ -2273,7 +2321,7 @@ export default function App() {
 
           {/* Stats */}
           <div style={{display:'flex', justifyContent:'center', gap:'3rem', marginBottom:'3rem'}}>
-            {[['304','BOOKS'],['90','FREE'],['5','LANGUAGES']].map(([n,l]) => (
+            {[['304','BOOKS'],[String(FREE_BOOKS),'FREE'],['5','LANGUAGES']].map(([n,l]) => (
               <div key={l}>
                 <div className="landing-stat-num">{n}</div>
                 <div className="landing-stat-label">{l}</div>
@@ -2433,7 +2481,7 @@ export default function App() {
           }}>
           📚 Library
         </button>
-        {isAdmin(userEmail) && (
+        {isAdmin(authedEmail) && (
           <>
             <button
               onClick={() => setCurrentPage('agent')}
@@ -2536,8 +2584,8 @@ export default function App() {
           inside render remounts its whole subtree (and drops input focus)
           on every keystroke. */}
       {currentPage === 'library' && LibraryPage()}
-      {currentPage === 'agent' && isAdmin(userEmail) && <Agent />}
-      {currentPage === 'dashboard' && isAdmin(userEmail) && <Dashboard />}
+      {currentPage === 'agent' && isAdmin(authedEmail) && <Agent />}
+      {currentPage === 'dashboard' && isAdmin(authedEmail) && <Dashboard />}
     </main>
 
     {/* EXPANDED PANEL */}
@@ -2624,7 +2672,7 @@ export default function App() {
             </div>
             <div>
               <div style={{fontSize:'15px', fontWeight:'500', color:'var(--text)'}}>
-                {isAdmin(userEmail) ? '👑 Admin' : isPremium ? '⭐ Premium' : isTrial ? '🎯 Trial' : '📚 Reader'}
+                {isAdmin(authedEmail) ? '👑 Admin' : isPremium ? '⭐ Premium' : isTrial ? '🎯 Trial' : '📚 Reader'}
               </div>
               <div style={{fontSize:'12px', color:'var(--text-muted)', marginTop:'2px'}}>{userEmail}</div>
             </div>
@@ -2653,7 +2701,7 @@ export default function App() {
           </div>
 
           {/* AI chats remaining */}
-          {!isPremium && !isAdmin(userEmail) && (
+          {!isPremium && !isAdmin(authedEmail) && (
             <div style={{
               background:'var(--surface)', borderRadius:'10px',
               padding:'12px 14px', marginBottom:'1rem',
@@ -2668,7 +2716,7 @@ export default function App() {
           )}
 
           {/* Admin badge */}
-          {isAdmin(userEmail) && (
+          {isAdmin(authedEmail) && (
             <div style={{
               background:'rgba(201,168,76,0.1)', border:'1px solid var(--gold-border)',
               borderRadius:'10px', padding:'12px 14px', marginBottom:'1rem',
@@ -2680,7 +2728,7 @@ export default function App() {
 
           {/* Action buttons */}
           <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
-            {isAdmin(userEmail) && (
+            {isAdmin(authedEmail) && (
               <button
                 onClick={() => { setShowUserDashboard(false); setCurrentPage('dashboard') }}
                 style={{
@@ -2692,7 +2740,7 @@ export default function App() {
                 ⚙️ Admin Dashboard
               </button>
             )}
-            {isAdmin(userEmail) && (
+            {isAdmin(authedEmail) && (
               <button
                 onClick={() => { setShowUserDashboard(false); setCurrentPage('agent') }}
                 style={{
@@ -2705,7 +2753,7 @@ export default function App() {
               </button>
             )}
             {/* Premium subscribers: cancel + refund info */}
-            {isPremium && !isAdmin(userEmail) && (
+            {isPremium && !isAdmin(authedEmail) && (
               <>
                 <button
                   onClick={cancelSubscription}
@@ -2719,7 +2767,8 @@ export default function App() {
                   {cancelling ? '⏳ Cancelling…' : '✕ Cancel subscription'}
                 </button>
                 <div style={{fontSize:'11px', color:'var(--text-muted)', padding:'2px 4px 2px 16px', lineHeight:1.5}}>
-                  Cancel anytime — you keep Premium until your period ends. Need a refund? Email{' '}
+                  Cancel anytime — you keep Premium until your period ends. Need a refund? See our{' '}
+                  <a href="/refund.html" target="_blank" rel="noopener" style={{color:'var(--gold)'}}>Refund Policy</a> or email{' '}
                   <a href="mailto:abdalrahimmakkawi@gmail.com" style={{color:'var(--gold)'}}>support</a>.
                 </div>
               </>
@@ -2748,8 +2797,9 @@ export default function App() {
 
           {/* Legal + Close */}
           <div style={{marginTop:'1rem',display:'flex',gap:'14px',justifyContent:'center',fontSize:'11px'}}>
-            <a href="https://house-of-books-site.vercel.app/privacy.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Privacy</a>
-            <a href="https://house-of-books-site.vercel.app/terms.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Terms</a>
+            <a href="/privacy.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Privacy</a>
+            <a href="/terms.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Terms</a>
+            <a href="/refund.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Refunds</a>
             <button
               onClick={() => setShowUserDashboard(false)}
               style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'11px',cursor:'pointer',fontFamily:'Georgia, serif',padding:0}}>

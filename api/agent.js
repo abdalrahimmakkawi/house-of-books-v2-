@@ -1,4 +1,18 @@
+import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
+
+// This endpoint powers the admin-only Agent/Dashboard pages. The client UI
+// hides those pages behind an email check, but that's cosmetic — anyone can
+// POST here directly. The accessToken below is the real gate: it must belong
+// to a currently-authenticated Supabase session whose email is an admin.
+const ADMIN_EMAILS = ['abdalrahimmakkawi@gmail.com']
+const isAdminEmail = (email) => ADMIN_EMAILS.map(e => e.toLowerCase()).includes(String(email || '').toLowerCase().trim())
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://ulxzyjqmvzyqjynmqywe.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
 async function gatherWorldData(query) {
   let context = ''
   try {
@@ -43,17 +57,29 @@ async function gatherWorldData(query) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  res.setHeader('X-Content-Type-Options', 'nosniff')
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   // 15 agent requests per IP per hour.
   if (enforceRateLimit(req, res, 'agent', 15, 60 * 60 * 1000)) return
 
+  // Server-side admin gate. The client only hides the Agent/Dashboard pages
+  // in the UI — without this check, anyone could POST here directly and get
+  // free, unthrottled-by-role access to the model, plus (once wired up)
+  // aggregated user feedback data below.
+  const { accessToken, messages, systemPrompt, agentId } = req.body || {}
+  if (!accessToken || typeof accessToken !== 'string') {
+    return res.status(401).json({ error: 'Sign in as an admin to use this.' })
+  }
+  try {
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(accessToken)
+    if (authErr || !user?.email || !isAdminEmail(user.email)) {
+      return res.status(403).json({ error: 'Admin access required.' })
+    }
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired session.' })
+  }
 
-  const { messages, systemPrompt, agentId } = req.body
   if (!messages || !systemPrompt) return res.status(400).json({ error: 'Missing messages or systemPrompt' })
 
   // Extract user's latest message
@@ -61,12 +87,6 @@ export default async function handler(req, res) {
 
   async function getUserInsights() {
     try {
-      const { createClient } = require('@supabase/supabase-js')
-      const supabase = createClient(
-        process.env.VITE_SUPABASE_URL,
-        process.env.VITE_SUPABASE_ANON_KEY
-      )
-
       const { data: features } = await supabase
         .from('feedback_insights')
         .select('insight_value, count')

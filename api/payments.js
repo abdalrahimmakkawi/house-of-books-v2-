@@ -82,6 +82,18 @@ async function confirmPaypalSubscription(req, res, body) {
     if (sub.status !== 'ACTIVE' && sub.status !== 'APPROVED') {
       return res.status(402).json({ error: `Subscription is not active yet (status: ${sub.status})` })
     }
+    // Verify this subscription was actually created for the caller's own
+    // email+plan (custom_id is set once, at creation, in
+    // createPaypalSubscription, and PayPal returns it unchanged here — it
+    // can't be spoofed by the client). Without this check, anyone who learns
+    // *any* active subscription ID (e.g. from a PayPal redirect URL, which
+    // isn't secret) could call this endpoint with their own email and hijack
+    // someone else's paid subscription to unlock premium for themselves.
+    const expectedCustomId = `${plan}:${email.toLowerCase().trim()}`
+    if (sub.custom_id !== expectedCustomId) {
+      console.error('[payments confirm-paypal-subscription] custom_id mismatch', { subscriptionID, expected: expectedCustomId, got: sub.custom_id })
+      return res.status(403).json({ error: 'This subscription does not belong to the provided email.' })
+    }
     const { error } = await supabase.from('premium_users').upsert({
       email: email.toLowerCase().trim(),
       active: true,

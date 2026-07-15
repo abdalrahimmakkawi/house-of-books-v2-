@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { supabase } from "../lib/supabase"
 
 // Admin bypass configuration
 const ADMIN_EMAILS = ['abdalrahimmakkawi@gmail.com']
@@ -57,8 +58,8 @@ const BUSINESS_AGENTS = [
 
 House of Books context:
 - AI-powered book summaries + AI chat per book + community
-- 210+ books, 5 languages, PWA, reading progress, streaks
-- Pricing: $14.99/month or $119/year ($9.99/month equivalent)
+- 300+ books, 5 languages, PWA, reading progress, streaks
+- Pricing: $8.99/month or $85/year ($7.08/month equivalent)
 - Built by a solo developer, lean and fast-moving
 - Competitors: Blinkist ($15.99, no AI), Shortform ($24.99, no AI), Goodreads (free, no summaries)
 - Key differentiator: ONLY platform combining AI chat per book + community + progress tracking
@@ -74,16 +75,16 @@ Be brutally specific. Give real tactics, real channels, real numbers. No generic
     placeholder: "Share your numbers: free users, paid users, MRR, churn rate, CAC…",
     suggestions: [
       "Free users: 500, paid: 0, MRR: $0. What's wrong and how do I fix it?",
-      "I have 20 paid users at $14.99 but 8% monthly churn. How do I fix churn?",
+      "I have 20 paid users at $8.99 but 8% monthly churn. How do I fix churn?",
       "Should I focus on getting more free users or converting existing ones?",
       "What's a realistic MRR target for month 3 of a book summary app?",
     ],
     systemPrompt: `You are a SaaS revenue analyst specializing in subscription EdTech products. You understand unit economics, conversion funnels, and churn reduction deeply.
 
 House of Books context:
-- Pricing: $14.99/month or $119/year
-- Free tier: 63 books + 3 AI chats
-- Premium: 210+ books, unlimited AI, community, PDF export, notes
+- Pricing: $8.99/month or $85/year
+- Free tier: 84 books + 10 AI chats
+- Premium: 300+ books, unlimited AI, PDF export, notes
 - Key metrics to optimize: free→paid conversion (target 4-6%), monthly churn (target <3%), LTV:CAC (target >5x)
 
 When given metrics, calculate LTV, LTV:CAC ratio, payback period, and net MRR. Then give the 3 most impactful fixes ranked by revenue impact. Be specific with expected outcomes.`
@@ -96,20 +97,20 @@ When given metrics, calculate LTV, LTV:CAC ratio, payback period, and net MRR. T
     color: "#7eb8f7",
     placeholder: "Ask about pricing strategy, tier structure, or how to position vs competitors…",
     suggestions: [
-      "Should I raise from $14.99 to $19.99 now or wait for more users?",
+      "Should I raise from $8.99 to $12.99 now or wait for more users?",
       "How should I structure the Pro vs Premium tier features?",
       "What's the best way to announce a price increase to existing users?",
-      "How do I justify $14.99 vs Blinkist's $15.99 when we have fewer books?",
+      "How do I justify $8.99 vs Blinkist's $15.99 when we have fewer books?",
     ],
     systemPrompt: `You are a SaaS pricing expert who has advised 100+ subscription products. You understand pricing psychology, tier design, and how to communicate value.
 
 House of Books current pricing:
-- Monthly: $14.99/month
-- Yearly: $119/year ($9.99/month equivalent — "pay 10 months get 12")
-- Planned two tiers: Pro ($14.99) and Premium ($24.99 with advanced AI features)
+- Monthly: $8.99/month
+- Yearly: $85/year ($7.08/month equivalent — "pay 10 months get 12")
+- Planned two tiers: Pro ($8.99) and Premium ($19.99 with advanced AI features)
 - Competitors: Blinkist $15.99, Shortform $24.99, getAbstract $19.99
 
-The AI analysis recommends raising to $19.99 eventually. Current strategy: establish at $14.99 with first 100 customers, then raise with testimonials and social proof.
+The AI analysis suggests there may be room to raise prices later. Current strategy: establish at $8.99 with first 100 customers, then revisit with testimonials and social proof.
 
 Give specific price recommendations with reasoning. Include messaging copy when relevant.`
   },
@@ -132,8 +133,8 @@ House of Books details:
 - Tagline territory: "AI that reads books with you" / "The book app that actually talks back"
 - Key differentiator: AI chat per book (ask any question, get expert answers instantly)
 - Target: curious professionals 25-40, self-improvement readers, lifelong learners
-- Price: $14.99/month or $9.99/month billed annually
-- Free tier: 63 books + 3 AI chats to experience the product
+- Price: $8.99/month or $7.08/month billed annually
+- Free tier: 84 books + 10 AI chats to experience the product
 - Tone: intellectual but warm, premium but accessible, confident not arrogant
 
 When writing copy: lead with the transformation not the feature. Focus on "chat with any book's ideas" as the hero feature. Make Blinkist look passive and old by comparison.`
@@ -192,7 +193,7 @@ Give specific, implementable churn reduction tactics. Include email copy, in-app
     placeholder: "Select competitors above and ask for strategic analysis…",
     suggestions: [
       "Analyze all selected competitors and find our biggest opportunity",
-      "How should we position our $14.99 price vs Blinkist's $15.99?",
+      "How should we position our $8.99 price vs Blinkist's $15.99?",
       "What feature gaps exist that we can fill before Blinkist does?",
       "Which competitor is the biggest threat and how do we defend?",
     ],
@@ -206,8 +207,8 @@ House of Books:
 ✦ Community: book discussions, reading groups, private chat
 ✦ Reading progress, streaks, daily quotes, personalized AI recommendations
 ✦ PDF export, notes, shelf management (premium)
-✦ Pricing: $14.99/month or $119/year — competitive with Blinkist, much cheaper than Shortform
-✦ Two tiers planned: Pro ($14.99) and Premium ($24.99 with advanced AI)
+✦ Pricing: $8.99/month or $85/year — competitive with Blinkist, much cheaper than Shortform
+✦ Two tiers planned: Pro ($8.99) and Premium ($19.99 with advanced AI)
 ✦ PWA + mobile-ready, beautiful UI with ambient music
 ✦ Built by a solo developer — lean, fast-moving, no VC overhead
 
@@ -263,10 +264,11 @@ function loadHistory() {
 
 // ── API call ───────────────────────────────────────────────────────
 async function callAI(messages: any[], systemPrompt: string) {
+  const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch("/api/agent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, systemPrompt })
+    body: JSON.stringify({ messages, systemPrompt, accessToken: session?.access_token })
   })
   if (!res.ok) throw new Error(`API error ${res.status}`)
   const data = await res.json()

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getAggregatedInsights } from '../lib/feedbackCollector'
 import { motion, AnimatePresence } from "framer-motion"
+import { supabase } from "../lib/supabase"
 
 // ═════════════════════════════════════════════════════════════════
 // HOUSE OF BOOKS — BUSINESS INTELLIGENCE PLATFORM
@@ -24,10 +25,11 @@ const BORDER = "rgba(255,255,255,0.08)"
 
 // ── Shared helpers ─────────────────────────────────────────────────
 async function askAI(prompt: string, sys: string = "You are a sharp startup strategist. Be specific, direct, actionable. No fluff.") {
+  const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch("/api/agent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages:[{ role:"user", content:prompt }], systemPrompt:sys })
+    body: JSON.stringify({ messages:[{ role:"user", content:prompt }], systemPrompt:sys, accessToken: session?.access_token })
   })
   if (!res.ok) throw new Error(`API ${res.status}`)
   return (await res.json()).content || ""
