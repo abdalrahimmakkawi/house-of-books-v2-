@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { supabase } from "../lib/supabase"
 
 // Admin bypass configuration
 const ADMIN_EMAILS = ['abdalrahimmakkawi@gmail.com']
@@ -263,10 +264,11 @@ function loadHistory() {
 
 // ── API call ───────────────────────────────────────────────────────
 async function callAI(messages: any[], systemPrompt: string) {
+  const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch("/api/agent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, systemPrompt })
+    body: JSON.stringify({ messages, systemPrompt, accessToken: session?.access_token })
   })
   if (!res.ok) throw new Error(`API error ${res.status}`)
   const data = await res.json()
