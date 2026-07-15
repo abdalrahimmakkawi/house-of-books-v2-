@@ -2767,7 +2767,8 @@ export default function App() {
                   {cancelling ? '⏳ Cancelling…' : '✕ Cancel subscription'}
                 </button>
                 <div style={{fontSize:'11px', color:'var(--text-muted)', padding:'2px 4px 2px 16px', lineHeight:1.5}}>
-                  Cancel anytime — you keep Premium until your period ends. Need a refund? Email{' '}
+                  Cancel anytime — you keep Premium until your period ends. Need a refund? See our{' '}
+                  <a href="/refund.html" target="_blank" rel="noopener" style={{color:'var(--gold)'}}>Refund Policy</a> or email{' '}
                   <a href="mailto:abdalrahimmakkawi@gmail.com" style={{color:'var(--gold)'}}>support</a>.
                 </div>
               </>
@@ -2798,6 +2799,7 @@ export default function App() {
           <div style={{marginTop:'1rem',display:'flex',gap:'14px',justifyContent:'center',fontSize:'11px'}}>
             <a href="/privacy.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Privacy</a>
             <a href="/terms.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Terms</a>
+            <a href="/refund.html" target="_blank" rel="noopener" style={{color:'var(--text-muted)',textDecoration:'none'}}>Refunds</a>
             <button
               onClick={() => setShowUserDashboard(false)}
               style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'11px',cursor:'pointer',fontFamily:'Georgia, serif',padding:0}}>
