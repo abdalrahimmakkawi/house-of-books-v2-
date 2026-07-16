@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, signInWithGoogle, signInWithTwitter, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
@@ -472,6 +472,19 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
   .logo-mark { font-size: 1.2rem !important; }
   .header-right { gap: 6px !important; }
   .search-wrap { display: none !important; }
+
+  /* Language / wallpaper / music menus: anchor to the viewport just under the
+     (wrapping) header and span its width so they can't drift off-screen. */
+  .dropdown {
+    position: fixed !important;
+    top: calc(var(--header-h, 120px) + 6px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-height: calc(100vh - var(--header-h, 120px) - 24px) !important;
+    overflow-y: auto !important;
+  }
   .btn-premium {
     padding: 6px 10px !important;
     font-size: 10px !important;
@@ -639,6 +652,26 @@ function getDailyQuote(books: Book[]) {
   }))
   if(!all.length) return null
   return all[Math.floor(Date.now()/86400000) % all.length]
+}
+// Key-insight lines can be a whole multi-sentence paragraph, which makes the
+// "quote of the day" card a wall of text on mobile. Trim it to its first
+// couple of sentences (with a hard character cap as a safety net).
+function shortenQuote(text: string): string {
+  const clean = (text||'').replace(/\s+/g,' ').trim()
+  if(!clean) return clean
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean]
+  // Keep whole sentences (up to 3) while staying under ~200 chars, so the card
+  // reads as a couple of tidy sentences rather than a truncated paragraph.
+  let out = ''
+  for(let i=0;i<sentences.length && i<3;i++){
+    const next = (out?out+' ':'') + sentences[i].trim()
+    if(out && next.length>200) break
+    out = next
+  }
+  if(!out) out = sentences[0].trim()
+  // Safety net for a single very long sentence.
+  if(out.length>240) out = out.slice(0,230).replace(/\s+\S*$/,'').trim() + '…'
+  return out
 }
 function updateStreak() {
   const today=new Date().toDateString(), last=localStorage.getItem('hob_last_visit')
@@ -1652,7 +1685,11 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('library')
   const [emailInput, setEmailInput] = useState('')
   const [appFlow, setAppFlow] = useState<AppFlow>(
-    () => IS_DEMO ? 'app' : (localStorage.getItem('userEmail') ? 'app' : 'login')
+    // New visitors (no saved session) always start on the landing page, then
+    // choose to sign in. Only a device with a previously-saved login jumps
+    // straight to the app — and that session lives solely in this browser's
+    // localStorage, so it can never surface another person's account.
+    () => IS_DEMO ? 'app' : (localStorage.getItem('userEmail') ? 'app' : 'landing')
   )
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [loginError, setLoginError] = useState('')
@@ -1670,6 +1707,25 @@ export default function App() {
   const themeMenuRef=useRef<HTMLDivElement>(null!)
   const musicMenuRef=useRef<HTMLDivElement>(null!)
   const langMenuRef=useRef<HTMLDivElement>(null!)
+  // Callback ref (not useEffect): it fires exactly when the header node mounts,
+  // which can be after the initial render (loading gate), so --header-h always
+  // tracks the real, wrapping header height on mobile. See the .dropdown mobile
+  // rule that pins the language/wallpaper/music menus just below the header.
+  const headerRef=useCallback((el:HTMLElement|null)=>{
+    if(!el)return
+    const setH=()=>document.documentElement.style.setProperty('--header-h',`${el.offsetHeight}px`)
+    setH()
+    requestAnimationFrame(setH)
+    const ro=new ResizeObserver(setH);ro.observe(el)
+    window.addEventListener('resize',setH)
+    // The header wraps to more rows once the logo image and web fonts finish
+    // loading, which changes its height — re-measure after those settle so the
+    // dropdowns anchor to the final height, not the first-paint one.
+    const t1=setTimeout(setH,300), t2=setTimeout(setH,900)
+    const fonts=(document as any).fonts
+    if(fonts&&fonts.ready&&typeof fonts.ready.then==='function')fonts.ready.then(setH)
+    return()=>{ro.disconnect();window.removeEventListener('resize',setH);clearTimeout(t1);clearTimeout(t2)}
+  },[])
 
   const theme=THEMES.find(t=>t.id===themeId)||THEMES[0]
   const lang=LANGUAGES.find(l=>l.id===langId)||LANGUAGES[0]
@@ -2227,7 +2283,7 @@ export default function App() {
   // ── Library Page Component ─────────────────────────────
   const LibraryPage = () => (
     <>
-      {dailyQuote&&<div className="daily-quote"><div className="quote-label">✦ {t.dailyQuote}</div><div className="quote-text">"{dailyQuote.text}"</div><div className="quote-source">— {dailyQuote.source}</div></div>}
+      {dailyQuote&&<div className="daily-quote"><div className="quote-label">✦ {t.dailyQuote}</div><div className="quote-text">"{shortenQuote(dailyQuote.text)}"</div><div className="quote-source">— {dailyQuote.source}</div></div>}
       {streak>=2&&<div className="streak-bar"><span className="streak-fire">🔥</span><span className="streak-count">{streak}</span><span className="streak-label">{t.streak}</span></div>}
       {recommendations.length>0&&<div className="recs-section"><div className="recs-title">✨ {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url} alt={b.title} onError={e=>{(e.target as HTMLImageElement).src=`https://picsum.photos/seed/${b.id}/110/165`}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
       {loadingRecs&&<div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'1.5rem'}}>✨ {t.loadingRecs}</div>}
@@ -2301,7 +2357,7 @@ export default function App() {
             justify-content: center;
             font-family: Georgia, serif;
             text-align: center;
-            padding: 5rem 2rem 2rem;
+            padding: 2rem 2rem;
             position: relative;
             z-index: 10;
           }
@@ -2332,17 +2388,6 @@ export default function App() {
           .landing-feature-desc { font-size: 12px; color: #9a9080; line-height: 1.5; }
         `}</style>
         <div className="app-bg"/>
-
-        {/* Beta top bar */}
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0,
-          background: '#c9a84c', color: '#0a0a0f',
-          padding: '10px', fontSize: '13px',
-          textAlign: 'center', letterSpacing: '.05em',
-          zIndex: 100, fontFamily: 'Georgia, serif'
-        }}>
-          ✦ We're in Beta — Everything is free right now
-        </div>
 
         <div className="landing-wrap">
           <img src="/logo-icon.png" alt="House of Books" style={{width:'88px',height:'88px',objectFit:'contain',margin:'0 auto 1.25rem',display:'block',filter:'drop-shadow(0 4px 24px rgba(201,168,76,0.35))'}} />
@@ -2495,7 +2540,7 @@ export default function App() {
   <div className="app-root">
 
     {/* HEADER */}
-    <header className="app-header">
+    <header className="app-header" ref={headerRef}>
       <div style={{display:'flex',alignItems:'center',gap:'11px'}}>
         <img src="/logo.png" alt="House of Books" style={{height:'38px',width:'auto',maxWidth:'210px',display:'block'}} />
       </div>
