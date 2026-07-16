@@ -1641,6 +1641,11 @@ export default function App() {
   const [readingProgress,setReadingProgress]=useState<ReadingProgress>({})
   const [exportingPDF,setExportingPDF]=useState(false)
   const [showUserDashboard,setShowUserDashboard]=useState(false)
+  const [showFeedbackModal,setShowFeedbackModal]=useState(false)
+  const [feedbackCategory,setFeedbackCategory]=useState('general')
+  const [feedbackMessage,setFeedbackMessage]=useState('')
+  const [feedbackRating,setFeedbackRating]=useState<number|null>(null)
+  const [feedbackStatus,setFeedbackStatus]=useState<'idle'|'sending'|'sent'|'error'>('idle')
   const [aiChatCount,setAiChatCount]=useState(()=>getChatUses().count)
   const [isTrial,setIsTrial]=useState(false)
   const [currentPage, setCurrentPage] = useState<Page>('library')
@@ -1966,6 +1971,31 @@ export default function App() {
       window.alert('Could not cancel right now. Please try again or contact support.')
     } finally {
       setCancelling(false)
+    }
+  }
+  const submitFeedback = async () => {
+    if (!feedbackMessage.trim()) return
+    setFeedbackStatus('sending')
+    try {
+      const r = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit',
+          email: userEmail || undefined,
+          category: feedbackCategory,
+          message: feedbackMessage.trim(),
+          rating: feedbackRating,
+          source: 'app',
+          pageUrl: window.location.href,
+        }),
+      })
+      if (!r.ok) throw new Error('failed')
+      setFeedbackStatus('sent')
+      setFeedbackMessage(''); setFeedbackRating(null)
+      setTimeout(() => { setShowFeedbackModal(false); setFeedbackStatus('idle') }, 1800)
+    } catch {
+      setFeedbackStatus('error')
     }
   }
   const handleLogin = async () => {
@@ -2774,6 +2804,16 @@ export default function App() {
               </>
             )}
             <button
+              onClick={() => { setShowUserDashboard(false); setShowFeedbackModal(true) }}
+              style={{
+                background:'var(--surface)', border:'0.5px solid var(--gold-border)',
+                borderRadius:'10px', padding:'11px', color:'var(--text)',
+                fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
+                textAlign:'left', paddingLeft:'16px', marginTop:'4px'
+              }}>
+              💬 Send Feedback
+            </button>
+            <button
               onClick={logout}
               style={{
                 background:'var(--surface)', border:'0.5px solid var(--gold-border)',
@@ -2809,6 +2849,52 @@ export default function App() {
         </div>
       </div>
     )}
-    
+
+    {/* FEEDBACK MODAL */}
+    {showFeedbackModal && (
+      <div className="email-modal-wrap" onClick={e=>{if(e.target===e.currentTarget){setShowFeedbackModal(false);setFeedbackStatus('idle')}}}>
+        <div style={{background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'12px',padding:'2rem',maxWidth:'420px',width:'100%'}}>
+          <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.4rem',color:'var(--gold)',marginBottom:'8px'}}>💬 Send Feedback</h3>
+          <p style={{color:'var(--text-muted)',fontSize:'13px',marginBottom:'1.2rem',lineHeight:'1.6'}}>
+            Found a bug, missing a book, or have an idea? We read every message.
+          </p>
+          {feedbackStatus==='sent' ? (
+            <div style={{textAlign:'center',padding:'1.5rem 0',color:'var(--gold)',fontFamily:'Georgia,serif'}}>✦ Thank you — feedback received!</div>
+          ) : (
+            <>
+              <select value={feedbackCategory} onChange={e=>setFeedbackCategory(e.target.value)}
+                style={{width:'100%',padding:'9px 13px',background:'var(--input-bg)',border:'1px solid var(--gold-border)',borderRadius:'6px',color:'var(--text)',fontSize:'13px',outline:'none',marginBottom:'10px'}}>
+                <option value="general">General feedback</option>
+                <option value="bug">Bug report</option>
+                <option value="feature">Feature request</option>
+                <option value="praise">Praise</option>
+                <option value="other">Other</option>
+              </select>
+              <textarea value={feedbackMessage} onChange={e=>setFeedbackMessage(e.target.value)}
+                placeholder="Tell us what's on your mind…" rows={5} maxLength={4000}
+                style={{width:'100%',padding:'9px 13px',background:'var(--input-bg)',border:'1px solid var(--gold-border)',borderRadius:'6px',color:'var(--text)',fontSize:'13px',outline:'none',marginBottom:'10px',resize:'vertical',fontFamily:'Georgia,serif'}}/>
+              <div style={{display:'flex',gap:'6px',marginBottom:'14px',justifyContent:'center'}}>
+                {[1,2,3,4,5].map(n=>(
+                  <button key={n} onClick={()=>setFeedbackRating(feedbackRating===n?null:n)}
+                    style={{background:'none',border:'none',cursor:'pointer',fontSize:'22px',opacity:feedbackRating&&n<=feedbackRating?1:0.3,padding:0}}>
+                    ★
+                  </button>
+                ))}
+              </div>
+              {feedbackStatus==='error' && <div style={{color:'#e05555',fontSize:'12px',marginBottom:'10px',textAlign:'center'}}>Could not send — please try again.</div>}
+              <div style={{display:'flex',gap:'8px'}}>
+                <button className="btn-ai" style={{flex:1,opacity:feedbackMessage.trim()&&feedbackStatus!=='sending'?1:0.5}}
+                  disabled={!feedbackMessage.trim()||feedbackStatus==='sending'}
+                  onClick={submitFeedback}>
+                  {feedbackStatus==='sending' ? 'Sending…' : 'Submit'}
+                </button>
+                <button className="btn-premium" style={{flex:1}} onClick={()=>{setShowFeedbackModal(false);setFeedbackStatus('idle')}}>Cancel</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
   </div></>)
 }
