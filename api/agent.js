@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
+import { callNvidia, hasNvidiaKey } from './_lib/nvidia.js'
 
 // This endpoint powers the admin-only Agent/Dashboard pages. The client UI
 // hides those pages behind an email check, but that's cosmetic — anyone can
@@ -140,44 +141,24 @@ Use this data to give more accurate, data-driven advice.`
     ? `\n\n${userInsights}\n---` 
     : '')
 
-  // NVIDIA (meta/llama-3.3-70b-instruct — the same model used for book
-  // summaries, chosen here for its stronger reasoning on agent tasks).
+  // Tries NVIDIA_API_KEY (confirmed healthy) first, falls back to
+  // NVIDIA_SUMMARY_API_KEY (higher-quality 70B model, but prone to getting
+  // quota/auth-blocked under heavy use — see api/_lib/nvidia.js).
+  if (!hasNvidiaKey()) {
+    return res.status(503).json({ error: 'AI service not configured' })
+  }
   try {
-    const nvidiaApiKey = process.env.NVIDIA_SUMMARY_API_KEY
-    if (!nvidiaApiKey) {
-      throw new Error('NVIDIA API key not configured')
-    }
-
-    const res1 = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${nvidiaApiKey}`
-      },
-      signal: AbortSignal.timeout(30000), // 30 second timeout
-      body: JSON.stringify({
-        model: 'meta/llama-3.3-70b-instruct',
-        max_tokens: 600,
-        temperature: 0.7,
-        messages: [
-          { role: 'system', content: enhancedPrompt },
-          ...messages.slice(-4)
-        ]
-      })
+    const { content } = await callNvidia({
+      messages: [
+        { role: 'system', content: enhancedPrompt },
+        ...messages.slice(-4)
+      ],
+      maxTokens: 600,
     })
-
-    if (!res1.ok) {
-      const err = await res1.text()
-      throw new Error(`NVIDIA error: ${res1.status} - ${err}`)
-    }
-
-    const data = await res1.json()
-    const content = data.choices?.[0]?.message?.content || ''
-
     return res.json({ content, provider: 'nvidia' })
-
-  } catch(nvidiaError) {
-    console.error('AI provider failed:', nvidiaError.message)
-    return res.status(500).json({ error: 'AI provider failed. Please try again.' })
+  } catch (nvidiaError) {
+    console.error('AI provider failed:', nvidiaError.status, nvidiaError.message)
+    const status = nvidiaError.status || 500
+    return res.status(status >= 500 ? 502 : status).json({ error: 'AI provider failed. Please try again.' })
   }
 }

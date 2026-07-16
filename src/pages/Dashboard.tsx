@@ -829,22 +829,100 @@ function FeedbackInsightsModule() {
   )
 }
 
+const FEEDBACK_CATEGORY_ICON: Record<string,string> = { bug:"🐛", feature:"💡", general:"💬", praise:"✨", other:"❓" }
+
+function UserMessagesModule() {
+  const [items, setItems] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [filter, setFilter] = useState('all')
+
+  const load = async () => {
+    setLoading(true); setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) { setError('Sign in as admin to view messages.'); setLoading(false); return }
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list', accessToken: session.access_token, limit: 200 }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Failed to load')
+      setItems(j.feedback || [])
+    } catch (e) {
+      setError((e as Error).message || 'Failed to load feedback')
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  const filtered = filter === 'all' ? items : items.filter(i => i.category === filter)
+
+  return (
+    <div>
+      <Title icon="📥" title="User Messages" sub={`${items.length} submission${items.length===1?'':'s'} from the app + website feedback forms`} />
+      <div style={{ display:'flex', gap:6, marginBottom:16, flexWrap:'wrap' }}>
+        {['all','bug','feature','general','praise','other'].map(c => (
+          <button key={c} onClick={()=>setFilter(c)}
+            style={{ padding:'5px 12px', borderRadius:20, fontSize:10.5, cursor:'pointer', fontFamily:'Georgia,serif',
+              background: filter===c ? 'rgba(201,168,76,0.15)' : 'transparent',
+              border: `0.5px solid ${filter===c ? G : BORDER}`, color: filter===c ? G : TM }}>
+            {c==='all' ? 'All' : `${FEEDBACK_CATEGORY_ICON[c]} ${c}`}
+          </button>
+        ))}
+        <button onClick={load} style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:20, fontSize:10.5, cursor:'pointer', fontFamily:'Georgia,serif', background:'transparent', border:`0.5px solid ${BORDER}`, color:TM }}>
+          🔄 Refresh
+        </button>
+      </div>
+      {loading ? (
+        <div style={{ textAlign:'center', padding:40, color:TM }}>Loading…</div>
+      ) : error ? (
+        <div style={{ textAlign:'center', padding:40, color:RED, fontSize:12 }}>{error}</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:'center', padding:40, color:TM, fontSize:12 }}>No feedback yet.</div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {filtered.map(item => (
+            <Card key={item.id} style={{ cursor:'default' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8, gap:10 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:TM }}>
+                  <span>{FEEDBACK_CATEGORY_ICON[item.category] || '💬'}</span>
+                  <span style={{ textTransform:'capitalize' }}>{item.category}</span>
+                  <span>·</span>
+                  <span>{item.source === 'website' ? '🌐 Website' : '📱 App'}</span>
+                  {item.rating && <><span>·</span><span>{'★'.repeat(item.rating)}{'☆'.repeat(5-item.rating)}</span></>}
+                </div>
+                <span style={{ fontSize:10, color:TM, whiteSpace:'nowrap' }}>{new Date(item.created_at).toLocaleDateString()}</span>
+              </div>
+              <div style={{ fontSize:13, color:TX, lineHeight:1.6, marginBottom: item.email ? 8 : 0 }}>{item.message}</div>
+              {item.email && <div style={{ fontSize:10.5, color:TM }}>{item.name ? `${item.name} · ` : ''}{item.email}</div>}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════════
 // MAIN DASHBOARD
 // ══════════════════════════════════════════════════════════════════════
 const MODULES = [
+  { id:"messages",  label:"📥 Messages",   component:UserMessagesModule },
   { id:"revenue",   label:"💰 Revenue",    component:RevenueModule },
   { id:"pricing",   label:"🏷️ Pricing",    component:PricingModule },
   { id:"growth",    label:"🚀 Growth",     component:GrowthModule },
   { id:"features",  label:"⚔️ Features",   component:FeatureGapModule },
   { id:"positioning",label:"🎯 Positioning",component:PositioningModule },
   { id:"content",   label:"✍️ Content",    component:ContentModule },
-  { id:"feedback",  label:"📊 Feedback",   component:FeedbackInsightsModule },
+  { id:"feedback",  label:"📊 Insights",   component:FeedbackInsightsModule },
   { id:"marketing",  label:"📣 Marketing Agent",component:MarketingAgentModule },
 ]
 
 export default function BusinessDashboard() {
-  const [active, setActive] = useState("feedback")
+  const [active, setActive] = useState("messages")
   const Active = MODULES.find(m=>m.id===active)?.component || MarketingAgentModule
 
   return (

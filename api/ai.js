@@ -5,13 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
-
-// Dedicated key for higher-quality generation (summaries/recommendations),
-// separate from NVIDIA_API_KEY which api/chat.js uses for the smaller/cheaper
-// book-chat model.
-const NVIDIA_API_KEY = process.env.NVIDIA_SUMMARY_API_KEY
-const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-const MODEL = 'meta/llama-3.3-70b-instruct'
+import { callNvidia, hasNvidiaKey } from './_lib/nvidia.js'
 
 // Used to persist a generated summary once, so it's never regenerated for
 // the same book again (matches the pre-generated 304 books already stored).
@@ -35,7 +29,7 @@ export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!NVIDIA_API_KEY) {
+  if (!hasNvidiaKey()) {
     return res.status(503).json({ error: 'AI service not configured' })
   }
 
@@ -65,60 +59,59 @@ export default async function handler(req, res) {
   const langPrompt = LANG_PROMPTS[langId] || LANG_PROMPTS.en
 
   try {
-    let body
+    let messagesForModel, maxTokens
 
     if (type === 'summary') {
-      body = { model:MODEL, max_tokens:600, messages:[
+      maxTokens = 600
+      messagesForModel = [
         { role:'system', content:`You are a world-class literary commentator discussing "${bookTitle}" by ${bookAuthor}. Write an ORIGINAL thematic explanation in your own words — describe the book's core ideas, arguments, and structure at a conceptual level, then add brief original commentary on why the ideas matter or how they connect to other thinking. Do NOT paraphrase closely, reconstruct passages, or imitate the author's prose style or sentence structure — describe the ideas, don't rewrite the text. ${langPrompt} Respond in maximum 150 words. Be concise and direct.` },
         { role:'user', content:`Write an original conceptual summary with brief commentary on "${bookTitle}" by ${bookAuthor}. Cover themes, key ideas, and takeaways in your own words — do not paraphrase or reconstruct the book's actual text. ${langPrompt}` }
-      ]}
+      ]
     } else if (type === 'chat') {
       if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: 'Invalid messages' })
       const clean = messages.slice(-4).filter(m=>m.role&&m.content&&typeof m.content==='string').map(m=>({ role:m.role==='user'?'user':'assistant', content:m.content.slice(0,2000) }))
-      body = { model:MODEL, max_tokens:600, messages:[
+      maxTokens = 600
+      messagesForModel = [
         { role:'system', content:`You are a world-class literary expert on "${bookTitle}" by ${bookAuthor}. ${langPrompt}` },
         ...clean
-      ]}
+      ]
     } else if (type === 'recommendations') {
       if (!Array.isArray(finishedTitles)||!Array.isArray(remainingTitles)) return res.status(400).json({ error: 'Invalid data' })
-      body = { model:MODEL, max_tokens:200, messages:[{ role:'user', content:`Based on these read books: ${finishedTitles.slice(0,5).join(', ')}\nFrom this list: ${remainingTitles.slice(0,30).join(', ')}\nReturn ONLY a JSON array of 5 titles, no explanation:\n["title1","title2","title3","title4","title5"]` }]}
+      maxTokens = 200
+      messagesForModel = [{ role:'user', content:`Based on these read books: ${finishedTitles.slice(0,5).join(', ')}\nFrom this list: ${remainingTitles.slice(0,30).join(', ')}\nReturn ONLY a JSON array of 5 titles, no explanation:\n["title1","title2","title3","title4","title5"]` }]
     }
 
-    const response = await fetch(NVIDIA_URL, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${NVIDIA_API_KEY}` },
-      signal: AbortSignal.timeout(30000), // 30 second timeout
-      body: JSON.stringify(body)
-    })
-
-    if (!response.ok) {
-      const err = await response.text()
-      console.error('NVIDIA error:', response.status, err)
+    let content
+    try {
+      const result = await callNvidia({ messages: messagesForModel, maxTokens })
+      content = result.content
+    } catch (err) {
+      console.error('NVIDIA error:', err.status, err.message)
 
       // Specific handling for common upstream errors. Never echo the raw
       // upstream error body to clients — it can contain internal details.
-      let errorMessage = `AI service error: ${response.status}`
+      const status = err.status || 502
+      let errorMessage = `AI service error: ${status}`
       let userFriendlyMessage = 'AI request failed. Please try again.'
 
-      if (response.status === 402) {
+      if (status === 402) {
         errorMessage = 'AI service payment required'
         userFriendlyMessage = 'AI API quota exceeded or invalid API key'
-      } else if (response.status === 401) {
+      } else if (status === 401) {
         errorMessage = 'AI service unauthorized'
         userFriendlyMessage = 'Invalid API key configuration'
-      } else if (response.status === 429) {
+      } else if (status === 429) {
         errorMessage = 'AI service rate limited'
         userFriendlyMessage = 'Too many requests, please try again later'
+      } else if (status === 408) {
+        return res.status(408).json({ error: 'Request timeout', details: 'AI service took too long to respond' })
       }
 
-      return res.status(response.status >= 500 ? 502 : response.status).json({
+      return res.status(status >= 500 ? 502 : status).json({
         error: errorMessage,
         details: userFriendlyMessage
       })
     }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content || ''
 
     if (type === 'recommendations') {
       try { const titles = JSON.parse(content.replace(/```json|```/g,'').trim()); return res.status(200).json({ titles: Array.isArray(titles)?titles:[] }) }
