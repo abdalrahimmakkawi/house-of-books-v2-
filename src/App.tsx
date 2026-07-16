@@ -1642,6 +1642,7 @@ export default function App() {
   const [exportingPDF,setExportingPDF]=useState(false)
   const [showUserDashboard,setShowUserDashboard]=useState(false)
   const [showFeedbackModal,setShowFeedbackModal]=useState(false)
+  const [canInstall,setCanInstall]=useState(false)
   const [feedbackCategory,setFeedbackCategory]=useState('general')
   const [feedbackMessage,setFeedbackMessage]=useState('')
   const [feedbackRating,setFeedbackRating]=useState<number|null>(null)
@@ -1751,13 +1752,20 @@ export default function App() {
       .catch(() => setPaypalReturnStatus('error'))
   }, [])
 
-  // PWA install detection
-  // Show feedback widget after every 3rd message
-  // useEffect(() => {
-  //   if (chatMessages.length > 0 && chatMessages.length % 3 === 0 && !feedbackGiven) {
-  //     setShowFeedbackWidget(true)
-  //   }
-  // }, [chatMessages.length, feedbackGiven])
+  // PWA install detection — index.html captures the browser's
+  // beforeinstallprompt event (calling preventDefault so the browser's own
+  // mini-banner doesn't show) and dispatches this custom event so React can
+  // offer an in-app "Install App" action instead via window.triggerPWAInstall().
+  useEffect(() => {
+    const onInstallable = () => setCanInstall(true)
+    window.addEventListener('pwa-installable', onInstallable)
+    window.addEventListener('appinstalled', () => setCanInstall(false))
+    return () => window.removeEventListener('pwa-installable', onInstallable)
+  }, [])
+  const installApp = async () => {
+    const installed = await (window as any).triggerPWAInstall?.()
+    if (installed) setCanInstall(false)
+  }
 
   useEffect(()=>{
     // Load books with retry + backoff so a transient Supabase hiccup
@@ -2813,6 +2821,18 @@ export default function App() {
               }}>
               💬 Send Feedback
             </button>
+            {canInstall && (
+              <button
+                onClick={installApp}
+                style={{
+                  background:'var(--surface)', border:'0.5px solid var(--gold-border)',
+                  borderRadius:'10px', padding:'11px', color:'var(--text)',
+                  fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
+                  textAlign:'left', paddingLeft:'16px', marginTop:'4px'
+                }}>
+                ⬇️ Install App
+              </button>
+            )}
             <button
               onClick={logout}
               style={{
