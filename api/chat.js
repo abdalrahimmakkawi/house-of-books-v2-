@@ -52,12 +52,14 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(25000),
       body: JSON.stringify({
         model: provider.model,
-        max_tokens: 500,
+        // Keep replies short — a hard backstop so the model can't ramble even
+        // if the prompt is ignored (~a short paragraph of tokens).
+        max_tokens: 220,
         temperature: 0.7,
         messages: [
           {
             role: 'system',
-            content: String(systemPrompt || `You are an expert on the book "${bookTitle}" (${bookCategory}). Answer questions clearly and helpfully in 2-3 paragraphs maximum. Be conversational and insightful.`).slice(0, 1500),
+            content: String(systemPrompt || `You are a warm, friendly reading companion who knows the book "${bookTitle}" (${bookCategory}) well. Talk like a real person and keep answers short — a few sentences, one short paragraph at most. If the reader asks you to be brief, honor it immediately. Skip filler and disclaimers; get to the point.`).slice(0, 1500),
           },
           ...recentMessages,
         ],

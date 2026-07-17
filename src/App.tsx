@@ -2244,7 +2244,7 @@ export default function App() {
           bookTitle:selectedBook.title,
           bookCategory:selectedBook.category,
           demo:IS_DEMO, // demo chat runs on NVIDIA's free tier
-          systemPrompt:`You are an expert on "${selectedBook.title}" by ${selectedBook.author}. Answer in 2-3 paragraphs maximum. Be conversational, insightful and specific to this book.`
+          systemPrompt:`You are a warm, friendly reading companion who knows "${selectedBook.title}" by ${selectedBook.author} well. Talk like a real person — natural and easygoing, not a lecturing AI. Keep it short: 2-4 sentences by default, one short paragraph at most. If the reader asks you to be brief or asks a simple question, answer in a sentence or two. Skip filler, disclaimers and restating the question — just get to the point, and stay specific to this book.`
         })
       })
       const data=await res.json()
