@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, signInWithGoogle, signInWithTwitter, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
-import Agent from './pages/Agent'
-import Dashboard from './pages/Dashboard'
 import { collectChatFeedback } from './lib/feedbackCollector'
+
+// Admin-only pages are lazy-loaded so they never ship to normal users.
+// Loaded on demand the first time an admin opens the Agent/Dashboard tab.
+const Agent = lazy(() => import('./pages/Agent'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
 
 // Admin bypass configuration
 const ADMIN_EMAILS = ['abdalrahimmakkawi@gmail.com']
@@ -759,10 +762,15 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, shelfStatu
       <img
         src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
         alt={book.title}
+        loading="lazy"
+        decoding="async"
         onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${book.id}/200/300` }}
         style={{
           width:'100%',aspectRatio:'2/3',
           objectFit:'cover',display:'block',
+          // Reserve layout space & skip off-screen paint work for cards below
+          // the fold — big win with 304 books in the grid.
+          contentVisibility:'auto',containIntrinsicSize:'200px 300px',
         }}
       />
       <div style={{padding:'10px 10px 12px'}}>
@@ -1200,6 +1208,7 @@ function ExpandedPanel({
           <img
             src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
             alt={book.title}
+            decoding="async"
             onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${book.id}/200/300` }}
             style={{
               width:'96px',height:'138px',
@@ -2197,24 +2206,41 @@ export default function App() {
   // Reveal an assistant reply word-by-word (typewriter) instead of dropping the
   // whole block at once — feels like the AI is typing. The reveal pace is
   // effectively a display rate limit on the response.
+  //
+  // Driven by requestAnimationFrame with time-based batching: we reveal ~1 word
+  // per 35ms (same pace as before), but coalesce all words that became due since
+  // the last frame into a SINGLE setChatMessages call. A 200-word reply used to
+  // cause ~100 React renders (one per 35ms tick); now it's bounded by the frame
+  // rate and we never render twice in one frame. Visual pacing is unchanged.
   const streamAssistant=(full:string)=>new Promise<void>(resolve=>{
     const tokens=full.split(/(\s+)/) // keep whitespace so spacing is preserved
-    let i=0
+    const MS_PER_WORD = 35
+    let cursor=0            // index into tokens already revealed
+    let lastTs=0            // timestamp of last reveal
     setChatStreaming(true)
     setChatMessages(p=>[...p,{role:'assistant',content:''}])
-    const step=()=>{
-      const chunk=tokens.slice(i,i+2).join('') // ~one word + its space per tick
-      i+=2
-      setChatMessages(p=>{
-        const copy=p.slice()
-        const last=copy[copy.length-1]
-        if(last&&last.role==='assistant')copy[copy.length-1]={...last,content:last.content+chunk}
-        return copy
-      })
-      if(i<tokens.length){setTimeout(step,35)}
+    const tick=(ts:number)=>{
+      if(!lastTs) lastTs=ts
+      const elapsed=ts-lastTs
+      const due=Math.floor(elapsed/MS_PER_WORD)        // words owed since last frame
+      if(due>0){
+        lastTs += due*MS_PER_WORD                       // carry over the remainder
+        const next=Math.min(cursor+due*2, tokens.length) // *2: word + its space token
+        if(next>cursor){
+          const chunk=tokens.slice(cursor,next).join('')
+          cursor=next
+          setChatMessages(p=>{
+            const copy=p.slice()
+            const last=copy[copy.length-1]
+            if(last&&last.role==='assistant')copy[copy.length-1]={...last,content:last.content+chunk}
+            return copy
+          })
+        }
+      }
+      if(cursor<tokens.length){requestAnimationFrame(tick)}
       else{setChatStreaming(false);resolve()}
     }
-    setTimeout(step,35)
+    requestAnimationFrame(tick)
   }
 )
   const sendMessage=async(messageValue?: string)=>{
@@ -2263,10 +2289,16 @@ export default function App() {
     }
   }
 
-  const categories=['All',...Array.from(new Set(books.map(b=>b.category).filter(Boolean))).sort()]
-  const shelfCount=Object.values(shelf).filter(v=>v&&v!=='none').length
+  const categories=useMemo(
+    ()=>['All',...Array.from(new Set(books.map(b=>b.category).filter(Boolean))).sort()],
+    [books]
+  )
+  const shelfCount=useMemo(
+    ()=>Object.values(shelf).filter(v=>v&&v!=='none').length,
+    [shelf]
+  )
 
-  const filteredBooks=books.filter(book=>{
+  const filteredBooks=useMemo(()=>books.filter(book=>{
     const matchesSearch=book.title.toLowerCase().includes(searchQuery.toLowerCase())||book.author.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory=activeCategory==='All'||book.category===activeCategory
     const matchesView=activeView==='all'||(activeView==='shelf'&&shelf[book.id]&&shelf[book.id]!=='none')
@@ -2278,14 +2310,14 @@ export default function App() {
       ? `${book.summary||''}\n${book.key_insights||''}`.toLowerCase().includes(insideQ)
       : (insideIds?insideIds.has(book.id):true))
     return matchesSearch&&matchesCategory&&matchesView&&matchesInside
-  })
+  }),[books,searchQuery,activeCategory,activeView,shelf,searchInside,insideIds])
 
   // ── Library Page Component ─────────────────────────────
   const LibraryPage = () => (
     <>
       {dailyQuote&&<div className="daily-quote"><div className="quote-label">✦ {t.dailyQuote}</div><div className="quote-text">"{shortenQuote(dailyQuote.text)}"</div><div className="quote-source">— {dailyQuote.source}</div></div>}
       {streak>=2&&<div className="streak-bar"><span className="streak-fire">🔥</span><span className="streak-count">{streak}</span><span className="streak-label">{t.streak}</span></div>}
-      {recommendations.length>0&&<div className="recs-section"><div className="recs-title">✨ {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url} alt={b.title} onError={e=>{(e.target as HTMLImageElement).src=`https://picsum.photos/seed/${b.id}/110/165`}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
+      {recommendations.length>0&&<div className="recs-section"><div className="recs-title">✨ {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url} alt={b.title} loading="lazy" decoding="async" onError={e=>{(e.target as HTMLImageElement).src=`https://picsum.photos/seed/${b.id}/110/165`}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
       {loadingRecs&&<div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'1.5rem'}}>✨ {t.loadingRecs}</div>}
 
       <div className="section-header">
@@ -2667,8 +2699,16 @@ export default function App() {
           inside render remounts its whole subtree (and drops input focus)
           on every keystroke. */}
       {currentPage === 'library' && LibraryPage()}
-      {currentPage === 'agent' && isAdmin(authedEmail) && <Agent />}
-      {currentPage === 'dashboard' && isAdmin(authedEmail) && <Dashboard />}
+      {currentPage === 'agent' && isAdmin(authedEmail) && (
+        <Suspense fallback={<div style={{padding:'2rem',textAlign:'center',color:'var(--text-muted)'}}>Loading…</div>}>
+          <Agent />
+        </Suspense>
+      )}
+      {currentPage === 'dashboard' && isAdmin(authedEmail) && (
+        <Suspense fallback={<div style={{padding:'2rem',textAlign:'center',color:'var(--text-muted)'}}>Loading…</div>}>
+          <Dashboard />
+        </Suspense>
+      )}
     </main>
 
     {/* EXPANDED PANEL */}

@@ -51,14 +51,26 @@
     <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
     <script defer src="/_vercel/insights/script.js"></script>
 
-    <!-- PWA install prompt (service-worker registration intentionally removed to avoid stale-cache stuck-loading) -->
+    <!-- Service worker: precache the app shell + runtime cache media/covers.
+         The SW is built by vite-plugin-pwa into /sw.js. It uses skipWaiting +
+         clientsClaim so new deploys take over immediately (no stale shell), and
+         never serves a cached index.html while online (the old stale-cache bug).
+         Registered after load so it never competes with first paint. -->
     <script>
-      // Proactively unregister any previously-installed service worker so returning
-      // visitors are never served a stale cached shell.
-      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
-        navigator.serviceWorker.getRegistrations()
-          .then(regs => regs.forEach(r => r.unregister()))
-          .catch(() => {})
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.warn('[HoB] SW registration failed', err)
+          })
+        })
+
+        // When a new version takes over, reload once so the user gets it.
+        let refreshing = false
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return
+          refreshing = true
+          window.location.reload()
+        })
       }
 
       // PWA Install prompt — save for later use
