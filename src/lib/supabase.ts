@@ -94,6 +94,10 @@ export interface Book {
   key_insights?: string | null
   audio_url?: string | null
   summary_generated?: boolean
+  // Whether this title is behind the paywall. Set by the database and
+  // enforced there too — the UI reads it only to decide whether to draw the
+  // lock, never as the security boundary.
+  is_premium?: boolean
   // long-form (~2000-2500 word) text summary, batch-generated separately —
   // null until scripts/backfill-long-summaries.mjs has run for this book
   long_summary?: string | null
