@@ -21,20 +21,32 @@ export const signInWithGoogle = async () => {
   return { data, error }
 }
 
-export const signInWithTwitter = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'twitter',
-    options: {
-      redirectTo: window.location.origin
-    }
-  })
-  return { data, error }
-}
+// X / Twitter sign-in is intentionally NOT offered.
+//
+// It was previously exposed as `provider: 'twitter'`, which Supabase rejects
+// with "Unsupported provider: provider is not enabled" — that maps to the
+// deprecated OAuth 1.0a provider, which is disabled on this project. The
+// modern key is `'x'`, and that DOES redirect, but the project's X provider is
+// configured with the GOOGLE client id (…apps.googleusercontent.com), so X
+// rejects the request and the user lands on an error page.
+//
+// Re-enabling it properly needs real credentials from the X developer portal
+// (Authentication → Sign In / Providers → "X / Twitter (OAuth 2.0)"), after
+// which this becomes signInWithOAuth({ provider: 'x' }).
 
-export const signInWithEmail = async (email: string) => {
+// Send a sign-in code.
+//
+// `shouldCreateUser` is what actually distinguishes Sign in from Sign up.
+// With OTP there is otherwise no difference — Supabase silently creates an
+// account for any address you send a code to. Passing false on the Sign in
+// path makes Supabase reject unknown addresses instead, so a returning user
+// who mistypes their email gets "no account found" rather than a brand-new
+// empty account and a confusing "where did my shelf go?".
+export const signInWithEmail = async (email: string, shouldCreateUser = true) => {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
+      shouldCreateUser,
       emailRedirectTo: window.location.origin
     }
   })
