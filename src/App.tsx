@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signInWithTwitter, signOut } from './lib/supabase'
+import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
 import { collectChatFeedback } from './lib/feedbackCollector'
 
@@ -1720,6 +1720,7 @@ export default function App() {
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [codeInput, setCodeInput] = useState('')
   const [verifying, setVerifying] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [loginError, setLoginError] = useState('')
   const [booksError, setBooksError] = useState(false)
   const [booksRetryNonce, setBooksRetryNonce] = useState(0)
@@ -2116,10 +2117,17 @@ export default function App() {
     }
     setLoginError('')
     setLoginStatus('sending')
-    const { error } = await signInWithEmail(email)
+    // Only the signup path may create an account — see signInWithEmail.
+    const { error } = await signInWithEmail(email, authMode === 'signup')
     if (error) {
       setLoginStatus('idle')
-      setLoginError(error.message || 'Could not send the login link. Please try again.')
+      // Supabase reports an unknown address on the sign-in path as a signup
+      // restriction; translate that into something a returning user can act on.
+      if (authMode === 'signin' && /not found|signups? not allowed|user not/i.test(error.message || '')) {
+        setLoginError(`No account found for ${email}. Tap "Sign up" to create one.`)
+      } else {
+        setLoginError(error.message || 'Could not send the code. Please try again.')
+      }
     } else {
       setLoginStatus('sent')
     }
@@ -2150,12 +2158,6 @@ export default function App() {
     track('signin_click', { provider: 'google' })
     const { error } = await signInWithGoogle()
     if (error) setLoginError(error.message || 'Google sign-in failed. Please try again.')
-  }
-  const handleTwitterLogin = async () => {
-    setLoginError('')
-    track('signin_click', { provider: 'twitter' })
-    const { error } = await signInWithTwitter()
-    if (error) setLoginError(error.message || 'X sign-in failed. Please try again.')
   }
   const updateShelf=(bookId:string,status:ShelfStatus)=>{setShelf(p=>({...p,[bookId]:status}))}
   const updateProgress=(bookId:string,pct:number)=>{setReadingProgress(p=>({...p,[bookId]:pct}))}
@@ -2591,7 +2593,28 @@ export default function App() {
               </>
             ) : (
               <>
-                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.75rem',lineHeight:1.6}}>Sign in to start reading — free during beta</p>
+                {/* Sign in vs Sign up. With OTP both send a code, so the real
+                    difference is whether an unknown email is allowed to create
+                    an account — see signInWithEmail / handleLogin. */}
+                <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
+                  {([['signin','Sign in'],['signup','Sign up']] as const).map(([mode,label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => { setAuthMode(mode); setLoginError('') }}
+                      style={{flex:1,padding:'9px',borderRadius:'9px',border:'none',cursor:'pointer',fontFamily:'Georgia,serif',fontSize:'13.5px',transition:'background .18s ease, color .18s ease',
+                        background: authMode===mode ? '#c9a84c' : 'transparent',
+                        color: authMode===mode ? '#0a0a0f' : '#9a9080',
+                        fontWeight: authMode===mode ? 600 : 400}}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
+                  {authMode === 'signin'
+                    ? 'Welcome back — sign in to pick up where you left off.'
+                    : 'Create your account — free, no credit card needed.'}
+                </p>
                 <button
                   onClick={handleGoogleLogin}
                   style={{width:'100%',padding:'12px',background:'#fff',border:'none',borderRadius:'10px',color:'#1a1a1a',fontSize:'14px',cursor:'pointer',fontFamily:'Georgia,serif',marginBottom:'10px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',fontWeight:600,transition:'transform .15s ease, box-shadow .15s ease'}}
@@ -2599,18 +2622,9 @@ export default function App() {
                   onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.boxShadow='none';(e.currentTarget as HTMLButtonElement).style.transform='none'}}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
-                  Continue with Google
+                  {authMode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
                 </button>
-                <button
-                  onClick={handleTwitterLogin}
-                  style={{width:'100%',padding:'12px',background:'#000',border:'1px solid rgba(255,255,255,0.18)',borderRadius:'10px',color:'#fff',fontSize:'14px',cursor:'pointer',fontFamily:'Georgia,serif',marginBottom:'14px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',fontWeight:600,transition:'transform .15s ease, box-shadow .15s ease'}}
-                  onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.boxShadow='0 4px 16px rgba(0,0,0,0.45)';(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)'}}
-                  onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.boxShadow='none';(e.currentTarget as HTMLButtonElement).style.transform='none'}}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.41l-5.8-7.58-6.64 7.58H.46l8.6-9.83L0 1.15h7.6l5.24 6.93 6.06-6.93zm-1.29 19.5h2.04L6.48 3.24H4.29L17.61 20.65z"/></svg>
-                  Continue with X
-                </button>
-                <div style={{display:'flex',alignItems:'center',gap:'10px',margin:'0 0 14px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'10px',margin:'14px 0'}}>
                   <div style={{flex:1,height:'1px',background:'rgba(201,168,76,0.2)'}}/>
                   <span style={{color:'#6a6458',fontSize:'11px'}}>or</span>
                   <div style={{flex:1,height:'1px',background:'rgba(201,168,76,0.2)'}}/>
@@ -2628,11 +2642,20 @@ export default function App() {
                   disabled={loginStatus === 'sending'}
                   style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
                 >
-                  {loginStatus === 'sending' ? 'Sending code…' : 'Email me a sign-in code →'}
+                  {loginStatus === 'sending'
+                    ? 'Sending code…'
+                    : authMode === 'signin' ? 'Email me a sign-in code →' : 'Create my account →'}
                 </button>
                 {loginError && (
-                  <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
+                  <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
                 )}
+                <p style={{color:'#6a6458',fontSize:'11.5px',marginTop:'12px',lineHeight:1.5}}>
+                  {authMode === 'signin' ? (
+                    <>New here? <button onClick={()=>{setAuthMode('signup');setLoginError('')}} style={{background:'none',border:'none',color:'#c9a84c',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Create an account</button></>
+                  ) : (
+                    <>Already have an account? <button onClick={()=>{setAuthMode('signin');setLoginError('')}} style={{background:'none',border:'none',color:'#c9a84c',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Sign in</button></>
+                  )}
+                </p>
                 <button
                   onClick={() => setAppFlow('landing')}
                   style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
