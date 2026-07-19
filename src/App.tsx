@@ -196,7 +196,11 @@ const TRACKS = [
   { id:'cosmos', label:'Cosmos', emoji:'🚀',src:'/music/cosmos.mp3'  },
 ]
 
-const FREE_BOOKS = 84
+// Display-only counts for the landing page stats. Lock state is NOT derived
+// from these — it comes from each book's is_premium flag, which the database
+// paywall enforces. Verified against the DB: 301 total, 85 free, 216 premium.
+const TOTAL_BOOKS = 301
+const FREE_BOOKS = 85
 
 // Vercel Web Analytics custom event helper (no-op until the script loads /
 // Web Analytics is on a plan that records custom events; safe to call always).
@@ -233,8 +237,21 @@ function getChatUses(): { count: number; resetAt: number } {
 
 // Light columns for the library grid — summaries/insights are fetched per
 // book on open, keeping the initial load ~93% smaller than select('*').
-const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,audio_url'
-const BOOKS_CACHE_KEY = 'hob_books_cache_v1'
+//
+// These come from `books_catalog`, a metadata-only VIEW, not from `books`.
+// `books` is row-gated by the paywall policy, so selecting the library from it
+// returned only the ~85 free rows to a non-premium visitor — premium titles
+// disappeared from the library entirely instead of showing as locked cards to
+// upgrade for. The view is owner-privileged so it can list all 301 rows, and
+// exposes ONLY marketing metadata, so showing every title leaks no paid
+// content. Opening a book still reads its content from `books`, where the
+// paywall applies.
+//
+// audio_url is deliberately NOT here: the grid never used it (only the detail
+// fetch does), and exposing it would hand out premium narration URLs.
+const BOOK_CATALOG_TABLE = 'books_catalog'
+const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,is_premium'
+const BOOKS_CACHE_KEY = 'hob_books_cache_v2' // v2: catalog view + is_premium
 const BOOKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 // ── CSS ───────────────────────────────────────────────────────────
@@ -769,7 +786,7 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, shelfStatu
           width:'100%',aspectRatio:'2/3',
           objectFit:'cover',display:'block',
           // Reserve layout space & skip off-screen paint work for cards below
-          // the fold — big win with 304 books in the grid.
+          // the fold — big win with 301 books in the grid.
           contentVisibility:'auto',containIntrinsicSize:'200px 300px',
         }}
       />
@@ -838,7 +855,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
     <div className="email-modal-wrap" onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'16px',padding:'2rem',maxWidth:'420px',width:'100%'}}>
         <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.5rem',color:'var(--gold)',marginBottom:'4px'}}>House of Books Premium</h3>
-        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>All 304 books · Unlimited AI chat · Offline audio</p>
+        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>All 301 books · Unlimited AI chat · Offline audio</p>
 
         {!email && (
           <input
@@ -1876,7 +1893,7 @@ export default function App() {
       // 6 rows) so public sample traffic barely touches the DB.
       const {data,error}=await (IS_DEMO
         ? supabase.from('books').select('*').in('id',DEMO_BOOK_IDS).order('title')
-        : supabase.from('books').select(BOOK_LIST_COLUMNS).order('title'))
+        : supabase.from(BOOK_CATALOG_TABLE).select(BOOK_LIST_COLUMNS).order('title'))
       if(cancelled)return
       if(!error&&data&&data.length){
         setBooks(data as Book[]);setBooksError(false);setLoading(false)
@@ -2221,8 +2238,12 @@ export default function App() {
     }catch{}finally{setLoadingRecs(false)}
   }
   const openBook=(book:Book)=>{
-    const idx=books.findIndex(b=>b.id===book.id)
-    if(idx>=FREE_BOOKS&&!isPremium){track('locked_book_click',{category:book.category});setShowEmailModal(true);return}
+    // Locked state comes from the book's own is_premium flag, not its position
+    // in the list. Position was wrong for the curated demo books (e.g. "The
+    // Psychology of Money" is free but sorts past the free cutoff, so it read
+    // as locked), and it silently drifts whenever the catalog is reordered or
+    // grows. is_premium is the same flag the database paywall enforces.
+    if(book.is_premium&&!isPremium&&!isAdmin(authedEmail)){track('locked_book_click',{category:book.category});setShowEmailModal(true);return}
     track('book_open',{category:book.category})
     setSelectedBook(book);setChatMessages([])
     setCurrentNote(notes[book.id]||'');setNoteSaved(false)
@@ -2390,7 +2411,7 @@ export default function App() {
                 index={index}
                 hovered={hovered}
                 setHovered={setHovered}
-                isLocked={books.findIndex(b=>b.id===book.id)>=FREE_BOOKS&&!isPremium&&!isAdmin(authedEmail)}
+                isLocked={!!book.is_premium&&!isPremium&&!isAdmin(authedEmail)}
                 shelfStatus={shelf[book.id]||'none'}
                 onToggleShelf={()=>updateShelf(book.id,(shelf[book.id]&&shelf[book.id]!=='none')?'none':'want')}
                 progress={readingProgress[book.id]||0}
@@ -2471,13 +2492,13 @@ export default function App() {
           </h1>
 
           <p className="landing-sub">
-            Read smarter. Explore 304 books with AI summaries,
+            Read smarter. Explore 301 books with AI summaries,
             audio narration, and an AI companion. Free during beta.
           </p>
 
           {/* Stats */}
           <div style={{display:'flex', justifyContent:'center', gap:'3rem', marginBottom:'3rem'}}>
-            {[['304','BOOKS'],[String(FREE_BOOKS),'FREE'],['5','LANGUAGES']].map(([n,l]) => (
+            {[[String(TOTAL_BOOKS),'BOOKS'],[String(FREE_BOOKS),'FREE'],['5','LANGUAGES']].map(([n,l]) => (
               <div key={l}>
                 <div className="landing-stat-num">{n}</div>
                 <div className="landing-stat-label">{l}</div>
@@ -2503,7 +2524,7 @@ export default function App() {
             gap:'16px', maxWidth:'800px', width:'100%'
           }}>
             {[
-              ['📚','304 Books','Classics and modern titles from 15+ countries in 5 languages'],
+              ['📚','301 Books','Classics and modern titles from 15+ countries in 5 languages'],
               ['✦','AI Book Chat','10 free AI chats per session — ask anything about any book'],
               ['🎧','Audio Summaries','Listen to any book, narrated by a natural AI voice'],
               ['⭐','Go Premium','Unlimited AI, full library access, PDF exports and more']
