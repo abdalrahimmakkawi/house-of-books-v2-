@@ -10,8 +10,14 @@ import { createClient } from '@supabase/supabase-js'
 import { paypalFetch, periodEndFromPlan, PAYPAL_MODE_ACTIVE } from './_lib/paypal.js'
 import { sendRenewalReceipt, sendCancellationEmail } from './_lib/email.js'
 
+// NOTE: the project URL fallback is REQUIRED, not cosmetic. createClient throws
+// "supabaseUrl is required" on undefined, and because this runs at module scope
+// that throw kills the whole function before the handler executes — every PayPal
+// event 500s (FUNCTION_INVOCATION_FAILED). That silently breaks renewals and
+// cancellations while first-time checkout keeps working, so it doesn't surface
+// until a customer's first renewal. Keep this in sync with api/payments.js.
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://ulxzyjqmvzyqjynmqywe.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
