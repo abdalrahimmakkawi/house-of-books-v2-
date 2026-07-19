@@ -76,6 +76,24 @@ export async function sendRenewalReceipt({ to, plan }) {
   })
 }
 
+// Sent when a refund is issued. `amount` is a display string like "$8.99 USD"
+// taken from PayPal's actual refund response — never a locally-assumed price,
+// so the email can't claim a different figure than what was really returned.
+export async function sendRefundEmail({ to, plan, amount }) {
+  const label = PLAN_LABEL[plan] || plan
+  await send({
+    to,
+    subject: 'Your House of Books refund has been issued',
+    html: shell(`
+      <h2 style="color:#b8912f;font-weight:500">Refund issued</h2>
+      <p>We've refunded <strong>${amount}</strong> for your ${label} subscription. Your subscription has been cancelled and won't be charged again.</p>
+      <p>Refunds usually appear on your original payment method within <strong>3–5 business days</strong>, depending on your bank or card issuer.</p>
+      <p>Premium access has ended, but your account, notes, and reading progress are all still here if you'd like to come back.</p>
+      <p style="margin-top:20px"><a href="https://house-of-books-v2.vercel.app/" style="background:#b8912f;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;display:inline-block">Open House of Books</a></p>
+    `),
+  })
+}
+
 // Sent when a subscription is cancelled (from the app or PayPal side).
 export async function sendCancellationEmail({ to, plan }) {
   const label = PLAN_LABEL[plan] || plan
