@@ -41,6 +41,39 @@ export const signInWithEmail = async (email: string) => {
   return { data, error }
 }
 
+// Verify the 6-digit code from the login email.
+//
+// This exists because the emailed LINK cannot sign you into the installed
+// Android app. The link's first hop is on Supabase's domain
+// (…supabase.co/auth/v1/verify?…&redirect_to=…), and Android only hands a URL
+// to an app when the app is verified for THAT host — we're only verified for
+// our own domain. So Android opens the link in a browser, Supabase redirects
+// to us *inside that browser*, and the session ends up on the website instead
+// of in the app. (Server-side redirects never hand off to an app, and Gmail's
+// in-app browser would swallow the hand-off even if they did.)
+//
+// Typing a code keeps the whole exchange inside the app, so it works
+// identically in the Android app, an iOS home-screen PWA, and the browser.
+export const verifyEmailCode = async (email: string, token: string) => {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token: token.trim(),
+    type: 'email',
+  })
+  return { data, error }
+}
+
+// Verify a link that landed on our OWN domain as ?token_hash=…&type=…
+// (used when the email template points at us directly rather than at
+// Supabase's verify endpoint — that form CAN open the installed app).
+export const verifyTokenHash = async (tokenHash: string, type: string) => {
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: (type || 'email') as 'email' | 'magiclink' | 'recovery' | 'invite',
+  })
+  return { data, error }
+}
+
 export const signOut = async () => {
   await supabase.auth.signOut()
 }
