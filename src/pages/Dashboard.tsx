@@ -906,11 +906,124 @@ function UserMessagesModule() {
   )
 }
 
+// Issue a refund to a customer. Deliberately two-step: refunds move real money
+// out of the merchant account and can't be undone through the API, so the
+// confirm step restates exactly what will happen before anything is sent.
+function RefundModule() {
+  const [email, setEmail] = useState('')
+  const [amount, setAmount] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<any>(null)
+  const [error, setError] = useState('')
+
+  const reset = () => { setConfirming(false); setBusy(false) }
+
+  const issueRefund = async () => {
+    setBusy(true); setError(''); setResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sign in as admin to issue refunds.')
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'admin-refund',
+          accessToken: session.access_token,
+          email: email.trim(),
+          ...(amount.trim() ? { amount: amount.trim() } : {}),
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Refund failed')
+      setResult(j)
+      setEmail(''); setAmount('')
+    } catch (e) {
+      setError((e as Error).message)
+    }
+    reset()
+  }
+
+  const inputStyle = {
+    width:'100%', padding:'10px 12px', borderRadius:8, fontFamily:'Georgia,serif', fontSize:13,
+    background:SF, border:`0.5px solid ${BORDER}`, color:TX, marginBottom:10,
+  } as const
+
+  return (
+    <div>
+      <Title icon="💸" title="Issue a Refund" sub="Refunds the customer's most recent payment, cancels their subscription, and revokes Premium" />
+
+      <Card style={{ cursor:'default', maxWidth:520 }}>
+        <label style={{ fontSize:11, color:TM, display:'block', marginBottom:5 }}>Customer email</label>
+        <input value={email} onChange={e=>{setEmail(e.target.value); setConfirming(false)}}
+          placeholder="customer@example.com" style={inputStyle} />
+
+        <label style={{ fontSize:11, color:TM, display:'block', marginBottom:5 }}>
+          Amount (optional — leave blank for a full refund)
+        </label>
+        <input value={amount} onChange={e=>{setAmount(e.target.value); setConfirming(false)}}
+          placeholder="e.g. 8.99" inputMode="decimal" style={inputStyle} />
+
+        {!confirming ? (
+          <button
+            disabled={!email.trim() || busy}
+            onClick={()=>{ setError(''); setResult(null); setConfirming(true) }}
+            style={{ width:'100%', padding:'11px', borderRadius:8, fontFamily:'Georgia,serif', fontSize:13,
+              cursor: email.trim() ? 'pointer':'default', background: email.trim() ? GD : SF,
+              border:`0.5px solid ${email.trim() ? G : BORDER}`, color: email.trim() ? G : TM, opacity: busy?0.6:1 }}>
+            Review refund →
+          </button>
+        ) : (
+          <div style={{ background:'rgba(220,50,50,0.07)', border:'0.5px solid rgba(220,50,50,0.3)', borderRadius:10, padding:14 }}>
+            <div style={{ fontSize:12, color:TX, lineHeight:1.65, marginBottom:12 }}>
+              This will <strong>{amount.trim() ? `refund $${amount.trim()}` : 'refund the full amount'}</strong> to{' '}
+              <strong>{email.trim()}</strong>, cancel their subscription, revoke Premium, and email them a confirmation.
+              <div style={{ color:TM, marginTop:6 }}>Money leaves your PayPal account. This can't be undone here.</div>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={()=>setConfirming(false)} disabled={busy}
+                style={{ flex:1, padding:'10px', borderRadius:8, fontFamily:'Georgia,serif', fontSize:12.5,
+                  cursor:'pointer', background:'transparent', border:`0.5px solid ${BORDER}`, color:TM }}>
+                Cancel
+              </button>
+              <button onClick={issueRefund} disabled={busy}
+                style={{ flex:1, padding:'10px', borderRadius:8, fontFamily:'Georgia,serif', fontSize:12.5,
+                  cursor: busy?'default':'pointer', background:'rgba(220,50,50,0.15)',
+                  border:'0.5px solid rgba(220,50,50,0.45)', color:'#e05555', opacity: busy?0.6:1 }}>
+                {busy ? 'Refunding…' : 'Yes, refund'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ marginTop:12, fontSize:12, color:'#e05555', lineHeight:1.55 }}>{error}</div>
+        )}
+        {result && (
+          <div style={{ marginTop:12, background:'rgba(80,160,110,0.08)', border:'0.5px solid rgba(80,160,110,0.35)',
+            borderRadius:10, padding:13, fontSize:12, color:TX, lineHeight:1.7 }}>
+            <div style={{ color:'#5fb583', marginBottom:5 }}>✓ Refund issued</div>
+            <div style={{ color:TM }}>
+              Amount: <span style={{ color:TX }}>{result.amount ? `$${result.amount} ${result.currency}` : '—'}</span><br/>
+              PayPal refund ID: <span style={{ color:TX }}>{result.refundId}</span><br/>
+              Status: <span style={{ color:TX }}>{result.status}</span>
+            </div>
+            <div style={{ color:TM, marginTop:7, fontSize:11 }}>
+              The customer has been emailed. Funds usually land in 3–5 business days.
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════════
 // MAIN DASHBOARD
 // ══════════════════════════════════════════════════════════════════════
 const MODULES = [
   { id:"messages",  label:"📥 Messages",   component:UserMessagesModule },
+  { id:"refund",    label:"💸 Refund",     component:RefundModule },
   { id:"revenue",   label:"💰 Revenue",    component:RevenueModule },
   { id:"pricing",   label:"🏷️ Pricing",    component:PricingModule },
   { id:"growth",    label:"🚀 Growth",     component:GrowthModule },
