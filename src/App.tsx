@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { supabase, signInWithEmail, signInWithGoogle, signInWithTwitter, signOut } from './lib/supabase'
+import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signInWithTwitter, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
 import { collectChatFeedback } from './lib/feedbackCollector'
 
@@ -1701,6 +1701,8 @@ export default function App() {
     () => IS_DEMO ? 'app' : (localStorage.getItem('userEmail') ? 'app' : 'landing')
   )
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [codeInput, setCodeInput] = useState('')
+  const [verifying, setVerifying] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [booksError, setBooksError] = useState(false)
   const [booksRetryNonce, setBooksRetryNonce] = useState(0)
@@ -1786,6 +1788,24 @@ export default function App() {
       }
     )
     return () => subscription.unsubscribe()
+  }, [])
+
+  // Login link that landed on OUR domain as ?token_hash=...&type=...
+  // (rather than on Supabase's verify endpoint). Only this form can open the
+  // installed Android app, because Android hands a URL to an app only when
+  // that app is verified for the URL's own host — see verifyTokenHash().
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tokenHash = params.get('token_hash')
+    if (!tokenHash) return
+    const type = params.get('type') || 'email'
+    // Strip the token from the URL immediately — it's a single-use credential
+    // and shouldn't sit in history, screenshots, or a shared URL.
+    window.history.replaceState({}, '', window.location.pathname)
+    verifyTokenHash(tokenHash, type).then(({ error }) => {
+      // On success onAuthStateChange fires SIGNED_IN and routes into the app.
+      if (error) setLoginError(error.message || 'That login link has expired. Please request a new one.')
+    })
   }, [])
 
   // PayPal redirects back here after subscription approval with
@@ -2087,6 +2107,27 @@ export default function App() {
       setLoginStatus('sent')
     }
   }
+  // Sign in with the 6-digit code from the email. This is the path that works
+  // inside the installed app — see verifyEmailCode() for why the emailed link
+  // can't be.
+  const handleVerifyCode = async () => {
+    const code = codeInput.replace(/\D/g, '')
+    if (code.length !== 6) {
+      setLoginError('Enter the 6-digit code from your email.')
+      return
+    }
+    setLoginError('')
+    setVerifying(true)
+    const { error } = await verifyEmailCode(emailInput.trim().toLowerCase(), code)
+    setVerifying(false)
+    if (error) {
+      setLoginError(/expired|invalid/i.test(error.message || '')
+        ? 'That code is invalid or has expired. Request a new one.'
+        : (error.message || 'Could not verify the code. Please try again.'))
+    }
+    // On success onAuthStateChange fires SIGNED_IN and routes into the app.
+  }
+
   const handleGoogleLogin = async () => {
     setLoginError('')
     track('signin_click', { provider: 'google' })
@@ -2493,12 +2534,36 @@ export default function App() {
               <>
                 <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
                 <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
-                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
-                  We sent a login link to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Open it on this device to sign in. (Check your spam folder if you don't see it.)
+                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
+                  We sent a 6-digit code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={codeInput}
+                  onChange={e => { setCodeInput(e.target.value.replace(/\D/g,'').slice(0,6)); if (loginError) setLoginError('') }}
+                  onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
+                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                />
+                <button
+                  onClick={handleVerifyCode}
+                  disabled={verifying || codeInput.length !== 6}
+                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:(verifying||codeInput.length!==6)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||codeInput.length!==6)?0.6:1}}
+                >
+                  {verifying ? 'Verifying…' : 'Sign in →'}
+                </button>
+                {loginError && (
+                  <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
+                )}
+                <p style={{color:'#6a6458',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
+                  The email also has a link — but on a phone, use the code so you stay in the app.
                 </p>
                 <button
-                  onClick={() => { setLoginStatus('idle'); setLoginError('') }}
-                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%'}}
+                  onClick={() => { setLoginStatus('idle'); setLoginError(''); setCodeInput('') }}
+                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
                 >
                   ← Use a different email
                 </button>
@@ -2542,7 +2607,7 @@ export default function App() {
                   disabled={loginStatus === 'sending'}
                   style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
                 >
-                  {loginStatus === 'sending' ? 'Sending link…' : 'Email me a login link →'}
+                  {loginStatus === 'sending' ? 'Sending code…' : 'Email me a sign-in code →'}
                 </button>
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
