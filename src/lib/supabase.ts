@@ -34,47 +34,23 @@ export const signInWithGoogle = async () => {
 // (Authentication → Sign In / Providers → "X / Twitter (OAuth 2.0)"), after
 // which this becomes signInWithOAuth({ provider: 'x' }).
 
-// Password auth. This is now the primary path — see App.tsx's Sign in / Sign
-// up screen. A password is a real secret only the account owner knows, which
-// is what makes "returning users just type email + password, no email
-// round-trip" safe. Email-only "sign in" (no password, no code) was
-// explicitly rejected: anyone who knows a user's address would be able to
-// open their account, admin included.
-//
-// Sign up: create the account. Confirm email is ON for this project, so the
-// account exists but can't sign in until the confirmation link is clicked —
-// see the "Confirm sign up" email template, which (like magic link) had to be
-// pointed at our own domain rather than Supabase's, or the confirmation link
-// would open the website instead of the installed app for the same reason
-// the old magic link did.
-export const signUpWithPassword = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
+// OTP-based auth: sends a magic link / 6-digit code via email.
+// shouldCreateUser controls whether Supabase creates a new account or rejects
+// unknown addresses — the Sign in / Sign up toggle in App.tsx sets this.
+export const signInWithEmail = async (email: string, shouldCreateUser = true) => {
+  const { data, error } = await supabase.auth.signInWithOtp({
     email,
-    password,
-    options: { emailRedirectTo: window.location.origin }
+    options: { shouldCreateUser, emailRedirectTo: window.location.origin }
   })
   return { data, error }
 }
 
-// Sign in: no email round-trip at all when the password is right.
-export const signInWithPassword = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  return { data, error }
-}
-
-// "Forgot password" — sends a reset link. Also points at our own domain via
-// the "Reset password" template for the same app-vs-website reason as above.
-export const resetPassword = async (email: string) => {
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin
+// Verify the 6-digit code the user enters after signInWithEmail.
+// On success, onAuthStateChange fires SIGNED_IN and the app routes in.
+export const verifyEmailCode = async (email: string, token: string) => {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email, token: token.trim(), type: 'email',
   })
-  return { data, error }
-}
-
-// Sets a new password. Requires the short-lived session that verifyTokenHash
-// establishes after a recovery link is confirmed (see App.tsx).
-export const updatePassword = async (password: string) => {
-  const { data, error } = await supabase.auth.updateUser({ password })
   return { data, error }
 }
 
