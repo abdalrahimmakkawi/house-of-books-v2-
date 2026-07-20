@@ -53,9 +53,20 @@
 
     <!-- Service worker: precache the app shell + runtime cache media/covers.
          The SW is built by vite-plugin-pwa into /sw.js. It uses skipWaiting +
-         clientsClaim so new deploys take over immediately (no stale shell), and
-         never serves a cached index.html while online (the old stale-cache bug).
-         Registered after load so it never competes with first paint. -->
+         clientsClaim so a new deploy's worker takes control immediately, and
+         navigations are network-first (navigateFallback:null) so a cold open
+         always fetches the newest index.html — which already points at the
+         newest hashed JS. So the app self-updates on open with NO page reload.
+
+         There is deliberately NO controllerchange->reload() handler here.
+         That handler caused an infinite reload loop that bricked installed
+         apps (stuck on the splash logo forever): clientsClaim fires
+         controllerchange, the handler reloads, and its in-page "already
+         reloading" guard resets on every reload, so it could never break the
+         cycle. Because HTML is network-first, dropping the reload loses
+         nothing on a normal open. Do NOT re-add a reload-on-update here
+         without a guard that survives across reloads (e.g. sessionStorage)
+         AND that ignores the first-load claim on an uncontrolled page. -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -63,15 +74,38 @@
             console.warn('[HoB] SW registration failed', err)
           })
         })
-
-        // When a new version takes over, reload once so the user gets it.
-        let refreshing = false
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (refreshing) return
-          refreshing = true
-          window.location.reload()
-        })
       }
+
+      // Splash watchdog / self-heal. Root cause of the "stuck on the logo
+      // forever" brick was the reload loop removed above; this is a safety net
+      // so no *future* bad cache state can permanently trap a user (which
+      // otherwise forces an uninstall/reinstall). If the JS bundle hasn't
+      // booted (main.tsx sets window.__hobBooted) a while after load AND a
+      // service worker is in control, we assume a stale/broken cache: clear
+      // all caches, unregister the worker, and reload ONCE. Guarded by
+      // sessionStorage so it can fire at most once per session and can never
+      // itself loop.
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          if (window.__hobBooted) return
+          if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return
+          if (sessionStorage.getItem('hob-recovered')) return
+          sessionStorage.setItem('hob-recovered', '1')
+          console.warn('[HoB] app did not boot — clearing caches and recovering')
+          var done = function () { window.location.reload() }
+          Promise.resolve()
+            .then(function () {
+              return window.caches
+                ? caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k) })) })
+                : null
+            })
+            .then(function () {
+              return navigator.serviceWorker.getRegistrations()
+                .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister() })) })
+            })
+            .then(done, done)
+        }, 12000)
+      })
 
       // PWA Install prompt — save for later use
       let deferredPrompt = null

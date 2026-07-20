@@ -34,3 +34,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>
 )
+
+// Boot signal for the splash-screen watchdog in index.html. If this module
+// executes at all, the JS bundle loaded and parsed — the failure mode the
+// watchdog guards against (a stale/broken cached bundle that leaves the user
+// stuck on the splash logo) is one where this line never runs.
+;(window as any).__hobBooted = true
