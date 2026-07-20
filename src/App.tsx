@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
+import { supabase, signUpWithPassword, signInWithPassword, resetPassword, updatePassword, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
 import { collectChatFeedback } from './lib/feedbackCollector'
 
@@ -1717,11 +1717,23 @@ export default function App() {
     // localStorage, so it can never surface another person's account.
     () => IS_DEMO ? 'app' : (localStorage.getItem('userEmail') ? 'app' : 'landing')
   )
+  // loginStatus 'sent' is reused for signup's "check your email to confirm"
+  // screen — signin never sets it, since a correct password signs in with no
+  // email step at all.
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
-  const [codeInput, setCodeInput] = useState('')
+  const [password, setPassword] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [loginError, setLoginError] = useState('')
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [resetEmailSent, setResetEmailSent] = useState(false)
+  // True from the moment a password-reset link is confirmed until the user
+  // picks a new password — see the PASSWORD_RECOVERY case below. While true,
+  // the app shows the "set new password" screen instead of routing in, even
+  // though the recovery link did establish a session.
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [newPasswordStatus, setNewPasswordStatus] = useState<'idle' | 'saving' | 'done'>('idle')
   const [booksError, setBooksError] = useState(false)
   const [booksRetryNonce, setBooksRetryNonce] = useState(0)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
@@ -1783,6 +1795,13 @@ export default function App() {
     // Listen for auth changes (OAuth redirect callback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          // Fired by verifyTokenHash(hash, 'recovery') below. A session now
+          // exists (needed for updatePassword), but don't route into the app
+          // yet — show the "set new password" screen first.
+          setPasswordRecoveryMode(true)
+          return
+        }
         if (event === 'SIGNED_IN' && session?.user?.email) {
           const email = session.user.email
           setUserEmail(email)
@@ -2109,48 +2128,72 @@ export default function App() {
       setFeedbackStatus('error')
     }
   }
-  const handleLogin = async () => {
+  // Sign in: email + password, no email round-trip. On success
+  // onAuthStateChange fires SIGNED_IN and routes into the app.
+  const handleSignIn = async () => {
     const email = emailInput.trim().toLowerCase()
-    if (!email || !email.includes('@')) {
-      setLoginError('Please enter a valid email address.')
-      return
-    }
-    setLoginError('')
-    setLoginStatus('sending')
-    // Only the signup path may create an account — see signInWithEmail.
-    const { error } = await signInWithEmail(email, authMode === 'signup')
-    if (error) {
-      setLoginStatus('idle')
-      // Supabase reports an unknown address on the sign-in path as a signup
-      // restriction; translate that into something a returning user can act on.
-      if (authMode === 'signin' && /not found|signups? not allowed|user not/i.test(error.message || '')) {
-        setLoginError(`No account found for ${email}. Tap "Sign up" to create one.`)
-      } else {
-        setLoginError(error.message || 'Could not send the code. Please try again.')
-      }
-    } else {
-      setLoginStatus('sent')
-    }
-  }
-  // Sign in with the 6-digit code from the email. This is the path that works
-  // inside the installed app — see verifyEmailCode() for why the emailed link
-  // can't be.
-  const handleVerifyCode = async () => {
-    const code = codeInput.replace(/\D/g, '')
-    if (code.length !== 6) {
-      setLoginError('Enter the 6-digit code from your email.')
-      return
-    }
+    if (!email || !email.includes('@')) { setLoginError('Please enter a valid email address.'); return }
+    if (!password) { setLoginError('Please enter your password.'); return }
     setLoginError('')
     setVerifying(true)
-    const { error } = await verifyEmailCode(emailInput.trim().toLowerCase(), code)
+    const { error } = await signInWithPassword(email, password)
     setVerifying(false)
     if (error) {
-      setLoginError(/expired|invalid/i.test(error.message || '')
-        ? 'That code is invalid or has expired. Request a new one.'
-        : (error.message || 'Could not verify the code. Please try again.'))
+      // Supabase's real message ("Invalid login credentials") doesn't
+      // distinguish wrong password from no account, so don't guess which —
+      // just point at the one recovery path that covers both.
+      setLoginError(/invalid/i.test(error.message || '')
+        ? 'Incorrect email or password. New here? Tap "Sign up" — or reset your password below.'
+        : (error.message || 'Could not sign in. Please try again.'))
     }
-    // On success onAuthStateChange fires SIGNED_IN and routes into the app.
+  }
+  // Sign up: create the account. Confirm email is ON, so this can't sign the
+  // user in directly — it sends a confirmation link and they land back here
+  // once they tap it (see the token_hash effect + verifyTokenHash).
+  const handleSignUp = async () => {
+    const email = emailInput.trim().toLowerCase()
+    if (!email || !email.includes('@')) { setLoginError('Please enter a valid email address.'); return }
+    if (password.length < 8) { setLoginError('Password must be at least 8 characters.'); return }
+    setLoginError('')
+    setVerifying(true)
+    const { error } = await signUpWithPassword(email, password)
+    setVerifying(false)
+    if (error) {
+      setLoginError(/already registered|already exists/i.test(error.message || '')
+        ? 'An account already exists for this email. Tap "Sign in" instead.'
+        : (error.message || 'Could not create your account. Please try again.'))
+    } else {
+      setLoginStatus('sent') // shows the "check your email to confirm" screen
+    }
+  }
+  const handleAuthSubmit = () => { authMode === 'signin' ? handleSignIn() : handleSignUp() }
+
+  const handleForgotPassword = async () => {
+    const email = emailInput.trim().toLowerCase()
+    if (!email || !email.includes('@')) { setLoginError('Enter your email above first, then tap "Forgot password?" again.'); return }
+    setLoginError('')
+    setVerifying(true)
+    const { error } = await resetPassword(email)
+    setVerifying(false)
+    if (error) setLoginError(error.message || 'Could not send the reset link. Please try again.')
+    else setResetEmailSent(true)
+  }
+
+  const handleSetNewPassword = async () => {
+    if (newPassword.length < 8) { setLoginError('Password must be at least 8 characters.'); return }
+    setLoginError('')
+    setNewPasswordStatus('saving')
+    const { error } = await updatePassword(newPassword)
+    if (error) {
+      setNewPasswordStatus('idle')
+      setLoginError(error.message || 'Could not update your password. Please try again.')
+      return
+    }
+    setNewPasswordStatus('done')
+    // The recovery session is a real session — after a beat, drop them into
+    // the app rather than making them sign in again with the password they
+    // just set.
+    setTimeout(() => setPasswordRecoveryMode(false), 1400)
   }
 
   const handleGoogleLogin = async () => {
@@ -2553,49 +2596,104 @@ export default function App() {
           <div style={{background:'linear-gradient(180deg, rgba(24,22,30,0.98) 0%, rgba(12,12,17,0.98) 100%)',border:'1px solid rgba(201,168,76,0.28)',borderRadius:'20px',padding:'2.75rem 2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const,boxShadow:'0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
             <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(201,168,76,0.35))'}} />
             <h2 style={{fontSize:'1.7rem',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
-            {loginStatus === 'sent' ? (
+            {passwordRecoveryMode ? (
+              newPasswordStatus === 'done' ? (
+                <>
+                  <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✅</div>
+                  <p style={{color:'#e8e4d9',fontSize:'15px',fontFamily:'Georgia,serif'}}>Password updated</p>
+                  <p style={{color:'#9a9080',fontSize:'13px',marginTop:'8px'}}>Taking you in…</p>
+                </>
+              ) : (
+                <>
+                  <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Set a new password</p>
+                  <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>Choose a new password for your account.</p>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="New password"
+                    value={newPassword}
+                    onChange={e => { setNewPassword(e.target.value); if (loginError) setLoginError('') }}
+                    onKeyDown={e => { if(e.key==='Enter') handleSetNewPassword() }}
+                    style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  />
+                  <button
+                    onClick={handleSetNewPassword}
+                    disabled={newPasswordStatus === 'saving'}
+                    style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:newPasswordStatus==='saving'?'default':'pointer',fontFamily:'Georgia,serif',opacity:newPasswordStatus==='saving'?0.7:1}}
+                  >
+                    {newPasswordStatus === 'saving' ? 'Saving…' : 'Save new password →'}
+                  </button>
+                  {loginError && (
+                    <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
+                  )}
+                </>
+              )
+            ) : loginStatus === 'sent' ? (
               <>
                 <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
-                <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
+                <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Confirm your email</p>
                 <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
-                  We sent a 6-digit code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
-                </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="000000"
-                  maxLength={6}
-                  value={codeInput}
-                  onChange={e => { setCodeInput(e.target.value.replace(/\D/g,'').slice(0,6)); if (loginError) setLoginError('') }}
-                  onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
-                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
-                />
-                <button
-                  onClick={handleVerifyCode}
-                  disabled={verifying || codeInput.length !== 6}
-                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:(verifying||codeInput.length!==6)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||codeInput.length!==6)?0.6:1}}
-                >
-                  {verifying ? 'Verifying…' : 'Sign in →'}
-                </button>
-                {loginError && (
-                  <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
-                )}
-                <p style={{color:'#6a6458',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
-                  The email also has a link — but on a phone, use the code so you stay in the app.
+                  We sent a confirmation link to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Tap it to finish creating your account. (Check spam if you don't see it.)
                 </p>
                 <button
-                  onClick={() => { setLoginStatus('idle'); setLoginError(''); setCodeInput('') }}
+                  onClick={() => { setLoginStatus('idle'); setLoginError(''); setPassword('') }}
                   style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
                 >
                   ← Use a different email
                 </button>
               </>
+            ) : showForgotPassword ? (
+              resetEmailSent ? (
+                <>
+                  <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
+                  <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
+                  <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
+                    We sent a password reset link to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>.
+                  </p>
+                  <button
+                    onClick={() => { setShowForgotPassword(false); setResetEmailSent(false); setLoginError('') }}
+                    style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%'}}
+                  >
+                    ← Back to sign in
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Reset your password</p>
+                  <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>Enter your email and we'll send you a reset link.</p>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={emailInput}
+                    onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
+                    onKeyDown={e => { if(e.key==='Enter') handleForgotPassword() }}
+                    style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  />
+                  <button
+                    onClick={handleForgotPassword}
+                    disabled={verifying}
+                    style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:verifying?'default':'pointer',fontFamily:'Georgia,serif',opacity:verifying?0.7:1}}
+                  >
+                    {verifying ? 'Sending…' : 'Send reset link →'}
+                  </button>
+                  {loginError && (
+                    <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
+                  )}
+                  <button
+                    onClick={() => { setShowForgotPassword(false); setLoginError('') }}
+                    style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'12px'}}
+                  >
+                    ← Back to sign in
+                  </button>
+                </>
+              )
             ) : (
               <>
-                {/* Sign in vs Sign up. With OTP both send a code, so the real
-                    difference is whether an unknown email is allowed to create
-                    an account — see signInWithEmail / handleLogin. */}
+                {/* Sign in vs Sign up. The real difference is shouldCreateUser
+                    at the account layer — see signInWithPassword / signUpWithPassword.
+                    A password (not "just an email") is what makes a fast
+                    returning-user sign-in safe: it's a secret only the owner
+                    knows, unlike an email address. */}
                 <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
                   {([['signin','Sign in'],['signup','Sign up']] as const).map(([mode,label]) => (
                     <button
@@ -2632,19 +2730,37 @@ export default function App() {
                 <input
                   type="email"
                   placeholder="your@email.com"
+                  autoComplete="email"
                   value={emailInput}
                   onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
-                  onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
+                  onKeyDown={e => { if(e.key==='Enter') handleAuthSubmit() }}
                   style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
+                <input
+                  type="password"
+                  placeholder={authMode === 'signin' ? 'Password' : 'Create a password (min 8 characters)'}
+                  autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); if (loginError) setLoginError('') }}
+                  onKeyDown={e => { if(e.key==='Enter') handleAuthSubmit() }}
+                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:authMode==='signin'?'4px':'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                />
+                {authMode === 'signin' && (
+                  <button
+                    onClick={() => { setShowForgotPassword(true); setLoginError('') }}
+                    style={{background:'none',border:'none',color:'#9a9080',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',marginBottom:'10px',marginLeft:'auto',padding:0}}
+                  >
+                    Forgot password?
+                  </button>
+                )}
                 <button
-                  onClick={handleLogin}
-                  disabled={loginStatus === 'sending'}
-                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
+                  onClick={handleAuthSubmit}
+                  disabled={verifying}
+                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:verifying?'default':'pointer',fontFamily:'Georgia,serif',opacity:verifying?0.7:1}}
                 >
-                  {loginStatus === 'sending'
-                    ? 'Sending code…'
-                    : authMode === 'signin' ? 'Email me a sign-in code →' : 'Create my account →'}
+                  {verifying
+                    ? (authMode === 'signin' ? 'Signing in…' : 'Creating account…')
+                    : authMode === 'signin' ? 'Sign in →' : 'Create my account →'}
                 </button>
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>

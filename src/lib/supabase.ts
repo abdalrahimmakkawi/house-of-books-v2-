@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type EmailOtpType } from '@supabase/supabase-js'
 
 const supabaseUrl = 'https://ulxzyjqmvzyqjynmqywe.supabase.co'
 // Publishable key (safe to expose in a browser bundle — RLS is what actually
@@ -34,54 +34,64 @@ export const signInWithGoogle = async () => {
 // (Authentication → Sign In / Providers → "X / Twitter (OAuth 2.0)"), after
 // which this becomes signInWithOAuth({ provider: 'x' }).
 
-// Send a sign-in code.
+// Password auth. This is now the primary path — see App.tsx's Sign in / Sign
+// up screen. A password is a real secret only the account owner knows, which
+// is what makes "returning users just type email + password, no email
+// round-trip" safe. Email-only "sign in" (no password, no code) was
+// explicitly rejected: anyone who knows a user's address would be able to
+// open their account, admin included.
 //
-// `shouldCreateUser` is what actually distinguishes Sign in from Sign up.
-// With OTP there is otherwise no difference — Supabase silently creates an
-// account for any address you send a code to. Passing false on the Sign in
-// path makes Supabase reject unknown addresses instead, so a returning user
-// who mistypes their email gets "no account found" rather than a brand-new
-// empty account and a confusing "where did my shelf go?".
-export const signInWithEmail = async (email: string, shouldCreateUser = true) => {
-  const { data, error } = await supabase.auth.signInWithOtp({
+// Sign up: create the account. Confirm email is ON for this project, so the
+// account exists but can't sign in until the confirmation link is clicked —
+// see the "Confirm sign up" email template, which (like magic link) had to be
+// pointed at our own domain rather than Supabase's, or the confirmation link
+// would open the website instead of the installed app for the same reason
+// the old magic link did.
+export const signUpWithPassword = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signUp({
     email,
-    options: {
-      shouldCreateUser,
-      emailRedirectTo: window.location.origin
-    }
+    password,
+    options: { emailRedirectTo: window.location.origin }
   })
   return { data, error }
 }
 
-// Verify the 6-digit code from the login email.
-//
-// This exists because the emailed LINK cannot sign you into the installed
-// Android app. The link's first hop is on Supabase's domain
-// (…supabase.co/auth/v1/verify?…&redirect_to=…), and Android only hands a URL
-// to an app when the app is verified for THAT host — we're only verified for
-// our own domain. So Android opens the link in a browser, Supabase redirects
-// to us *inside that browser*, and the session ends up on the website instead
-// of in the app. (Server-side redirects never hand off to an app, and Gmail's
-// in-app browser would swallow the hand-off even if they did.)
-//
-// Typing a code keeps the whole exchange inside the app, so it works
-// identically in the Android app, an iOS home-screen PWA, and the browser.
-export const verifyEmailCode = async (email: string, token: string) => {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token: token.trim(),
-    type: 'email',
+// Sign in: no email round-trip at all when the password is right.
+export const signInWithPassword = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  return { data, error }
+}
+
+// "Forgot password" — sends a reset link. Also points at our own domain via
+// the "Reset password" template for the same app-vs-website reason as above.
+export const resetPassword = async (email: string) => {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
   })
+  return { data, error }
+}
+
+// Sets a new password. Requires the short-lived session that verifyTokenHash
+// establishes after a recovery link is confirmed (see App.tsx).
+export const updatePassword = async (password: string) => {
+  const { data, error } = await supabase.auth.updateUser({ password })
   return { data, error }
 }
 
 // Verify a link that landed on our OWN domain as ?token_hash=…&type=…
-// (used when the email template points at us directly rather than at
-// Supabase's verify endpoint — that form CAN open the installed app).
+// (used when an email template points at us directly rather than at
+// Supabase's verify endpoint — that form CAN open the installed app, for the
+// same reason the old magic link couldn't: Android only hands a URL to an
+// installed app when the app is verified for THAT URL's own host, and we're
+// only verified for our own domain, not supabase.co).
+//
+// Used for both signup confirmation (type 'signup') and password reset
+// (type 'recovery') links — see the two email templates and their App.tsx
+// handlers (the token_hash effect, and the PASSWORD_RECOVERY case).
 export const verifyTokenHash = async (tokenHash: string, type: string) => {
   const { data, error } = await supabase.auth.verifyOtp({
     token_hash: tokenHash,
-    type: (type || 'email') as 'email' | 'magiclink' | 'recovery' | 'invite',
+    type: (type || 'email') as EmailOtpType,
   })
   return { data, error }
 }
