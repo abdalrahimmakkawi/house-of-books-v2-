@@ -1718,7 +1718,7 @@ export default function App() {
     () => IS_DEMO ? 'app' : (localStorage.getItem('userEmail') ? 'app' : 'landing')
   )
   // loginStatus 'sent' shows the "check your email" screen — for signin this
-  // shows the 6-digit code entry, for signup it shows the confirmation link
+  // shows the code entry, for signup it shows the confirmation link
   // message.
   const [loginStatus, setLoginStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [codeInput, setCodeInput] = useState('')
@@ -2128,12 +2128,15 @@ export default function App() {
         : (error.message || 'Could not send the login email. Please try again.'))
     }
   }
-  // Verify the 6-digit code the user typed. On success onAuthStateChange
-  // fires SIGNED_IN and routes into the app.
+  // Verify the code the user typed. On success onAuthStateChange
+  // fires SIGNED_IN and routes into the app. We don't hardcode the digit
+  // length here — Supabase decides that (commonly 6, sometimes 8 depending
+  // on project config), and Supabase validates it server-side anyway.
   const handleVerifyCode = async () => {
     const email = emailInput.trim().toLowerCase()
-    if (!codeInput || codeInput.replace(/\D/g, '').length !== 6) {
-      setLoginError('Please enter the 6-digit code from your email.')
+    const digits = codeInput.replace(/\D/g, '')
+    if (!digits) {
+      setLoginError('Please enter the code from your email.')
       return
     }
     setLoginError('')
@@ -2553,14 +2556,13 @@ export default function App() {
                   <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
                   <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Enter your code</p>
                   <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
-                    We sent a 6-digit code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
+                    We sent a code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
                   </p>
                   <input
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    maxLength={6}
-                    placeholder="123456"
+                    placeholder="your code"
                     value={codeInput}
                     onChange={e => { setCodeInput(e.target.value.replace(/\D/g, '')); if (loginError) setLoginError('') }}
                     onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
