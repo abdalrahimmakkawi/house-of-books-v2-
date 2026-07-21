@@ -1,0 +1,9 @@
+{
+	"appId": "com.houseofbooks.app",
+	"appName": "House of Books",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {}
+}

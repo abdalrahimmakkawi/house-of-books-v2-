@@ -198,26 +198,61 @@ export default function App() {
   }, [chatMessages, isChatting]);
 
   useEffect(() => {
-    // Auth & Data Fetching
+    // Auth & Data Fetching with timeout and error handling
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser({
-          email: session.user.email || '',
-          isAdmin: session.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
-          chatCount: 0,
-          lastChatReset: new Date().toISOString()
-        });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser({
+            email: session.user.email || '',
+            isAdmin: session.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
+            chatCount: 0,
+            lastChatReset: new Date().toISOString()
+          });
+        }
+
+        const savedUser = localStorage.getItem('hob_user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (e) {
+            console.error('Error parsing saved user:', e);
+            localStorage.removeItem('hob_user');
+          }
+        }
+        
+        const savedProgress = localStorage.getItem('hob_progress');
+        if (savedProgress) {
+          try {
+            setReadingProgress(JSON.parse(savedProgress));
+          } catch (e) {
+            console.error('Error parsing saved progress:', e);
+            localStorage.removeItem('hob_progress');
+          }
+        }
+
+        await fetchBooks();
+      } catch (error) {
+        console.error('Initialization error:', error);
+        // Fallback to localStorage if Supabase fails
+        const savedUser = localStorage.getItem('hob_user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (e) {
+            console.error('Error parsing saved user:', e);
+          }
+        }
+      } finally {
+        setLoading(false);
       }
-
-      const savedUser = localStorage.getItem('hob_user');
-      if (savedUser) setUser(JSON.parse(savedUser));
-      
-      const savedProgress = localStorage.getItem('hob_progress');
-      if (savedProgress) setReadingProgress(JSON.parse(savedProgress));
-
-      fetchBooks();
     };
+
+    // Set a timeout to force loading to false after 10 seconds
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      console.warn('Initialization timeout reached');
+    }, 10000);
 
     init();
 
@@ -232,7 +267,10 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
