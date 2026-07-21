@@ -211,10 +211,18 @@ const track = (name: string, data?: Record<string, any>) => {
 // ── Demo / sample mode (reached from the marketing site's "Start free") ──
 // Open, no login, read-only. Loads only the curated books below (all have
 // pre-cached audio + summaries, so nothing is generated or written), and its
-// AI chat runs on NVIDIA's free tier. Keeps public traffic off the paid full
-// app while still showing the real experience.
-const IS_DEMO = typeof window !== 'undefined' &&
-  new URLSearchParams(window.location.search).get('demo') === '1'
+// Demo mode retired — the app is live now. Any old ?demo=1 links land on the
+// normal sign-up flow. Keep the flag as false so all downstream IS_DEMO
+// branches take the real-app path.
+if (typeof window !== 'undefined') {
+  const sp = new URLSearchParams(window.location.search)
+  if (sp.has('demo')) {
+    sp.delete('demo')
+    const q = sp.toString()
+    window.history.replaceState(null, '', q ? `?${q}` : window.location.pathname)
+  }
+}
+const IS_DEMO = false
 const DEMO_BOOK_IDS = [
   'f0ed41ad-95de-4c2e-abee-87f21aed8133', // The Psychology of Money
   '5f4f3bb2-5f54-4a13-9976-b7af46604654', // 21 Lessons for the 21st Century
