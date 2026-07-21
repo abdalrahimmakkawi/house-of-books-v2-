@@ -2112,42 +2112,48 @@ export default function App() {
       setFeedbackStatus('error')
     }
   }
-  // Send the magic link / 6-digit code. shouldCreateUser is the real
-  // difference between Sign in and Sign up — see signInWithEmail in
-  // supabase.ts. On success we show the "check your email" screen.
+  // Send the code. Only the signup path may create an account — see
+  // signInWithEmail in supabase.ts. On success we show the "check your
+  // email" screen.
   const handleLogin = async () => {
     const email = emailInput.trim().toLowerCase()
     if (!email || !email.includes('@')) { setLoginError('Please enter a valid email address.'); return }
     setLoginError('')
     setLoginStatus('sending')
     const { error } = await signInWithEmail(email, authMode === 'signup')
-    setLoginStatus(error ? 'idle' : 'sent')
     if (error) {
-      setLoginError(/signups not allowed/i.test(error.message || '')
-        ? `No account found for ${email}. Tap "Sign up" to create one.`
-        : (error.message || 'Could not send the login email. Please try again.'))
+      setLoginStatus('idle')
+      // Supabase reports an unknown address on the sign-in path as a signup
+      // restriction; translate that into something a returning user can act on.
+      if (authMode === 'signin' && /not found|signups? not allowed|user not/i.test(error.message || '')) {
+        setLoginError(`No account found for ${email}. Tap "Sign up" to create one.`)
+      } else {
+        setLoginError(error.message || 'Could not send the code. Please try again.')
+      }
+    } else {
+      setLoginStatus('sent')
     }
   }
-  // Verify the code the user typed. On success onAuthStateChange
-  // fires SIGNED_IN and routes into the app. We don't hardcode the digit
-  // length here — Supabase decides that (commonly 6, sometimes 8 depending
-  // on project config), and Supabase validates it server-side anyway.
+  // Sign in with the code from the email. This is the path that works inside
+  // the installed app — see verifyEmailCode() for why the emailed link can't
+  // be. We don't hardcode the digit count: Supabase decides that (commonly 6,
+  // this project currently sends 8), and Supabase validates server-side.
   const handleVerifyCode = async () => {
-    const email = emailInput.trim().toLowerCase()
-    const digits = codeInput.replace(/\D/g, '')
-    if (!digits) {
-      setLoginError('Please enter the code from your email.')
+    const code = codeInput.replace(/\D/g, '')
+    if (!code) {
+      setLoginError('Enter the code from your email.')
       return
     }
     setLoginError('')
     setVerifying(true)
-    const { error } = await verifyEmailCode(email, codeInput)
+    const { error } = await verifyEmailCode(emailInput.trim().toLowerCase(), code)
     setVerifying(false)
     if (error) {
-      setLoginError(/expired|invalid|already used/i.test(error.message || '')
-        ? 'That code is invalid or expired. Use a different email to get a new one.'
+      setLoginError(/expired|invalid/i.test(error.message || '')
+        ? 'That code is invalid or has expired. Request a new one.'
         : (error.message || 'Could not verify the code. Please try again.'))
     }
+    // On success onAuthStateChange fires SIGNED_IN and routes into the app.
   }
 
   const handleGoogleLogin = async () => {
@@ -2551,62 +2557,49 @@ export default function App() {
             <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(201,168,76,0.35))'}} />
             <h2 style={{fontSize:'1.7rem',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
             {loginStatus === 'sent' ? (
-              authMode === 'signin' ? (
-                <>
-                  <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
-                  <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Enter your code</p>
-                  <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
-                    We sent a code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
-                  </p>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="your code"
-                    value={codeInput}
-                    onChange={e => { setCodeInput(e.target.value.replace(/\D/g, '')); if (loginError) setLoginError('') }}
-                    onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
-                    style={{width:'100%',padding:'12px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'22px',letterSpacing:'0.5em',textAlign:'center' as const,outline:'none',marginBottom:'12px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
-                  />
-                  <button
-                    onClick={handleVerifyCode}
-                    disabled={verifying}
-                    style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:verifying?'default':'pointer',fontFamily:'Georgia,serif',opacity:verifying?0.7:1}}
-                  >
-                    {verifying ? 'Verifying…' : 'Verify →'}
-                  </button>
-                  {loginError && (
-                    <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
-                  )}
-                  <button
-                    onClick={() => { setLoginStatus('idle'); setLoginError(''); setCodeInput('') }}
-                    style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
-                  >
-                    ← Use a different email
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
-                  <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Confirm your email</p>
-                  <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
-                    We sent a confirmation link to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Tap it to finish creating your account. (Check spam if you don't see it.)
-                  </p>
-                  <button
-                    onClick={() => { setLoginStatus('idle'); setLoginError('') }}
-                    style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
-                  >
-                    ← Use a different email
-                  </button>
-                </>
-              )
+              <>
+                <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
+                <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
+                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
+                  We sent a code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
+                </p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  value={codeInput}
+                  onChange={e => { setCodeInput(e.target.value.replace(/\D/g,'')); if (loginError) setLoginError('') }}
+                  onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
+                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                />
+                <button
+                  onClick={handleVerifyCode}
+                  disabled={verifying || !codeInput}
+                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:(verifying||!codeInput)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||!codeInput)?0.6:1}}
+                >
+                  {verifying ? 'Verifying…' : 'Sign in →'}
+                </button>
+                {loginError && (
+                  <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
+                )}
+                <p style={{color:'#6a6458',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
+                  The email also has a link — but on a phone, use the code so you stay in the app.
+                </p>
+                <button
+                  onClick={() => { setLoginStatus('idle'); setLoginError(''); setCodeInput('') }}
+                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
+                >
+                  ← Use a different email
+                </button>
+              </>
             ) : (
               <>
-                {/* Sign in vs Sign up. The real difference is shouldCreateUser
-                    at the OTP layer — see signInWithEmail in supabase.ts.
-                    Sign in rejects unknown addresses; Sign up creates the
-                    account. Both send an email, but only sign in expects a
-                    6-digit code back (sign up confirms via the link itself). */}
+                {/* Sign in vs Sign up. With OTP both send a code, so the real
+                    difference is whether an unknown email is allowed to create
+                    an account — see signInWithEmail / handleLogin. The code
+                    length isn't fixed here: Supabase decides it (this project
+                    currently sends 8 digits), and validates server-side. */}
                 <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
                   {([['signin','Sign in'],['signup','Sign up']] as const).map(([mode,label]) => (
                     <button
@@ -2623,7 +2616,7 @@ export default function App() {
                 </div>
                 <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
                   {authMode === 'signin'
-                    ? 'Welcome back — sign in with a code sent to your email.'
+                    ? 'Welcome back — sign in to pick up where you left off.'
                     : 'Create your account — free, no credit card needed.'}
                 </p>
                 <button
@@ -2643,11 +2636,10 @@ export default function App() {
                 <input
                   type="email"
                   placeholder="your@email.com"
-                  autoComplete="email"
                   value={emailInput}
                   onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
-                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'12px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleLogin}
@@ -2655,8 +2647,8 @@ export default function App() {
                   style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
                 >
                   {loginStatus === 'sending'
-                    ? (authMode === 'signin' ? 'Sending code…' : 'Creating account…')
-                    : authMode === 'signin' ? 'Send code →' : 'Create my account →'}
+                    ? 'Sending code…'
+                    : authMode === 'signin' ? 'Email me a sign-in code →' : 'Create my account →'}
                 </button>
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
