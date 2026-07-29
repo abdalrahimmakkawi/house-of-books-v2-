@@ -51,12 +51,22 @@
     <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
     <script defer src="/_vercel/insights/script.js"></script>
 
-    <!-- Service worker: precache the app shell + runtime cache media/covers.
+    <!-- Service worker: precache hashed assets + runtime cache HTML/media/covers.
          The SW is built by vite-plugin-pwa into /sw.js. It uses skipWaiting +
          clientsClaim so a new deploy's worker takes control immediately, and
-         navigations are network-first (navigateFallback:null) so a cold open
-         always fetches the newest index.html — which already points at the
-         newest hashed JS. So the app self-updates on open with NO page reload.
+         HTML is served by a NetworkFirst runtime route so a cold open always
+         fetches the newest index.html — which already points at the newest
+         hashed JS. So the app self-updates on open with NO page reload.
+
+         HISTORY — the comment here used to credit `navigateFallback: null` for
+         that, and it was wrong. navigateFallback only controls the
+         NavigationRoute; `html` was still in workbox.globPatterns, so
+         index.html was precached and Workbox's PrecacheRoute served `/` from
+         Cache Storage via its default directoryIndex. Navigations never hit the
+         network (measured: GET `/` => transferSize 0, deliveryType
+         "cache-storage"). That is what pinned installed apps to an old build
+         until the user uninstalled/reinstalled. The real fix is keeping HTML
+         out of the precache — see the design note in vite.config.ts.
 
          There is deliberately NO controllerchange->reload() handler here.
          That handler caused an infinite reload loop that bricked installed
@@ -70,7 +80,32 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => {
+          navigator.serviceWorker.register('/sw.js').then(function (reg) {
+            // Drive the update check ourselves. vite-plugin-pwa's
+            // registerType:'autoUpdate' only works through the registration
+            // snippet it injects, and injectRegister is false here — so nothing
+            // was ever calling reg.update(). That left Chrome's own sw.js check
+            // (which only runs on navigation) as the sole update trigger, and a
+            // TWA resumed from the background may not navigate for days, pinning
+            // the worker to an old build.
+            //
+            // No reload handling is needed alongside this: HTML is NetworkFirst,
+            // so the next open picks up the new build by itself. Do NOT add a
+            // controllerchange -> reload() here (see the warning below).
+            var lastCheck = 0
+            var check = function () {
+              if (document.visibilityState !== 'visible') return
+              var now = Date.now()
+              if (now - lastCheck < 60 * 60 * 1000) return // at most hourly
+              lastCheck = now
+              reg.update().catch(function () {})
+            }
+            // visibilitychange is the one that matters for an installed app
+            // being resumed from the background.
+            document.addEventListener('visibilitychange', check)
+            setInterval(check, 60 * 60 * 1000)
+            check()
+          }).catch(function (err) {
             console.warn('[HoB] SW registration failed', err)
           })
         })
