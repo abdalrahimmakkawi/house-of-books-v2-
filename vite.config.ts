@@ -1,108 +1,36 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
+
+// NO SERVICE WORKER PLUGIN HERE — this is deliberate, please read before adding one.
+//
+// vite-plugin-pwa used to generate a Workbox worker at /sw.js. Three separate
+// times now, a caching worker has pinned installed apps to an old build with no
+// user-facing way out: force-closing does nothing, and "clear cache" on the app
+// does nothing either, because in an installed PWA the worker and its Cache
+// Storage live in Chrome's data for the origin rather than under the app entry
+// the user can clear. Uninstalling was the only cure users had.
+//
+// The last attempt (5654d50) kept the worker but stopped it precaching HTML.
+// That fixed the staleness for devices that picked up the new worker, but it
+// left the worker itself in place — so the whole class of bug was still one
+// config mistake away, and devices already stuck stayed stuck.
+//
+// `public/sw.js` is now a hand-written self-destructing worker that wipes all
+// caches, unregisters itself and reloads. Keeping the plugin out of this file is
+// what stops the build from overwriting it. index.html no longer registers a
+// worker at all.
+//
+// Trade-off accepted: no offline reading, and no `beforeinstallprompt` (Chrome
+// wants a fetch handler for installability), so the in-app "Install" button will
+// not fire. Reliability was worth more than either. If installability is needed
+// again later, add a worker with a pass-through fetch handler and NO caching —
+// never one that caches navigations.
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Real service worker for repeat-visit speed + offline reading.
-    // Design notes:
-    //  - registerType 'autoUpdate' + skipWaiting + clientsClaim: new builds take
-    //    over immediately, which is exactly what prevents the stale-shell bug
-    //    that previously forced the app to ship a self-destructing worker.
-    //  - HTML is NOT precached (no `html` in globPatterns) and is served by a
-    //    NetworkFirst runtime route instead, so every open fetches the newest
-    //    index.html — which points at the newest hashed JS.
-    //
-    //    Why not just `navigateFallback: null`? That was the previous attempt and
-    //    it did NOT work. `navigateFallback` only controls the *NavigationRoute*;
-    //    it does nothing to `precacheAndRoute()`. With `html` in globPatterns,
-    //    index.html was precached, and Workbox's PrecacheRoute matched a
-    //    navigation to `/` through its default `directoryIndex: 'index.html'` —
-    //    so navigations were served from Cache Storage regardless. Measured on
-    //    prod before this fix: GET `/` => transferSize 0, deliveryType
-    //    "cache-storage"; GET `/?cachebust=1` (misses the precache route) =>
-    //    transferSize 2935, from network. That stale shell is what pinned
-    //    installed apps to an old build until the user reinstalled.
-    //
-    //    Keeping HTML out of the precache is the part that actually fixes it.
-    //    Do not re-add `html` to globPatterns.
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: false, // we register manually in index.html for explicit control
-      strategies: 'generateSW',
-      useUniqueBundle: true,
-      includeAssets: ['favicon.png', 'icon-192.png', 'icon-512.png', 'manifest.json'],
-      manifest: false, // manifest.json is hand-authored in /public
-      workbox: {
-        // NOTE: `html` is deliberately absent — see the design note above.
-        globPatterns: ['**/*.{js,css,svg,png,ico,woff,woff2}'],
-        // Cap precache to keep install light; large media is runtime-cached on demand.
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-        // Kept null so no NavigationRoute is generated — the NetworkFirst route
-        // below owns navigations. On its own this does NOT prevent stale HTML.
-        navigateFallback: null,
-        navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [
-          // HTML documents (the app shell + the static legal pages, all of which
-          // are plain <a href> navigations): network first, so a cold open always
-          // gets the newest build. The cached copy is only a fallback for offline
-          // or a network slower than networkTimeoutSeconds.
-          {
-            urlPattern: ({ request, url }) =>
-              request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'hob-html',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              cacheableResponse: { statuses: [200] },
-            },
-          },
-          // Hashed build assets: immutable, cache-first.
-          {
-            urlPattern: ({ url }) => url.origin === self.location.origin && /\/assets\//.test(url.pathname),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'hob-assets',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          // Ambient music + wallpapers (large, stable): cache-first.
-          {
-            urlPattern: ({ url, request }) =>
-              url.origin === self.location.origin &&
-              (url.pathname.startsWith('/music/') || url.pathname.startsWith('/wallpaper/')),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'hob-media',
-              rangeRequests: true,
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          // Book covers + remote images (Supabase Storage / picsum): stale-while-revalidate.
-          {
-            urlPattern: ({ request }) => request.destination === 'image',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'hob-images',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
-      },
-      devOptions: {
-        enabled: false,
-      },
-    }),
   ],
   build: {
     // Split stable third-party code into its own chunks so they cache
