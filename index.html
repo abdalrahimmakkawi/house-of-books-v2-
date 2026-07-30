@@ -77,19 +77,29 @@
          could never break the cycle. -->
     <script>
 
-      // Splash watchdog / self-heal. Root cause of the "stuck on the logo
-      // forever" brick was the reload loop removed above; this is a safety net
-      // so no *future* bad cache state can permanently trap a user (which
-      // otherwise forces an uninstall/reinstall). If the JS bundle hasn't
-      // booted (main.tsx sets window.__hobBooted) a while after load AND a
-      // service worker is in control, we assume a stale/broken cache: clear
-      // all caches, unregister the worker, and reload ONCE. Guarded by
-      // sessionStorage so it can fire at most once per session and can never
-      // itself loop.
+      // Splash watchdog / self-heal — the last line of defence against a user
+      // being stuck staring at nothing until they uninstall the app.
+      //
+      // Two things were wrong with the earlier version and both let the "stuck
+      // on the logo forever" report survive:
+      //
+      //  1. It trusted window.__hobBooted, which main.tsx sets at the END OF THE
+      //     MODULE. That flag only proves the bundle downloaded and parsed — it
+      //     is set even when React then renders nothing at all. So the exact
+      //     failure users hit (app loads, screen stays empty) was invisible to
+      //     it. We now check whether #root actually has children, i.e. whether
+      //     there is anything ON SCREEN, which is what the user experiences.
+      //
+      //  2. It bailed out unless a service worker controlled the page. The app
+      //     no longer registers one, so that condition would make this dead code
+      //     — and it also meant a non-SW hang was never recovered. Removed.
+      //
+      // Still guarded by sessionStorage so it fires at most once per session and
+      // can never turn into a reload loop.
       window.addEventListener('load', function () {
         setTimeout(function () {
-          if (window.__hobBooted) return
-          if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return
+          var root = document.getElementById('root')
+          if (root && root.children.length > 0) return // something is rendered
           if (sessionStorage.getItem('hob-recovered')) return
           sessionStorage.setItem('hob-recovered', '1')
           console.warn('[HoB] app did not boot — clearing caches and recovering')
@@ -101,8 +111,14 @@
                 : null
             })
             .then(function () {
-              return navigator.serviceWorker.getRegistrations()
-                .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister() })) })
+              // Guarded: the app no longer registers a worker, so on most
+              // devices there is nothing here. It still matters for devices
+              // carrying the old caching worker that have not yet picked up
+              // the self-destructing /sw.js.
+              return ('serviceWorker' in navigator)
+                ? navigator.serviceWorker.getRegistrations()
+                    .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister() })) })
+                : null
             })
             .then(done, done)
         }, 12000)
