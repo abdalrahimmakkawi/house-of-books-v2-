@@ -44,7 +44,38 @@
     <meta name="msapplication-TileImage" content="/icon-192.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Static boot fallback. This exists for two reasons, both learned from the
+         "stuck on the gold logo forever" bug:
+
+         1. #root used to be empty, so a failed boot painted NOTHING. Chrome only
+            dismisses the PWA/TWA splash screen on the first *contentful* paint,
+            so an app that never rendered left the user staring at the splash
+            indefinitely with no way out but uninstalling. This markup guarantees
+            a contentful paint on every load, so the splash always dismisses and
+            the user always sees the app itself rather than the OS splash.
+
+         2. It gives the user a visible escape hatch. If React never mounts, the
+            message below swaps to an error + a Reset button that clears every
+            cache, unregisters any worker and reloads — the same thing
+            uninstalling did, without uninstalling.
+
+         React replaces the entire contents of #root on its first render, so
+         everything here disappears the moment the app actually mounts. That is
+         also how the watchdog detects a failed boot: it checks whether
+         #boot-fallback is still in the DOM. Do NOT remove the id. -->
+    <div id="root">
+      <div id="boot-fallback" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#0e0d14;color:#e8e4d9;font-family:Georgia,serif;text-align:center;padding:2rem;">
+        <img src="/logo-icon.png" alt="House of Books" width="88" height="88" style="width:88px;height:88px;object-fit:contain;filter:drop-shadow(0 4px 24px rgba(201,168,76,0.35));" />
+        <div id="boot-msg" style="font-size:14px;color:#9a9080;">Loading your library…</div>
+        <div id="boot-error" style="display:none;max-width:340px;">
+          <div style="font-size:1.15rem;color:#c9a84c;margin-bottom:8px;">Couldn't start the app</div>
+          <div style="font-size:13px;color:#9a9080;line-height:1.6;margin-bottom:16px;">
+            Something cached on this device is stopping it from loading. Resetting clears it — your shelf and notes are stored on your account, not here.
+          </div>
+          <button id="boot-reset" style="padding:11px 26px;background:#c9a84c;color:#0a0a0f;border:none;border-radius:8px;font-size:14px;font-family:Georgia,serif;cursor:pointer;">↻ Reset app</button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
 
     <!-- Vercel Web Analytics (page views; custom events used elsewhere via window.va) -->
@@ -80,47 +111,72 @@
       // Splash watchdog / self-heal — the last line of defence against a user
       // being stuck staring at nothing until they uninstall the app.
       //
-      // Two things were wrong with the earlier version and both let the "stuck
-      // on the logo forever" report survive:
+      // Three things were wrong with earlier versions, and together they are why
+      // the "stuck on the gold logo forever" report kept surviving "fixes":
       //
       //  1. It trusted window.__hobBooted, which main.tsx sets at the END OF THE
-      //     MODULE. That flag only proves the bundle downloaded and parsed — it
-      //     is set even when React then renders nothing at all. So the exact
-      //     failure users hit (app loads, screen stays empty) was invisible to
-      //     it. We now check whether #root actually has children, i.e. whether
-      //     there is anything ON SCREEN, which is what the user experiences.
+      //     MODULE. That only proves the bundle downloaded and parsed — React 18
+      //     renders asynchronously, so the flag is set even when the first render
+      //     never commits. The exact failure users hit (bundle loads, nothing
+      //     appears) was invisible to it. We now detect a failed boot by checking
+      //     whether #boot-fallback is still in the DOM: React replaces all of
+      //     #root's children when it mounts, so if that node is still there, the
+      //     app did not render.
       //
-      //  2. It bailed out unless a service worker controlled the page. The app
-      //     no longer registers one, so that condition would make this dead code
-      //     — and it also meant a non-SW hang was never recovered. Removed.
+      //  2. It bailed out unless a service worker controlled the page. Nothing
+      //     registers a worker now, so that would make this dead code — and it
+      //     meant non-service-worker hangs were never recovered either.
       //
-      // Still guarded by sessionStorage so it fires at most once per session and
-      // can never turn into a reload loop.
+      //  3. THE ONE THAT ACTUALLY TRAPPED USERS: the sessionStorage guard. In an
+      //     installed PWA the session can outlive an app launch, so once
+      //     'hob-recovered' was set — a single failed recovery attempt — the
+      //     watchdog was permanently disabled on that device. The guard meant to
+      //     prevent a reload loop instead switched off the only rescue the user
+      //     had. Automatic recovery is still one-shot per session (a reload loop
+      //     is genuinely worse than a stuck screen), but it is no longer the only
+      //     way out: the boot fallback now shows a Reset button that always
+      //     works, however many times the user has already tried.
+      function hobHardReset() {
+        var done = function () { window.location.reload() }
+        Promise.resolve()
+          .then(function () {
+            return window.caches
+              ? caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k) })) })
+              : null
+          })
+          .then(function () {
+            // Guarded: the app no longer registers a worker, so on most devices
+            // there is nothing here. It still matters for devices carrying the
+            // old caching worker that have not yet picked up the
+            // self-destructing /sw.js.
+            return ('serviceWorker' in navigator)
+              ? navigator.serviceWorker.getRegistrations()
+                  .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister() })) })
+              : null
+          })
+          .then(function () { try { sessionStorage.removeItem('hob-recovered') } catch (e) {} })
+          .then(done, done)
+      }
+
       window.addEventListener('load', function () {
+        var resetBtn = document.getElementById('boot-reset')
+        if (resetBtn) resetBtn.addEventListener('click', hobHardReset)
+
         setTimeout(function () {
-          var root = document.getElementById('root')
-          if (root && root.children.length > 0) return // something is rendered
+          // Still showing the boot fallback => React never mounted.
+          if (!document.getElementById('boot-fallback')) return
+
+          // Always surface the manual escape hatch, even when automatic
+          // recovery has already been spent this session.
+          var msg = document.getElementById('boot-msg')
+          var err = document.getElementById('boot-error')
+          if (msg) msg.style.display = 'none'
+          if (err) err.style.display = 'block'
+
           if (sessionStorage.getItem('hob-recovered')) return
           sessionStorage.setItem('hob-recovered', '1')
           console.warn('[HoB] app did not boot — clearing caches and recovering')
-          var done = function () { window.location.reload() }
-          Promise.resolve()
-            .then(function () {
-              return window.caches
-                ? caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k) })) })
-                : null
-            })
-            .then(function () {
-              // Guarded: the app no longer registers a worker, so on most
-              // devices there is nothing here. It still matters for devices
-              // carrying the old caching worker that have not yet picked up
-              // the self-destructing /sw.js.
-              return ('serviceWorker' in navigator)
-                ? navigator.serviceWorker.getRegistrations()
-                    .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister() })) })
-                : null
-            })
-            .then(done, done)
+          hobHardReset()
         }, 12000)
       })
 
