@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense, forwardRef, useImperativeHandle } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
@@ -927,7 +927,13 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: string; bookId: string; category?: string; audioUrl?: string; onCached?: (bookId: string, url: string) => void }) {
+// Exposed so the gold "Read Now" CTA above the tabs can start playback. The
+// CTA calls toggle() synchronously inside its onClick so the browser still
+// counts it as a user gesture — going through state/useEffect instead would
+// lose the gesture and get the play() blocked by autoplay policy.
+export type AudioSummaryHandle = { toggle: () => void }
+
+const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: string; category?: string; audioUrl?: string; onCached?: (bookId: string, url: string) => void; autoPlayOnMount?: boolean; onStateChange?: (s: 'idle'|'loading'|'playing'|'paused'|'error') => void }>(function AudioSummary({ text, bookId, category, audioUrl, onCached, autoPlayOnMount, onStateChange }, ref) {
   const [state, setState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [currentTime, setCurrentTime] = useState(0)
@@ -1014,6 +1020,24 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
         : (e.message || 'Audio unavailable right now.'))
     }
   }
+
+  useImperativeHandle(ref, () => ({ toggle }))
+
+  // Keep the "Read Now" CTA's label in sync with what the player is doing.
+  const onStateChangeRef = useRef(onStateChange)
+  onStateChangeRef.current = onStateChange
+  useEffect(() => { onStateChangeRef.current?.(state) }, [state])
+
+  // This player only exists while the About tab is mounted, so a "Read Now"
+  // press from another tab can't call toggle() on it directly — the parent
+  // flags autoPlayOnMount instead and we start here. The click gesture is
+  // gone by then, so if autoplay is refused toggle() still leaves the audio
+  // loaded in 'paused' and the next tap plays instantly.
+  const didAutoPlayRef = useRef(false)
+  useEffect(() => {
+    if (autoPlayOnMount && !didAutoPlayRef.current) { didAutoPlayRef.current = true; toggle() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlayOnMount])
 
   const seekToClientX = (clientX: number) => {
     const audio = audioRef.current
@@ -1128,7 +1152,7 @@ function AudioSummary({ text, bookId, category, audioUrl, onCached }: { text?: s
       )}
     </div>
   )
-}
+})
 
 function ExpandedPanel({
   book, t, shelfStatus, progress, exportingPDF, detailLoading,
@@ -1141,6 +1165,35 @@ function ExpandedPanel({
   const [activeTab, setActiveTab] = useState<'about'|'full'|'insights'|'shelf'|'chat'>('about')
   const [fullSummaryPage, setFullSummaryPage] = useState(0)
   useEffect(()=>{setFullSummaryPage(0)},[book.id])
+
+  // "Read Now" CTA. It used to call setActiveTab('about') — but 'about' is
+  // already the initial tab, so on the tab users actually land on the button
+  // did nothing at all. It now opens the short summary AND starts the
+  // narration, which is what the ▶ always implied.
+  const audioApiRef = useRef<AudioSummaryHandle | null>(null)
+  const [audioState, setAudioState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
+  const pendingPlayRef = useRef(false)
+  useEffect(() => { setAudioState('idle'); pendingPlayRef.current = false }, [book.id])
+  const hasSummary = !!book.summary?.trim()
+  const handleReadNow = () => {
+    if (activeTab === 'about' && audioApiRef.current) {
+      // Same tab: the player is mounted, so call it straight from the click
+      // handler to keep the user gesture intact.
+      audioApiRef.current.toggle()
+    } else {
+      // Coming from another tab the player isn't mounted yet; flag it to
+      // start as soon as it is.
+      pendingPlayRef.current = true
+      setActiveTab('about')
+    }
+  }
+  // Clear the flag once the player has consumed it. Child effects run before
+  // parent ones, so AudioSummary has already auto-started by the time this
+  // fires — without it the flag would stay set and re-trigger playback every
+  // later time the user wandered back to the About tab.
+  useEffect(() => {
+    if (activeTab === 'about') pendingPlayRef.current = false
+  }, [activeTab])
   // Memoized so the ~2000+ word long_summary isn't re-paginated on every
   // chat-stream tick (chatMessages, a prop here, mutates ~every 35ms during
   // the typewriter reveal regardless of which tab is active).
@@ -1274,20 +1327,23 @@ function ExpandedPanel({
         borderBottom:'0.5px solid rgba(255,255,255,0.06)',
       }}>
         <button
-          onClick={() => setActiveTab('about')}
+          onClick={handleReadNow}
+          disabled={!hasSummary}
+          aria-label={audioState === 'playing' ? 'Pause narration' : 'Read and listen now'}
           style={{
             flex:2,padding:'13px',
             background:'linear-gradient(135deg,#e0be6f,#c9a84c)',color:'#0a0a0f',
             border:'none',borderRadius:'13px',
-            fontSize:'14px',cursor:'pointer',
+            fontSize:'14px',cursor: hasSummary ? 'pointer' : 'default',
+            opacity: hasSummary ? 1 : 0.45,
             fontFamily:'Georgia,serif',fontWeight:'700',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',
             boxShadow:'0 6px 18px rgba(201,168,76,0.3)',
             transition:'transform .15s, box-shadow .15s',
           }}
-          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(201,168,76,0.42)'}}
+          onMouseEnter={e=>{if(!hasSummary)return;(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(201,168,76,0.42)'}}
           onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 6px 18px rgba(201,168,76,0.3)'}}
-        >▶ Read Now</button>
+        >{audioState === 'loading' ? '◌ Loading…' : audioState === 'playing' ? '❚❚ Pause' : audioState === 'paused' ? '▶ Resume' : '▶ Read Now'}</button>
         <button
           onClick={() => { setActiveTab('chat'); onToggleChat() }}
           style={{
@@ -1379,7 +1435,16 @@ function ExpandedPanel({
             <div style={{fontSize:'13px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Audio Summary
             </div>
-            <AudioSummary text={book.summary} bookId={book.id} category={book.category} audioUrl={book.audio_url} onCached={onAudioCached} />
+            <AudioSummary
+              ref={audioApiRef}
+              text={book.summary}
+              bookId={book.id}
+              category={book.category}
+              audioUrl={book.audio_url}
+              onCached={onAudioCached}
+              autoPlayOnMount={pendingPlayRef.current}
+              onStateChange={setAudioState}
+            />
           </motion.div>
         )}
 
