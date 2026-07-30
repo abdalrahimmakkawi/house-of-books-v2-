@@ -27,7 +27,16 @@ import tailwindcss from '@tailwindcss/vite'
 // again later, add a worker with a pass-through fetch handler and NO caching —
 // never one that caches navigations.
 
+// Stamped into the bundle at build time and shown in the account panel, so it
+// is always possible to tell which build a given device is actually running.
+// Diagnosing "the app is stuck / did my deploy reach my phone?" without this
+// means guessing.
+const BUILD_ID = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC'
+
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   plugins: [
     react(),
     tailwindcss(),

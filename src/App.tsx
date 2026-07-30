@@ -3137,6 +3137,15 @@ export default function App() {
               Close
             </button>
           </div>
+
+          {/* Build stamp — which build this device is ACTUALLY running.
+              Injected at build time by `define` in vite.config.ts. Without it,
+              "did my deploy reach my phone, or is it serving something old?"
+              is guesswork, which is exactly what made the stale-shell bug so
+              hard to pin down. */}
+          <div style={{marginTop:'10px',textAlign:'center',fontSize:'10px',color:'var(--text-muted)',opacity:0.65,fontFamily:'Georgia, serif'}}>
+            Build {__BUILD_ID__}
+          </div>
         </div>
       </div>
     )}
