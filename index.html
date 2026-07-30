@@ -51,65 +51,31 @@
     <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
     <script defer src="/_vercel/insights/script.js"></script>
 
-    <!-- Service worker: precache hashed assets + runtime cache HTML/media/covers.
-         The SW is built by vite-plugin-pwa into /sw.js. It uses skipWaiting +
-         clientsClaim so a new deploy's worker takes control immediately, and
-         HTML is served by a NetworkFirst runtime route so a cold open always
-         fetches the newest index.html — which already points at the newest
-         hashed JS. So the app self-updates on open with NO page reload.
+    <!-- NO SERVICE WORKER IS REGISTERED HERE. That is deliberate — do not add one.
+         /sw.js is a self-destructing worker (see public/sw.js and the note in
+         vite.config.ts). Registering it from here would be an infinite loop: it
+         installs, unregisters itself, reloads the page, which registers it
+         again, forever.
 
-         HISTORY — the comment here used to credit `navigateFallback: null` for
-         that, and it was wrong. navigateFallback only controls the
-         NavigationRoute; `html` was still in workbox.globPatterns, so
-         index.html was precached and Workbox's PrecacheRoute served `/` from
-         Cache Storage via its default directoryIndex. Navigations never hit the
-         network (measured: GET `/` => transferSize 0, deliveryType
-         "cache-storage"). That is what pinned installed apps to an old build
-         until the user uninstalled/reinstalled. The real fix is keeping HTML
-         out of the precache — see the design note in vite.config.ts.
+         Devices that still carry the old caching worker do not need us to
+         register anything — the browser refetches /sw.js on its own update
+         check for the worker it already has, gets the self-destructing version,
+         and wipes itself clean. That is the only path that can reach them, and
+         it is why /sw.js must keep being served even though nothing registers it.
 
-         There is deliberately NO controllerchange->reload() handler here.
-         That handler caused an infinite reload loop that bricked installed
-         apps (stuck on the splash logo forever): clientsClaim fires
-         controllerchange, the handler reloads, and its in-page "already
-         reloading" guard resets on every reload, so it could never break the
-         cycle. Because HTML is network-first, dropping the reload loses
-         nothing on a normal open. Do NOT re-add a reload-on-update here
-         without a guard that survives across reloads (e.g. sessionStorage)
-         AND that ignores the first-load claim on an uncontrolled page. -->
+         A caching worker has bricked this app three times (see public/sw.js for
+         the commit trail). Force-closing does not clear it and neither does
+         "clear cache" on the app, because in an installed PWA the worker lives
+         in Chrome's storage for the origin, not under the app entry the user can
+         clear — uninstalling was users' only escape. The app is now served
+         straight from the network on every open.
+
+         Also: never re-add a controllerchange -> reload() handler. One here once
+         caused an infinite reload loop that left installed apps stuck on the
+         splash logo — clientsClaim fires controllerchange, the handler reloads,
+         and an in-page "already reloading" guard resets on every reload, so it
+         could never break the cycle. -->
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(function (reg) {
-            // Drive the update check ourselves. vite-plugin-pwa's
-            // registerType:'autoUpdate' only works through the registration
-            // snippet it injects, and injectRegister is false here — so nothing
-            // was ever calling reg.update(). That left Chrome's own sw.js check
-            // (which only runs on navigation) as the sole update trigger, and a
-            // TWA resumed from the background may not navigate for days, pinning
-            // the worker to an old build.
-            //
-            // No reload handling is needed alongside this: HTML is NetworkFirst,
-            // so the next open picks up the new build by itself. Do NOT add a
-            // controllerchange -> reload() here (see the warning below).
-            var lastCheck = 0
-            var check = function () {
-              if (document.visibilityState !== 'visible') return
-              var now = Date.now()
-              if (now - lastCheck < 60 * 60 * 1000) return // at most hourly
-              lastCheck = now
-              reg.update().catch(function () {})
-            }
-            // visibilitychange is the one that matters for an installed app
-            // being resumed from the background.
-            document.addEventListener('visibilitychange', check)
-            setInterval(check, 60 * 60 * 1000)
-            check()
-          }).catch(function (err) {
-            console.warn('[HoB] SW registration failed', err)
-          })
-        })
-      }
 
       // Splash watchdog / self-heal. Root cause of the "stuck on the logo
       // forever" brick was the reload loop removed above; this is a safety net
