@@ -262,6 +262,46 @@ const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,is_
 const BOOKS_CACHE_KEY = 'hob_books_cache_v2' // v2: catalog view + is_premium
 const BOOKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
+// ── Cover fallback ────────────────────────────────────────────────
+// Some books have no cover on OpenLibrary. That used to show as a blank
+// rectangle: OpenLibrary answers a missing cover with HTTP 200 and a 43-byte
+// 1x1 transparent GIF rather than a 404, so the browser counted it as a
+// successful load and the onError handlers below never ran. Cover URLs now
+// carry ?default=false, which makes OpenLibrary return a real 404 so these
+// fallbacks actually fire.
+//
+// The fallback used to be a random picsum photo, which read as a bug — an
+// unrelated stock image sitting where a cover belongs. This draws a proper
+// typeset cover instead: brand gradient, title, author. It is an inline SVG
+// data URI, so it needs no network and cannot itself fail.
+const coverFallback = (title?: string, author?: string) => {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // Wrap the title onto at most 4 lines so long ones don't overflow the card.
+  const words = String(title || 'Untitled').trim().split(/\s+/)
+  const lines: string[] = []
+  let cur = ''
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > 16 && cur) { lines.push(cur); cur = w }
+    else cur = (cur + ' ' + w).trim()
+    if (lines.length === 4) break
+  }
+  if (cur && lines.length < 4) lines.push(cur)
+  const startY = 150 - (lines.length - 1) * 13
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#1c1926"/><stop offset="55%" stop-color="#15131c"/><stop offset="100%" stop-color="#0d0c12"/>
+</linearGradient></defs>
+<rect width="200" height="300" fill="url(#g)"/>
+<rect x="0" y="0" width="4" height="300" fill="#c9a84c" opacity="0.55"/>
+<text x="100" y="52" text-anchor="middle" font-family="Georgia,serif" font-size="15" fill="#c9a84c" opacity="0.75">✦</text>
+${lines.map((l, i) => `<text x="100" y="${startY + i * 26}" text-anchor="middle" font-family="Georgia,serif" font-size="17" fill="#e8e4d9">${esc(l)}</text>`).join('')}
+${author ? `<text x="100" y="${startY + lines.length * 26 + 14}" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-style="italic" fill="#9a9080">${esc(String(author).slice(0, 26))}</text>` : ''}
+<text x="100" y="272" text-anchor="middle" font-family="Georgia,serif" font-size="9.5" fill="#6a6458" letter-spacing="1.6">HOUSE OF BOOKS</text>
+</svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
 // ── CSS ───────────────────────────────────────────────────────────
 const buildStyles = (th: typeof THEMES[0], dir: string) => `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -785,11 +825,11 @@ const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, shelfStatu
         onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none'}}
       >🔖</button>
       <img
-        src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
+        src={book.cover_url || coverFallback(book.title, book.author)}
         alt={book.title}
         loading="lazy"
         decoding="async"
-        onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${book.id}/200/300` }}
+        onError={e => { (e.target as HTMLImageElement).src = coverFallback(book.title, book.author) }}
         style={{
           width:'100%',aspectRatio:'2/3',
           objectFit:'cover',display:'block',
@@ -1387,7 +1427,7 @@ function ExpandedPanel({
       <div style={{position:'relative',overflow:'hidden',flexShrink:0}}>
         <div style={{
           position:'absolute',inset:0,
-          backgroundImage:`url(${book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`})`,
+          backgroundImage:`url(${book.cover_url || coverFallback(book.title, book.author)})`,
           backgroundSize:'cover',backgroundPosition:'center',
           filter:'blur(28px) saturate(1.4) brightness(0.55)',
           transform:'scale(1.2)',
@@ -1400,10 +1440,10 @@ function ExpandedPanel({
           borderBottom:'0.5px solid rgba(201,168,76,0.12)',
         }}>
           <img
-            src={book.cover_url || `https://picsum.photos/seed/${book.id}/200/300`}
+            src={book.cover_url || coverFallback(book.title, book.author)}
             alt={book.title}
             decoding="async"
-            onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${book.id}/200/300` }}
+            onError={e => { (e.target as HTMLImageElement).src = coverFallback(book.title, book.author) }}
             style={{
               width:'96px',height:'138px',
               objectFit:'cover',borderRadius:'12px',
@@ -2579,7 +2619,7 @@ export default function App() {
     <>
       {dailyQuote&&<div className="daily-quote"><div className="quote-label">✦ {t.dailyQuote}</div><div className="quote-text">"{shortenQuote(dailyQuote.text)}"</div><div className="quote-source">— {dailyQuote.source}</div></div>}
       {streak>=2&&<div className="streak-bar"><span className="streak-fire">🔥</span><span className="streak-count">{streak}</span><span className="streak-label">{t.streak}</span></div>}
-      {recommendations.length>0&&<div className="recs-section"><div className="recs-title">✨ {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url} alt={b.title} loading="lazy" decoding="async" onError={e=>{(e.target as HTMLImageElement).src=`https://picsum.photos/seed/${b.id}/110/165`}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
+      {recommendations.length>0&&<div className="recs-section"><div className="recs-title">✨ {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url || coverFallback(b.title, b.author)} alt={b.title} loading="lazy" decoding="async" onError={e=>{(e.target as HTMLImageElement).src=coverFallback(b.title, b.author)}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
       {loadingRecs&&<div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'1.5rem'}}>✨ {t.loadingRecs}</div>}
 
       <div className="section-header">
