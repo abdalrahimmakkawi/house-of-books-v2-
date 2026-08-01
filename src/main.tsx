@@ -2,6 +2,14 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 
+// Lazily pulled in so the Studio chunk is never part of the normal boot path.
+const Studio = React.lazy(() => import('./pages/Agent'))
+const StudioPreview = () => (
+  <React.Suspense fallback={<div style={{ padding: 24, fontFamily: 'Georgia,serif', color: '#c9a84c', background: '#0e0d14', minHeight: '100vh' }}>Loading Studio…</div>}>
+    <Studio />
+  </React.Suspense>
+)
+
 // Catches any render crash anywhere in the app so users get a friendly
 // retry screen instead of a permanent blank page. Shelf/notes live in
 // localStorage, so a reload loses nothing.
@@ -27,10 +35,25 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
+// Dev-only preview of the admin Studio at ?studio=1.
+//
+// The Studio normally renders only for an authenticated admin session, which
+// makes reviewing its LAYOUT a chore — you have to log in every time, and it
+// can't be looked at from a machine that isn't signed in. This bypasses the
+// UI gate for design review only.
+//
+// It is NOT a security hole: import.meta.env.DEV is false in `vite build`, so
+// this branch is dead-code-eliminated and never reaches production. The real
+// gate was never the UI anyway — /api/agent verifies the Supabase access token
+// server-side and returns 403 for non-admins, so a preview without a session
+// simply shows the metrics strip in its error state.
+const studioPreview =
+  import.meta.env.DEV && new URLSearchParams(location.search).has('studio')
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      {studioPreview ? <StudioPreview /> : <App />}
     </ErrorBoundary>
   </React.StrictMode>
 )

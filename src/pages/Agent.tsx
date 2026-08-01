@@ -47,7 +47,7 @@ const BUSINESS_AGENTS = [
     label: "Growth Advisor",
     desc: "Get a specific 90-day growth plan based on your current metrics",
     color: GRN,
-    placeholder: "Describe your current situation: users, MRR, biggest challenge, main channel…",
+    placeholder: "Ask about growth — I can already see your users, MRR and conversion…",
     suggestions: [
       "Based on my real numbers above, how do I get to $1000 MRR in 90 days?",
       "What's the highest leverage thing I can do this week to grow?",
@@ -72,7 +72,7 @@ Be brutally specific. Give real tactics, real channels, real numbers. No generic
     label: "Revenue Analyst",
     desc: "Analyze your MRR, churn, LTV and get specific fixes",
     color: G,
-    placeholder: "Share your numbers: free users, paid users, MRR, churn rate, CAC…",
+    placeholder: "Ask about revenue — your live figures are already loaded above…",
     suggestions: [
       "Look at my real conversion rate above — what is wrong and what do I fix first?",
       "Once I have paying users, what churn rate should worry me and how do I prevent it?",
@@ -167,7 +167,7 @@ Prioritize features by: retention impact, conversion impact, differentiation val
     label: "Churn & Retention",
     desc: "Reduce churn, win back users, improve long-term retention",
     color: "#f07e7e",
-    placeholder: "Describe your churn situation or ask about retention strategies…",
+    placeholder: "Ask about retention — I can see signups, active readers and paying users…",
     suggestions: [
       "What are the top 3 churn preventers I should build before I have churn?",
       "What should a win-back email say to a user who cancelled?",
@@ -275,13 +275,37 @@ async function callAI(messages: any[], systemPrompt: string) {
   return data.content || "No response."
 }
 
-// ── Live metrics ───────────────────────────────────────────────────
-// The panel used to be a chat box and nothing else — you had to ASK the model
-// how the app was doing, and until recently it answered from placeholder
-// numbers baked into the dashboard (freeUsers:500, conv:4%, price:$10) rather
-// than the database. These cards read the same /api/agent `metrics` action the
-// model's context is built from, so the screen and the model can never
-// disagree, and the important numbers are visible without asking.
+// ═══════════════════════════════════════════════════════════════════
+//  STUDIO — the admin console for House of Books
+//
+//  Replaces the previous layout (a 248px agent list glued to a chat box).
+//  Two things were wrong with it: the numbers that matter were invisible
+//  until you asked for them, and the type was 7.5-9px in places.
+//
+//  Shape now: a live "Today" band across the top so the real figures are
+//  always on screen, a horizontal agent rail that frees the vertical space
+//  the sidebar was eating, and a reading-width conversation column.
+//
+//  Visual language follows the reader app deliberately — deep warm black,
+//  gold, Georgia for prose — so this feels like part of House of Books and
+//  not a bolted-on dashboard. Numbers use a system sans with tabular
+//  figures, which is the one place a serif genuinely hurts legibility.
+// ═══════════════════════════════════════════════════════════════════
+
+const INK    = "#0e0d14"          // app background, warm near-black
+const PANEL  = "rgba(255,255,255,0.022)"
+const PANEL2 = "rgba(255,255,255,0.045)"
+const LINE   = "rgba(201,168,76,0.16)"
+const LINE2  = "rgba(255,255,255,0.07)"
+const NUM    = "system-ui,-apple-system,'Segoe UI',sans-serif"
+const SERIF  = "Georgia,'Times New Roman',serif"
+
+const BOOK_AGENT = { id:"books", icon:"📚", label:"Book Chat", desc:"Discuss any book with AI", color:G } as any
+const ALL_AGENTS = [BOOK_AGENT, ...BUSINESS_AGENTS]
+
+// Live figures, straight from the database via the admin-gated `metrics`
+// action. The chat context on the server is built from the same function, so
+// what you read here and what the model reasons about cannot drift apart.
 async function fetchMetrics() {
   const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch("/api/agent", {
@@ -289,543 +313,382 @@ async function fetchMetrics() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "metrics", accessToken: session?.access_token }),
   })
-  if (!res.ok) throw new Error(`Metrics unavailable (${res.status})`)
+  if (!res.ok) {
+    throw new Error(res.status === 401 || res.status === 403
+      ? "Sign in as an admin to load live figures"
+      : `Metrics unavailable (${res.status})`)
+  }
   return res.json()
 }
 
-function StatCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
+// ── Reading the numbers ────────────────────────────────────────────
+// A plain-English line under the metrics. Deliberately derived in code
+// from the live figures rather than asked of the model: it must never
+// drift from what the cards say, and it costs nothing to compute.
+function readTheRoom(m: any): { text: string; tone: string } {
+  if (!m) return { text: "", tone: TM }
+  if (!m.users?.available) return { text: "User count unavailable — the auth read failed, so conversion can't be computed.", tone: RED }
+  const u = m.users.total, p = m.revenue.premiumUsers, f = m.feedback.writtenCount
+  if (u === 0) return { text: "No registered users yet. Getting the first ten is the only thing that matters.", tone: TM }
+  if (p === 0) return { text: `${u} registered, none paying yet. Conversion is the number to move — everything else is noise until it's above zero.`, tone: G }
+  if (f === 0) return { text: `${p} paying of ${u}. No written feedback yet, so you're flying on numbers alone.`, tone: G }
+  return { text: `${p} paying of ${u} · ${f} written notes · avg ${m.feedback.avgRating ?? "—"}/5.`, tone: GRN }
+}
+
+// ── Metric tile ────────────────────────────────────────────────────
+function Tile({ label, value, sub, tone, dim }: any) {
   return (
     <div style={{
-      flex: "1 1 130px", minWidth: 130, padding: "11px 13px", borderRadius: 10,
-      background: SF, border: "1px solid " + GB,
+      flex:"1 1 128px", minWidth:128, padding:"13px 15px", borderRadius:12,
+      background: PANEL, border:"1px solid " + LINE2,
     }}>
-      <div style={{ fontSize: 10, color: TM, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 5 }}>{label}</div>
-      <div style={{ fontSize: 21, fontWeight: 700, color: tone || TX, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{value}</div>
-      {sub && <div style={{ fontSize: 10.5, color: TM, marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontFamily:NUM, fontSize:10, letterSpacing:".13em", textTransform:"uppercase", color:TM, marginBottom:7 }}>{label}</div>
+      <div style={{
+        fontFamily:NUM, fontSize:26, fontWeight:600, lineHeight:1, letterSpacing:"-.02em",
+        color: dim ? TM : (tone || TX), fontVariantNumeric:"tabular-nums",
+      }}>{value}</div>
+      {sub && <div style={{ fontFamily:NUM, fontSize:11, color:TM, marginTop:6, lineHeight:1.35 }}>{sub}</div>}
     </div>
   )
 }
 
-function MetricsBar() {
-  const [m, setM] = useState<any>(null)
-  const [err, setErr] = useState("")
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr("")
-    try { setM(await fetchMetrics()) }
-    catch (e: any) { setErr(e?.message || "Could not load metrics") }
-    finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  if (loading && !m) return (
-    <div style={{ padding: "12px 16px", fontSize: 11, color: TM, borderBottom: "1px solid " + GB }}>Loading live metrics…</div>
-  )
-  if (err) return (
-    <div style={{ padding: "10px 16px", fontSize: 11, color: RED, borderBottom: "1px solid " + GB, display: "flex", gap: 10, alignItems: "center" }}>
-      <span>⚠ {err}</span>
-      <button onClick={load} style={{ background: "none", border: "1px solid " + GB, color: G, borderRadius: 6, padding: "3px 9px", fontSize: 10, cursor: "pointer" }}>Retry</button>
-    </div>
-  )
-  if (!m) return null
-
-  const conv = m.revenue.conversionPct
+// ── Today band ─────────────────────────────────────────────────────
+function TodayBand({ m, loading, err, onRefresh }: any) {
+  const read = readTheRoom(m)
   return (
-    <div style={{ padding: "12px 16px", borderBottom: "1px solid " + GB, background: "rgba(10,10,15,0.7)", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-        <div style={{ fontSize: 10, color: TM, letterSpacing: ".1em", textTransform: "uppercase" }}>
-          Live · read from the database
+    <div style={{ padding:"14px 22px 16px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:11, gap:12 }}>
+        <div style={{ display:"flex", alignItems:"baseline", gap:10 }}>
+          <span style={{ fontFamily:SERIF, fontSize:15, color:TX, letterSpacing:".02em" }}>Today</span>
+          <span style={{ fontFamily:NUM, fontSize:10.5, color:TM, letterSpacing:".08em" }}>
+            {m ? `read from the database · ${new Date(m.generatedAt).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}` : "reading…"}
+          </span>
         </div>
-        <button onClick={load} disabled={loading}
-          style={{ background: "none", border: "1px solid " + GB, color: loading ? TM : G, borderRadius: 6, padding: "3px 10px", fontSize: 10, cursor: loading ? "default" : "pointer" }}>
+        <button onClick={onRefresh} disabled={loading}
+          style={{ fontFamily:NUM, background:"none", border:"1px solid " + LINE, color: loading ? TM : G,
+                   borderRadius:8, padding:"5px 12px", fontSize:11, cursor: loading ? "default" : "pointer" }}>
           {loading ? "…" : "↻ Refresh"}
         </button>
       </div>
-      <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-        <StatCard
-          label="Users"
-          value={m.users.available ? String(m.users.total) : "—"}
-          sub={m.users.available ? `+${m.users.new7d} this week · ${m.users.active7d} active` : "auth read failed"}
-          tone={m.users.available ? undefined : RED}
-        />
-        <StatCard label="Premium" value={String(m.revenue.premiumUsers)}
-          sub={conv == null ? "conversion unknown" : `${conv}% conversion`} tone={m.revenue.premiumUsers > 0 ? GRN : TX} />
-        <StatCard label="MRR" value={`$${m.revenue.estMrr}`} sub={`$${m.revenue.pricing.monthly}/mo · $${m.revenue.pricing.annual}/yr`}
-          tone={m.revenue.estMrr > 0 ? GRN : TX} />
-        <StatCard label="Feedback" value={String(m.feedback.writtenCount)}
-          sub={m.feedback.avgRating ? `avg ${m.feedback.avgRating}/5` : "none written yet"}
-          tone={m.feedback.writtenCount > 0 ? G : TX} />
-        <StatCard label="Catalog" value={String(m.catalog.books)}
-          sub={`${m.catalog.withAudio} narrated · ${m.catalog.freeBooks} free`} />
-      </div>
-      {m.feedback.writtenCount === 0 && (
-        <div style={{ fontSize: 10.5, color: TM, marginTop: 9, fontStyle: "italic" }}>
-          No written feedback yet — the in-app prompt asks readers once they finish a summary.
-        </div>
+
+      {err ? (
+        <div style={{ fontFamily:NUM, fontSize:12, color:RED }}>⚠ {err}</div>
+      ) : (
+        <>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <Tile label="Readers" dim={!m?.users?.available}
+              value={m ? (m.users.available ? m.users.total : "—") : "·"}
+              sub={m ? (m.users.available ? `+${m.users.new7d} this week · ${m.users.active7d} active` : "auth read failed") : ""}
+              tone={m && !m.users.available ? RED : undefined} />
+            <Tile label="Paying" value={m ? m.revenue.premiumUsers : "·"}
+              sub={m ? (m.revenue.conversionPct == null ? "conversion unknown" : `${m.revenue.conversionPct}% of readers`) : ""}
+              tone={m && m.revenue.premiumUsers > 0 ? GRN : undefined} />
+            <Tile label="MRR" value={m ? `$${m.revenue.estMrr}` : "·"}
+              sub={m ? `$${m.revenue.pricing.monthly}/mo · $${m.revenue.pricing.annual}/yr` : ""}
+              tone={m && m.revenue.estMrr > 0 ? GRN : undefined} />
+            <Tile label="Feedback" value={m ? m.feedback.writtenCount : "·"}
+              sub={m ? (m.feedback.avgRating ? `avg ${m.feedback.avgRating}/5` : "none written yet") : ""}
+              tone={m && m.feedback.writtenCount > 0 ? G : undefined} />
+            <Tile label="Library" value={m ? m.catalog.books : "·"}
+              sub={m ? `${m.catalog.withAudio} narrated · ${m.catalog.freeBooks} free` : ""} />
+          </div>
+          {read.text && (
+            <div style={{ fontFamily:SERIF, fontSize:13, color:read.tone, marginTop:12, fontStyle:"italic", lineHeight:1.5 }}>
+              {read.text}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
 }
 
-// ── Sub-components ─────────────────────────────────────────────────
-function TypingDots() {
+// ── Agent rail ─────────────────────────────────────────────────────
+function AgentRail({ agents, active, onPick }: any) {
   return (
-    <div style={{ display:"flex", gap:4, padding:"3px 0" }}>
-      {[0,1,2].map(i=>(
-        <motion.div key={i} style={{ width:6, height:6, borderRadius:"50%", background:G }}
-          animate={{ y:[0,-5,0], opacity:[0.4,1,0.4] }}
-          transition={{ duration:0.8, repeat:Infinity, delay:i*0.18 }}/>
+    <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"11px 22px", borderBottom:"1px solid " + LINE2, flexShrink:0, scrollbarWidth:"none" as any }}>
+      {agents.map((a: any) => {
+        const on = active.id === a.id
+        return (
+          <button key={a.id} onClick={() => onPick(a)} title={a.desc}
+            style={{
+              display:"flex", alignItems:"center", gap:7, whiteSpace:"nowrap", flexShrink:0,
+              padding:"8px 14px", borderRadius:999, cursor:"pointer",
+              fontFamily:NUM, fontSize:12.5, letterSpacing:".01em",
+              background: on ? "rgba(201,168,76,0.13)" : PANEL,
+              border:"1px solid " + (on ? "rgba(201,168,76,0.45)" : LINE2),
+              color: on ? GL : TX, fontWeight: on ? 600 : 400, transition:"all .16s",
+            }}>
+            <span style={{ fontSize:14 }}>{a.icon}</span>{a.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Conversation ───────────────────────────────────────────────────
+function Typing() {
+  return (
+    <div style={{ display:"flex", gap:4, padding:"4px 0" }}>
+      {[0,1,2].map(i => (
+        <span key={i} style={{ width:5, height:5, borderRadius:"50%", background:G, opacity:.45, animation:`bob 1.1s ${i*0.16}s infinite ease-in-out` }}/>
       ))}
     </div>
   )
 }
 
-function MsgBubble({ msg }: { msg: any }) {
-  const isUser = msg.role === "user"
+function Message({ msg }: any) {
+  const mine = msg.role === "user"
   return (
-    <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ duration:.2 }}
-      style={{ display:"flex", justifyContent:isUser?"flex-end":"flex-start", gap:8, alignItems:"flex-start" }}>
-      {!isUser && (
-        <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg," + G + ",#7a4c10)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0 }}>✦</div>
-      )}
-      <div style={{ maxWidth:"82%", padding:"10px 13px", background:isUser?"rgba(201,168,76,0.1)":SF, border:"1px solid " + (isUser?"rgba(201,168,76,0.25)":GB), borderRadius:isUser?"12px 12px 3px 12px":"12px 12px 12px 3px", fontSize:13, lineHeight:1.72, color:isUser?TX:"rgba(232,228,217,0.88)", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
-        {msg.content}
+    <div style={{ display:"flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom:18 }}>
+      <div style={{ maxWidth: mine ? "78%" : "100%" }}>
+        {!mine && (
+          <div style={{ fontFamily:NUM, fontSize:10, letterSpacing:".13em", textTransform:"uppercase", color:TM, marginBottom:7 }}>Studio</div>
+        )}
+        <div style={{
+          fontFamily:SERIF, fontSize:14.5, lineHeight:1.72, whiteSpace:"pre-wrap", wordBreak:"break-word",
+          color: mine ? GL : TX,
+          background: mine ? "rgba(201,168,76,0.1)" : "transparent",
+          border: mine ? "1px solid " + LINE : "none",
+          borderRadius: mine ? 14 : 0,
+          padding: mine ? "11px 15px" : 0,
+        }}>{msg.content}</div>
       </div>
-    </motion.div>
-  )
-}
-
-function InputArea({ taRef, value, onChange, onSend, loading, placeholder }: any) {
-  return (
-    <div style={{ padding:"10px 12px", borderTop:"1px solid " + GB, display:"flex", gap:8, alignItems:"flex-end", flexShrink:0, background:"rgba(8,8,14,0.7)" }}>
-      <textarea ref={taRef} value={value} onChange={(e: any) => onChange(e.target.value)} placeholder={placeholder}
-        disabled={loading}
-        onKeyDown={(e: any) => { if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); onSend() } }}
-        onFocus={(e: any) => e.target.style.borderColor="rgba(201,168,76,0.5)"}
-        onBlur={(e: any) => e.target.style.borderColor=GB}
-        style={{ flex:1, background:"rgba(255,255,255,0.04)", border:"1px solid " + GB, borderRadius:10, padding:"10px 13px", color:TX, fontSize:13, outline:"none", resize:"none", fontFamily:"Georgia,serif", lineHeight:1.5, minHeight:44, maxHeight:140, transition:"border-color .2s" }}
-      />
-      <button onClick={onSend} disabled={!value.trim()||loading}
-        style={{ width:40, height:40, borderRadius:10, flexShrink:0, background:value.trim()&&!loading?"linear-gradient(135deg," + G + "," + GL + ")":"rgba(255,255,255,0.05)", border:"none", cursor:value.trim()&&!loading?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", opacity:value.trim()&&!loading?1:0.35 }}>
-        {loading
-          ? <motion.div style={{ width:14, height:14, border:"2px solid " + G, borderTopColor:"transparent", borderRadius:"50%" }} animate={{ rotate:360 }} transition={{ duration:.8, repeat:Infinity, ease:"linear" }}/>
-          : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={value.trim()?"#06050a":G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-        }
-      </button>
     </div>
   )
 }
 
-function CompCard({ comp, selected, onToggle }: any) {
-  const isOn = selected.some((c: any) => c.id===comp.id)
+// ── Composer ───────────────────────────────────────────────────────
+function Composer({ taRef, value, onChange, onSend, loading, placeholder, chips, onChip }: any) {
   return (
-    <motion.div layout whileHover={{ y:-1 }} onClick={()=>onToggle(comp)}
-      style={{ padding:"10px 12px", borderRadius:8, cursor:"pointer", border:"1px solid " + (isOn?G:GB), background:isOn?GD:SF, transition:"all .2s", position:"relative" }}>
-      {isOn && <div style={{ position:"absolute", top:7, right:7, width:15, height:15, borderRadius:"50%", background:G, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:BG, fontWeight:800 }}>✓</div>}
-      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:5 }}>
-        <span style={{ fontSize:16 }}>{comp.emoji}</span>
-        <div>
-          <div style={{ fontSize:11, fontWeight:700, color:TX }}>{comp.name}</div>
-          <div style={{ fontSize:9, color:TM }}>{comp.visitors} · {comp.rating}</div>
+    <div style={{ borderTop:"1px solid " + LINE2, padding:"12px 22px 16px", flexShrink:0, background:"rgba(10,9,14,0.6)" }}>
+      {chips?.length > 0 && (
+        <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:10, scrollbarWidth:"none" as any }}>
+          {chips.map((c: string, i: number) => (
+            <button key={i} onClick={() => onChip(c)} disabled={loading}
+              style={{ fontFamily:NUM, fontSize:11.5, whiteSpace:"nowrap", flexShrink:0, padding:"7px 12px",
+                       borderRadius:999, background:PANEL, border:"1px solid " + LINE2, color:TM,
+                       cursor: loading ? "default" : "pointer", transition:"all .16s" }}
+              onMouseEnter={(e:any)=>{ if(!loading){ e.currentTarget.style.color=GL; e.currentTarget.style.borderColor=LINE } }}
+              onMouseLeave={(e:any)=>{ e.currentTarget.style.color=TM; e.currentTarget.style.borderColor=LINE2 }}>
+              {c}
+            </button>
+          ))}
         </div>
+      )}
+      <div style={{ display:"flex", gap:9, alignItems:"flex-end" }}>
+        <textarea
+          ref={taRef} value={value} rows={1} placeholder={placeholder}
+          onChange={(e:any) => { onChange(e.target.value); e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,150)+"px" }}
+          onKeyDown={(e:any) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend() } }}
+          style={{ flex:1, resize:"none", fontFamily:SERIF, fontSize:14, lineHeight:1.6, padding:"12px 15px",
+                   borderRadius:13, background:PANEL2, border:"1px solid " + LINE2, color:TX, outline:"none",
+                   maxHeight:150, boxSizing:"border-box" }}
+          onFocus={(e:any)=>e.currentTarget.style.borderColor=LINE}
+          onBlur={(e:any)=>e.currentTarget.style.borderColor=LINE2}
+        />
+        <button onClick={onSend} disabled={loading || !value.trim()}
+          style={{ fontFamily:NUM, fontSize:13, fontWeight:600, padding:"12px 20px", borderRadius:13, border:"none",
+                   background: loading || !value.trim() ? "rgba(201,168,76,0.16)" : "linear-gradient(135deg,#e0be6f,#c9a84c)",
+                   color: loading || !value.trim() ? TM : "#100f16",
+                   cursor: loading || !value.trim() ? "default" : "pointer", flexShrink:0 }}>
+          {loading ? "…" : "Ask"}
+        </button>
       </div>
-      <div style={{ fontSize:9, color:TM, marginBottom:5, lineHeight:1.4 }}>{comp.tagline}</div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginBottom:5 }}>
-        <span style={{ fontSize:7.5, background:"rgba(74,200,120,0.1)", color:GRN, padding:"2px 5px", borderRadius:3 }}>+{comp.strengths[0]}</span>
-        <span style={{ fontSize:7.5, background:"rgba(240,80,80,0.1)", color:RED, padding:"2px 5px", borderRadius:3 }}>−{comp.weaknesses[0]}</span>
+      <div style={{ fontFamily:NUM, fontSize:10, color:TM, marginTop:7 }}>
+        Enter to send · Shift+Enter for a new line · answers use the live figures above
       </div>
-      <div style={{ fontSize:10, color:G, fontWeight:600 }}>{comp.pricing}</div>
-    </motion.div>
+    </div>
   )
 }
 
-// ── History Panel ──────────────────────────────────────────────────
-function HistoryPanel({ onClose, onRestore }: any) {
-  const [history, setHistory] = useState(loadHistory())
-  const [search, setSearch] = useState("")
-  const [expanded, setExpanded] = useState<number|null>(null)
-
-  const filtered = history.filter((h: any) =>
-    h.label.toLowerCase().includes(search.toLowerCase()) ||
-    (h.preview||"").toLowerCase().includes(search.toLowerCase()) ||
-    (h.agentId||"").toLowerCase().includes(search.toLowerCase())
-  )
-
-  const deleteEntry = (id: number) => {
-    const updated = history.filter((h: any) => h.id!==id)
-    setHistory(updated)
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
-    if (expanded===id) setExpanded(null)
-  }
-
-  const clearAll = () => {
-    if (!confirm("Clear all agent history?")) return
-    setHistory([])
-    localStorage.removeItem(HISTORY_KEY)
-  }
-
-  const agentLabel = (id: string) => BUSINESS_AGENTS.find(a=>a.id===id)?.label || (id==="books"?"Book Chat":id)
-  const agentIcon  = (id: string) => BUSINESS_AGENTS.find(a=>a.id===id)?.icon || (id==="books"?"📚":"✦")
+// ── History drawer ─────────────────────────────────────────────────
+function HistoryDrawer({ onClose, onRestore }: any) {
+  const [history] = useState(loadHistory())
+  const [q, setQ] = useState("")
+  const items = history.filter((h: any) =>
+    !q.trim() || h.label?.toLowerCase().includes(q.toLowerCase()) ||
+    h.messages?.some((m: any) => m.content?.toLowerCase().includes(q.toLowerCase())))
 
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", backdropFilter:"blur(14px)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", padding:"1.5rem" }}>
-      <motion.div initial={{ scale:.95, y:20 }} animate={{ scale:1, y:0 }} exit={{ scale:.95 }}
-        style={{ background:"#0d0d12", border:"1px solid " + GB, borderRadius:14, width:"100%", maxWidth:800, maxHeight:"88vh", overflow:"hidden", display:"flex", flexDirection:"column" }}>
-
-        <div style={{ padding:"16px 20px", borderBottom:"1px solid " + GB, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-          <div>
-            <div style={{ fontFamily:"Georgia,serif", fontSize:"1.1rem", color:G, fontWeight:700 }}>📋 Agent History</div>
-            <div style={{ fontSize:10, color:TM, marginTop:2 }}>{history.length} saved conversations across all agents · persists across sessions</div>
-          </div>
-          <div style={{ display:"flex", gap:8 }}>
-            {history.length>0 && <button onClick={clearAll} style={{ padding:"4px 11px", background:"transparent", border:"1px solid rgba(240,85,85,0.3)", color:RED, borderRadius:6, fontSize:9, cursor:"pointer", letterSpacing:".06em", textTransform:"uppercase" }}>Clear All</button>}
-            <button onClick={onClose} style={{ padding:"4px 11px", background:"transparent", border:"1px solid " + GB, color:TM, borderRadius:6, fontSize:9, cursor:"pointer", letterSpacing:".06em", textTransform:"uppercase" }}>✕ Close</button>
-          </div>
+      onClick={onClose}
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.62)", zIndex:60, display:"flex", justifyContent:"flex-end" }}>
+      <motion.div initial={{ x:"100%" }} animate={{ x:0 }} exit={{ x:"100%" }} transition={{ type:"tween", duration:.24 }}
+        onClick={(e:any)=>e.stopPropagation()}
+        style={{ width:"min(430px,92vw)", background:INK, borderLeft:"1px solid " + LINE, display:"flex", flexDirection:"column" }}>
+        <div style={{ padding:"16px 20px", borderBottom:"1px solid " + LINE2, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <span style={{ fontFamily:SERIF, fontSize:15, color:TX }}>Past conversations</span>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:TM, fontSize:19, cursor:"pointer", lineHeight:1 }}>✕</button>
         </div>
-
-        <div style={{ padding:"10px 20px", borderBottom:"1px solid " + GB, flexShrink:0 }}>
-          <input value={search} onChange={(e: any)=>setSearch(e.target.value)} placeholder="Search all conversations…"
-            style={{ width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid " + GB, borderRadius:7, padding:"7px 12px", color:TX, fontSize:12, outline:"none", fontFamily:"Georgia,serif" }}
-            onFocus={(e: any)=>e.target.style.borderColor=G} onBlur={(e: any)=>e.target.style.borderColor=GB}/>
+        <div style={{ padding:"12px 20px" }}>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"
+            style={{ width:"100%", fontFamily:NUM, fontSize:12.5, padding:"9px 12px", borderRadius:10,
+                     background:PANEL2, border:"1px solid " + LINE2, color:TX, outline:"none", boxSizing:"border-box" }}/>
         </div>
-
-        <div style={{ flex:1, overflow:"auto", padding:"12px 20px" }}>
-          {filtered.length===0
-            ? <div style={{ textAlign:"center", padding:"3rem", color:TM, fontSize:13 }}>
-                {history.length===0 ? "No conversations yet. Start chatting with any agent — they all auto-save." : "No results found."}
+        <div style={{ flex:1, overflowY:"auto", padding:"0 20px 20px" }}>
+          {items.length === 0 && (
+            <div style={{ fontFamily:SERIF, fontSize:13, color:TM, fontStyle:"italic", padding:"18px 0" }}>
+              {history.length === 0 ? "Nothing saved yet." : "No matches."}
+            </div>
+          )}
+          {items.map((h: any, i: number) => (
+            <button key={i} onClick={() => { onRestore(h); onClose() }}
+              style={{ display:"block", width:"100%", textAlign:"left", marginBottom:8, padding:"11px 13px",
+                       borderRadius:11, background:PANEL, border:"1px solid " + LINE2, cursor:"pointer" }}>
+              <div style={{ fontFamily:NUM, fontSize:12, color:GL, marginBottom:3 }}>{h.label}</div>
+              <div style={{ fontFamily:SERIF, fontSize:12, color:TM, lineHeight:1.5,
+                            overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box",
+                            WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any }}>
+                {h.messages?.find((m:any)=>m.role==="user")?.content || "—"}
               </div>
-            : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                {filtered.map((entry: any) => (
-                  <div key={entry.id} style={{ background:SF, border:"1px solid " + (expanded===entry.id?G:GB), borderRadius:10, overflow:"hidden", transition:"border-color .2s" }}>
-                    <div style={{ padding:"11px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}
-                      onClick={()=>setExpanded(expanded===entry.id?null:entry.id)}>
-                      <span style={{ fontSize:16, flexShrink:0 }}>{agentIcon(entry.agentId)}</span>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12, color:TX, fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.label}</div>
-                        <div style={{ fontSize:9, color:TM, marginTop:2 }}>
-                          {agentLabel(entry.agentId)} · {new Date(entry.ts).toLocaleDateString()} {new Date(entry.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
-                        </div>
-                        {entry.preview && <div style={{ fontSize:10, color:"rgba(232,228,217,0.3)", marginTop:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.preview}…</div>}
-                      </div>
-                      <div style={{ display:"flex", gap:6, flexShrink:0 }}>
-                        <button onClick={(e: any)=>{ e.stopPropagation(); onRestore(entry); onClose() }}
-                          style={{ padding:"4px 10px", background:GD, border:"1px solid " + GB, color:G, borderRadius:5, fontSize:9, cursor:"pointer", letterSpacing:".06em", textTransform:"uppercase" }}>
-                          Restore
-                        </button>
-                        <button onClick={(e: any)=>{ e.stopPropagation(); deleteEntry(entry.id) }}
-                          style={{ padding:"4px 8px", background:"transparent", border:`1px solid rgba(240,85,85,0.2)`, color:RED, borderRadius:5, fontSize:9, cursor:"pointer" }}>✕</button>
-                        <span style={{ fontSize:11, color:TM }}>{expanded===entry.id?"▲":"▼"}</span>
-                      </div>
-                    </div>
-                    <AnimatePresence>
-                      {expanded===entry.id && (
-                        <motion.div initial={{ height:0, opacity:0 }} animate={{ height:"auto", opacity:1 }} exit={{ height:0, opacity:0 }}
-                          style={{ borderTop:"1px solid " + GB, padding:"12px 16px", maxHeight:300, overflow:"auto" }}>
-                          {entry.messages.filter((m: any)=>m.role==="assistant").map((m: any,i: number)=>(
-                            <div key={i} style={{ fontSize:12, color:"rgba(232,228,217,0.8)", lineHeight:1.7, whiteSpace:"pre-wrap", marginBottom:i<entry.messages.filter((x: any)=>x.role==="assistant").length-1?12:0 }}>
-                              {m.content}
-                            </div>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                ))}
-              </div>
-          }
+            </button>
+          ))}
         </div>
       </motion.div>
     </motion.div>
   )
 }
 
-// ── Chat Panel (shared by all agents) ─────────────────────────────
-function AgentChat({ agent, selComps, onToggleComp }: any) {
-  const welcomeMsg = agent.id==="books"
-    ? "Hello! I'm your House of Books AI literary companion.\n\nSelect a book above to focus on it, or ask me anything about books — analysis, recommendations, reading plans, ideas across disciplines.\n\nWhat would you like to explore?"
-    : `${agent.icon} ${agent.label} ready.\n\n${agent.desc}\n\nTry one of the suggestions below or ask me anything.` 
+// ── Chat surface ───────────────────────────────────────────────────
+function Conversation({ agent, metrics, selComps, onToggleComp }: any) {
+  const welcome = agent.id === "books"
+    ? "Ask me about any book in the library — themes, arguments, how it compares to another."
+    : `${agent.desc}. I can see your live figures above, so ask in terms of them.`
 
-  const [messages, setMessages] = useState([{ role:"assistant", content:welcomeMsg, ts:0 }])
+  const [messages, setMessages] = useState<any[]>([{ role:"assistant", content:welcome }])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
-  const [loadingStep, setLoadingStep] = useState('')
-  const [selBook, setSelBook] = useState<any>(null)
-  const [mode, setMode] = useState("chat")
-  const endRef  = useRef<any>(null)
-  const taRef   = useRef<any>(null)
+  const [err, setErr] = useState("")
+  const taRef = useRef<any>(null)
+  const endRef = useRef<any>(null)
 
-  useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}) }, [messages, loading])
-  useEffect(()=>{ if(taRef.current){ taRef.current.style.height="44px"; taRef.current.style.height=Math.min(taRef.current.scrollHeight,140)+"px" } }, [input])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }) }, [messages, loading])
 
-  // Reset when switching agents
-  useEffect(()=>{
-    setMessages([{ role:"assistant", content:welcomeMsg, ts:0 }])
-    setInput(""); setSelBook(null); setMode("chat")
-  }, [agent.id])
-
-  const send = useCallback(async(text?: string) => {
-    const c = (text||input).trim()
-    if (!c||loading) return
-    setInput("")
-    const prefix = agent.id==="books" ? ({analyze:"Analyze in depth, exploring all themes and implications: ",recommend:"Give specific book recommendations based on: ",plan:"Create a detailed reading plan or study guide for: ",chat:""}[mode]||"") : ""
-
-    let sysPrompt = agent.systemPrompt
-    // For competitor agent, append selected competitor data
-    if (agent.isCompetitor && selComps.length>0) {
-      sysPrompt += `\n\nSELECTED COMPETITORS TO ANALYZE:\n${selComps.map((c: any)=>`### ${c.name} (${c.pricing}, ${c.visitors})\nTagline: ${c.tagline}\nDifferentiator: ${c.differentiator}\nStrengths: ${c.strengths.join(", ")}\nWeaknesses: ${c.weaknesses.join(", ")}`).join("\n\n")}` 
-    }
-    // For book chat, append book context
-    if (agent.id==="books" && selBook) {
-      sysPrompt += `\n\nCurrently focused on: "${selBook.title}" by ${selBook.author}\nSummary: ${selBook.summary}\nKey Insights: ${selBook.insights.map((ins: string,i: number)=>`${i+1}. ${ins}`).join(" | ")}` 
-    }
-
-    // Set loading steps
-    setLoadingStep('🌐 Gathering live news & trends...')
-    setTimeout(() => setLoadingStep('⚡ Analyzing with NVIDIA AI...'), 2000)
-
-    const userMsg = { role:"user", content:prefix+c, ts:Date.now() }
-    const next = [...messages, userMsg]
-    setMessages(next)
-    setLoading(true)
+  const send = useCallback(async (text?: string) => {
+    const content = (text ?? input).trim()
+    if (!content || loading) return
+    setInput(""); setErr("")
+    if (taRef.current) taRef.current.style.height = "auto"
+    const next = [...messages, { role:"user", content }]
+    setMessages(next); setLoading(true)
     try {
-      const reply = await callAI(next.map(m=>({role:m.role,content:m.content})), sysPrompt)
-      const updated = [...next, { role:"assistant", content:reply, ts:Date.now() }]
-      setMessages(updated)
-      // Auto-save
-      const label = agent.id==="books" ? (selBook?.title||"General Chat") : agent.isCompetitor ? (selComps.length>0?selComps.map((c: any)=>c.name).join(" vs "):"General Strategy") : c.slice(0,60)
-      if (selBook) saveHistory(agent.id, selBook.title, updated)
-      else saveHistory(agent.id, label, updated)
-    } catch(e: any) {
-      setMessages(p=>[...p,{ role:"assistant", content:`⚠️ ${e.message}`, ts:Date.now() }])
-    } finally { 
-      setLoading(false)
-      setLoadingStep('')
-    }
-  }, [input, loading, messages, agent, selBook, selComps, mode])
-
-  const BOOK_SUGGS: Record<string,string[]> = {
-    "1":["What habit should I start first?","Explain the 4 laws of behavior change","How does identity shape habits?"],
-    "2":["Why is agriculture Harari's biggest fraud?","What is the Cognitive Revolution?","Is Sapiens historically accurate?"],
-    "3":["How do I start doing deep work today?","Build me a deep work weekly schedule","Is social media worth keeping?"],
-    "4":["Best Stoic advice for anxiety?","How do I stop caring what others think?","Best quote from Meditations?"],
-    "5":["Why do smart people make bad money decisions?","Explain compounding in simple terms","Getting rich vs staying rich"],
-    "6":["What is logotherapy?","How did Frankl find meaning in suffering?","How do I find my own purpose?"],
-  }
-
-  const suggestions = agent.id==="books"
-    ? (BOOK_SUGGS[selBook?.id]||["Recommend a book on productivity","Best philosophy book to start with","Compare Atomic Habits vs Power of Habit","Books that changed the most lives"])
-    : agent.suggestions
+      let prompt = agent.systemPrompt || "You are a helpful literary assistant for House of Books."
+      if (agent.id === "competitor" && selComps?.length) {
+        prompt += "\n\nCompetitors selected for comparison:\n" + selComps.map((c:any) =>
+          `- ${c.name} (${c.pricing}): strengths ${c.strengths.join(", ")}; weaknesses ${c.weaknesses.join(", ")}`).join("\n")
+      }
+      const reply = await callAI(next.filter(m => m.role !== "assistant" || m.content !== welcome), prompt)
+      const done = [...next, { role:"assistant", content: reply }]
+      setMessages(done)
+      saveHistory(agent.id, agent.label, done)
+    } catch (e: any) {
+      setErr(e?.message || "That didn't go through.")
+      setMessages(next)
+    } finally { setLoading(false) }
+  }, [input, loading, messages, agent, selComps, welcome])
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
-      {/* Book selector — only for book chat agent */}
-      {agent.id==="books" && (
-        <div style={{ padding:"7px 16px", borderBottom:"1px solid rgba(201,168,76,0.06)", flexShrink:0, display:"flex", gap:6, overflowX:"auto" }}>
-          <button onClick={()=>setSelBook(null)}
-            style={{ display:"flex", alignItems:"center", gap:5, padding:"4px 10px", background:!selBook?GD:SF, border:"1px solid " + (!selBook?G:GB), borderRadius:14, cursor:"pointer", flexShrink:0, transition:"all .2s" }}>
-            <span style={{ fontSize:10, color:!selBook?G:TM }}>📚 General</span>
-          </button>
-          {BOOKS.map(b=>(
-            <button key={b.id} onClick={()=>setSelBook(selBook?.id===b.id?null:b)}
-              style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 9px", background:selBook?.id===b.id?GD:SF, border:"1px solid " + (selBook?.id===b.id?G:GB), borderRadius:14, cursor:"pointer", flexShrink:0, transition:"all .2s" }}>
-              <img src={b.cover} alt={b.title} style={{ width:16, height:24, objectFit:"cover", borderRadius:2 }} onError={(e: any)=>e.target.style.display="none"}/>
-              <span style={{ fontSize:10, color:selBook?.id===b.id?G:TM, maxWidth:80, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.title}</span>
-            </button>
-          ))}
+    <>
+      {agent.id === "competitor" && (
+        <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"11px 22px", borderBottom:"1px solid " + LINE2, flexShrink:0, scrollbarWidth:"none" as any }}>
+          {COMPETITORS.map((c:any) => {
+            const on = selComps?.some((s:any)=>s.id===c.id)
+            return (
+              <button key={c.id} onClick={()=>onToggleComp(c)}
+                style={{ display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", flexShrink:0,
+                         fontFamily:NUM, fontSize:11.5, padding:"7px 12px", borderRadius:999, cursor:"pointer",
+                         background: on ? "rgba(201,168,76,0.13)" : PANEL,
+                         border:"1px solid " + (on ? "rgba(201,168,76,0.45)" : LINE2), color: on ? GL : TM }}>
+                <span>{c.emoji}</span>{c.name}
+              </button>
+            )
+          })}
         </div>
       )}
 
-      {/* Mode row — only for book chat */}
-      {agent.id==="books" && (
-        <div style={{ display:"flex", gap:5, padding:"6px 16px", borderBottom:"1px solid rgba(201,168,76,0.06)", flexShrink:0, overflowX:"auto", alignItems:"center" }}>
-          {[{id:"chat",l:"💬 Chat"},{id:"analyze",l:"🔍 Deep Analyze"},{id:"recommend",l:"✦ Recommend"},{id:"plan",l:"📋 Reading Plan"}].map(m=>(
-            <button key={m.id} onClick={()=>setMode(m.id)}
-              style={{ padding:"3px 10px", borderRadius:14, fontSize:9, cursor:"pointer", flexShrink:0, background:mode===m.id?"rgba(201,168,76,0.12)":"transparent", border:"1px solid " + (mode===m.id?"rgba(201,168,76,0.4)":GB), color:mode===m.id?G:TM, letterSpacing:".07em", textTransform:"uppercase", transition:"all .2s" }}>
-              {m.l}
-            </button>
-          ))}
-          {selBook&&<span style={{ marginLeft:"auto", fontSize:8, color:"rgba(201,168,76,0.5)", letterSpacing:".1em", display:"flex", alignItems:"center", gap:3, flexShrink:0 }}>
-            <span style={{ width:5, height:5, borderRadius:"50%", background:GRN, display:"inline-block" }}/>{selBook.title.toUpperCase()}
-          </span>}
-        </div>
-      )}
-
-      {/* Competitor cards — only for competitor agent */}
-      {agent.isCompetitor && (
-        <>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(170px, 1fr))", gap:7, padding:"10px 16px", overflowY:"auto", maxHeight:210, borderBottom:"1px solid " + GB, flexShrink:0 }}>
-            {COMPETITORS.map(c=><CompCard key={c.id} comp={c} selected={selComps} onToggle={onToggleComp}/>)}
-          </div>
-          <div style={{ padding:"5px 16px", borderBottom:"1px solid rgba(201,168,76,0.06)", display:"flex", alignItems:"center", gap:6, flexShrink:0, flexWrap:"wrap", minHeight:32 }}>
-            {selComps.length===0
-              ? <span style={{ fontSize:10, color:TM }}>Select competitors above, or ask general strategy questions</span>
-              : <>
-                  <span style={{ fontSize:9, color:"rgba(201,168,76,0.5)", letterSpacing:".1em", textTransform:"uppercase" }}>Analyzing:</span>
-                  {selComps.map((c: any)=>(
-                    <span key={c.id} style={{ fontSize:10, background:GD, color:G, padding:"2px 9px", borderRadius:12, display:"flex", alignItems:"center", gap:4 }}>
-                      {c.name} <span style={{ cursor:"pointer", opacity:.6 }} onClick={()=>onToggleComp(c)}>✕</span>
-                    </span>
-                  ))}
-                  <button onClick={()=>selComps.forEach((c: any)=>onToggleComp(c))} style={{ marginLeft:"auto", fontSize:9, background:"transparent", border:"1px solid " + GB, color:TM, borderRadius:5, padding:"2px 8px", cursor:"pointer" }}>Clear all</button>
-                </>
-            }
-          </div>
-        </>
-      )}
-
-      {/* Messages */}
-      <div style={{ flex:1, overflow:"auto", padding:"14px 16px 6px", display:"flex", flexDirection:"column", gap:12 }}>
-        <AnimatePresence initial={false}>
-          {messages.map((m,i)=><MsgBubble key={m.ts||i} msg={m}/>)}
-        </AnimatePresence>
-        {loading&&(
-          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
-            <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg," + G + ",#7a4c10)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0 }}>✦</div>
-            <div>
-              {loadingStep && (
-                <div style={{
-                  fontSize: '12px',
-                  color: 'var(--gold)',
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontFamily: 'Georgia, serif'
-                }}>
-                  <span style={{
-                    display: 'inline-block',
-                    width: '8px', height: '8px',
-                    background: 'var(--gold)',
-                    borderRadius: '2px',
-                    animation: 'aiSpin 1.4s linear infinite'
-                  }}/>
-                  {loadingStep}
-                </div>
-              )}
-              <div style={{ padding:"12px 14px", background:SF, border:"1px solid " + GB, borderRadius:"12px 12px 12px 3px" }}><TypingDots/></div>
+      <div style={{ flex:1, overflowY:"auto", padding:"26px 22px" }}>
+        <div style={{ maxWidth:760, margin:"0 auto" }}>
+          {messages.map((m, i) => <Message key={i} msg={m} />)}
+          {loading && (
+            <div style={{ marginBottom:18 }}>
+              <div style={{ fontFamily:NUM, fontSize:10, letterSpacing:".13em", textTransform:"uppercase", color:TM, marginBottom:7 }}>Studio</div>
+              <Typing />
             </div>
-          </motion.div>
-        )}
-        <div ref={endRef}/>
+          )}
+          {err && (
+            <div style={{ fontFamily:NUM, fontSize:12, color:RED, padding:"9px 13px", borderRadius:10,
+                          background:"rgba(240,85,85,0.07)", border:"1px solid rgba(240,85,85,0.25)", marginBottom:14 }}>
+              {err}
+            </div>
+          )}
+          <div ref={endRef}/>
+        </div>
       </div>
 
-      {/* Suggestions */}
-      {messages.length<=2&&!loading&&(
-        <div style={{ padding:"0 16px 6px", display:"flex", gap:6, overflowX:"auto" }}>
-          {suggestions.map((s: string,i: number)=>(
-            <motion.button key={i} initial={{ opacity:0, x:8 }} animate={{ opacity:1, x:0 }} transition={{ delay:i*.07 }}
-              onClick={()=>send(s)}
-              onMouseEnter={(e: any)=>{e.currentTarget.style.borderColor="rgba(201,168,76,0.4)";e.currentTarget.style.color=G}}
-              onMouseLeave={(e: any)=>{e.currentTarget.style.borderColor=GB;e.currentTarget.style.color=TM}}
-              style={{ padding:"5px 12px", background:SF, border:"1px solid " + GB, borderRadius:14, fontSize:10, color:TM, cursor:"pointer", flexShrink:0, whiteSpace:"nowrap", transition:"all .2s" }}>
-              {s}
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      <InputArea taRef={taRef} value={input} onChange={setInput} onSend={send} loading={loading}
-        placeholder={agent.placeholder||"Ask me anything…"}/>
-    </div>
+      <Composer
+        taRef={taRef} value={input} onChange={setInput} onSend={() => send()}
+        loading={loading} placeholder={agent.placeholder || "Ask anything…"}
+        chips={messages.length <= 1 ? (agent.suggestions || []) : []}
+        onChip={(c:string) => send(c)}
+      />
+    </>
   )
 }
 
-// ── Main Agent App ─────────────────────────────────────────────────
+// ── Studio ─────────────────────────────────────────────────────────
 export default function BookAgent() {
-  const [activeAgent, setActiveAgent] = useState(BUSINESS_AGENTS[0])
+  const [agent, setAgent] = useState<any>(ALL_AGENTS[0])
   const [selComps, setSelComps] = useState<any[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [, forceUpdate] = useState(0)
 
-  const toggleComp = (comp: any) => setSelComps(p => p.some(c=>c.id===comp.id) ? p.filter(c=>c.id!==comp.id) : [...p,comp])
+  const [metrics, setMetrics] = useState<any>(null)
+  const [mLoading, setMLoading] = useState(true)
+  const [mErr, setMErr] = useState("")
 
-  const historyCount = loadHistory().length
+  const loadMetrics = useCallback(async () => {
+    setMLoading(true); setMErr("")
+    try { setMetrics(await fetchMetrics()) }
+    catch (e: any) { setMErr(e?.message || "Could not read metrics") }
+    finally { setMLoading(false) }
+  }, [])
+  useEffect(() => { loadMetrics() }, [loadMetrics])
+
+  const toggleComp = (c:any) => setSelComps(p => p.some(x=>x.id===c.id) ? p.filter(x=>x.id!==c.id) : [...p, c])
 
   return (
-    <div style={{ fontFamily:"Georgia,serif", background:BG, color:TX, height:"100vh", display:"flex", overflow:"hidden" }}>
+    <div style={{ background:INK, color:TX, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
-      {/* ── LEFT SIDEBAR — Agent selector ── */}
-      <div style={{ width:248, borderRight:"1px solid " + GB, display:"flex", flexDirection:"column", flexShrink:0, background:"rgba(8,8,14,0.6)" }}>
-        {/* Header */}
-        <div style={{ padding:"14px 16px", borderBottom:"1px solid " + GB }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
-            <div style={{ width:26, height:26, border:"1px solid " + G, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12 }}>✦</div>
-            <div style={{ fontSize:"0.9rem", fontWeight:700, color:G, letterSpacing:".06em" }}>Book Agent</div>
-          </div>
-          <div style={{ fontSize:9.5, color:TM, letterSpacing:".1em", textTransform:"uppercase", paddingLeft:34 }}>NVIDIA AI · All saved</div>
+      {/* Masthead */}
+      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 22px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
+        <div style={{ width:28, height:28, borderRadius:8, border:"1px solid " + LINE, display:"flex", alignItems:"center", justifyContent:"center", color:G, fontSize:13 }}>✦</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontFamily:SERIF, fontSize:15.5, color:GL, letterSpacing:".02em" }}>House of Books <span style={{ color:TM }}>· Studio</span></div>
+          <div style={{ fontFamily:NUM, fontSize:10, color:TM, letterSpacing:".07em" }}>{agent.label}</div>
         </div>
-
-        {/* Agent list */}
-        <div style={{ flex:1, overflow:"auto", padding:"8px 8px" }}>
-          <div style={{ fontSize:10, color:TM, letterSpacing:".12em", textTransform:"uppercase", padding:"4px 8px 8px" }}>📚 Book</div>
-          {/* Book chat is first */}
-          {[{ id:"books", icon:"📚", label:"Book Chat", desc:"Discuss any book with AI", color:G },...BUSINESS_AGENTS].map(agent=>(
-            <motion.button key={agent.id} whileHover={{ x:2 }} onClick={()=>{ setActiveAgent(agent as any); if(agent.id!=="competitor") setSelComps([]) }}
-              style={{ width:"100%", padding:"9px 10px", borderRadius:8, cursor:"pointer", textAlign:"left", background:activeAgent.id===agent.id?GD:SF, border:"1px solid " + (activeAgent.id===agent.id?(agent.color||G):GB), transition:"all .2s", marginBottom:4 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:2 }}>
-                <span style={{ fontSize:14 }}>{agent.icon}</span>
-                <span style={{ fontSize:12.5, color:activeAgent.id===agent.id?(agent.color||G):TX, fontWeight:activeAgent.id===agent.id?700:400 }}>{agent.label}</span>
-              </div>
-              <div style={{ fontSize:10.5, color:TM, paddingLeft:21, lineHeight:1.35 }}>{agent.desc || "AI literary companion"}</div>
-            </motion.button>
-          ))}
-        </div>
-
-        {/* History button at bottom */}
-        <div style={{ padding:"10px 10px", borderTop:"1px solid " + GB }}>
-          <button onClick={()=>{ setShowHistory(true); forceUpdate(n=>n+1) }}
-            style={{ width:"100%", padding:"8px 10px", background:GD, border:"1px solid " + GB, color:G, borderRadius:8, fontSize:11, cursor:"pointer", letterSpacing:".07em", textTransform:"uppercase", display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"border-color .2s" }}
-            onMouseEnter={(e: any)=>e.currentTarget.style.borderColor=G}
-            onMouseLeave={(e: any)=>e.currentTarget.style.borderColor=GB}>
-            📋 History {historyCount>0&&`(${historyCount})`}
-          </button>
-        </div>
+        <button onClick={()=>setShowHistory(true)}
+          style={{ fontFamily:NUM, fontSize:11.5, padding:"7px 13px", borderRadius:9, background:PANEL,
+                   border:"1px solid " + LINE2, color:TM, cursor:"pointer" }}>History</button>
       </div>
 
-      {/* ── RIGHT PANEL — Active agent chat ── */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-        {/* Agent header */}
-        <div style={{ padding:"10px 16px", borderBottom:"1px solid " + GB, display:"flex", alignItems:"center", gap:10, flexShrink:0, background:"rgba(10,10,15,0.95)" }}>
-          <span style={{ fontSize:20 }}>{activeAgent.icon}</span>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:"0.95rem", fontWeight:700, color:activeAgent.color||G, letterSpacing:".04em" }}>{activeAgent.label}</div>
-            <div style={{ fontSize:11, color:TM }}>{(activeAgent as any).desc||"AI literary companion"}</div>
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-            <div style={{ width:5, height:5, borderRadius:"50%", background:GRN, animation:"pulse 2s infinite" }}/>
-            <span style={{ fontSize:10, color:TM, letterSpacing:".08em" }}>NVIDIA</span>
-          </div>
-        </div>
+      <TodayBand m={metrics} loading={mLoading} err={mErr} onRefresh={loadMetrics} />
+      <AgentRail agents={ALL_AGENTS} active={agent} onPick={(a:any)=>{ setAgent(a); if (a.id!=="competitor") setSelComps([]) }} />
 
-        {/* Live numbers, always on screen — not something you have to ask for */}
-        <MetricsBar />
+      <Conversation key={agent.id} agent={agent} metrics={metrics} selComps={selComps} onToggleComp={toggleComp} />
 
-        {/* Chat */}
-        <AgentChat key={activeAgent.id} agent={activeAgent} selComps={selComps} onToggleComp={toggleComp}/>
-      </div>
-
-      {/* History panel */}
       <AnimatePresence>
-        {showHistory&&(
-          <HistoryPanel
-            onClose={()=>setShowHistory(false)}
-            onRestore={(entry: any)=>{
-              const agent = BUSINESS_AGENTS.find(a=>a.id===entry.agentId) || (entry.agentId==="books" ? { id:"books", icon:"📚", label:"Book Chat", desc:"Discuss any book with AI", color:G } : BUSINESS_AGENTS[0])
-              setActiveAgent(agent as any)
-            }}
-          />
+        {showHistory && (
+          <HistoryDrawer onClose={()=>setShowHistory(false)}
+            onRestore={(h:any)=>{ const a = ALL_AGENTS.find((x:any)=>x.id===h.agentId); if (a) setAgent(a) }} />
         )}
       </AnimatePresence>
 
       <style>{`
-        ::-webkit-scrollbar{width:3px;height:3px}
+        ::-webkit-scrollbar{width:4px;height:0}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);border-radius:2px}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-        @keyframes aiSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.22);border-radius:2px}
+        @keyframes bob{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
       `}</style>
     </div>
   )

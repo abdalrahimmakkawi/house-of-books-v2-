@@ -37,6 +37,26 @@ export default defineConfig({
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
+  // DEV ONLY — has no effect on `vite build`, so nothing here ships.
+  //
+  // The /api routes are Vercel serverless functions, so a plain `vite dev`
+  // 404s every one of them and `vercel dev` is unreliable on Windows (it dies
+  // with FUNCTION_INVOCATION_FAILED on invoke). Proxying to the deployed API
+  // means local UI work runs against the real endpoints with real data.
+  //
+  // NOTE: this talks to PRODUCTION. Reads (metrics, books) are harmless, but
+  // anything that writes — submitting feedback, generating narration — will
+  // write to live data from your laptop. Fine for reviewing screens; be
+  // deliberate before exercising write paths.
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://house-of-books-v2.vercel.app',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
