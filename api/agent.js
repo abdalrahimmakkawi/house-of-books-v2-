@@ -89,16 +89,21 @@ async function getPlatformMetrics() {
   ])
 
   // auth.users isn't reachable through PostgREST, so count via the admin API.
-  let totalUsers = 0, new7 = 0, new30 = 0, act7 = 0
+  // If that call fails we must NOT fall through reporting 0 users — with 14 real
+  // accounts, a silent 0 is just as much a fabrication as inventing 500 was, and
+  // it would quietly poison every conversion and revenue figure derived from it.
+  // usersAvailable=false makes the gap explicit to both the panel and the model.
+  let totalUsers = 0, new7 = 0, new30 = 0, act7 = 0, usersAvailable = true
   try {
     const all = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+    if (all?.error) throw all.error
     const list = all?.data?.users || []
     totalUsers = list.length
     const c7 = iso(7), c30 = iso(30)
     new7 = list.filter(u => u.created_at > c7).length
     new30 = list.filter(u => u.created_at > c30).length
     act7 = list.filter(u => u.last_sign_in_at && u.last_sign_in_at > c7).length
-  } catch { /* leave zeros; never fabricate */ }
+  } catch { usersAvailable = false }
 
   const premiumCount = premium?.count ?? 0
   const writtenRows = written?.data || []
@@ -116,10 +121,12 @@ async function getPlatformMetrics() {
 
   return {
     generatedAt: new Date().toISOString(),
-    users: { total: totalUsers, new7d: new7, new30d: new30, active7d: act7 },
+    users: { total: totalUsers, new7d: new7, new30d: new30, active7d: act7, available: usersAvailable },
     revenue: {
       premiumUsers: premiumCount,
-      conversionPct: totalUsers ? +((premiumCount / totalUsers) * 100).toFixed(1) : 0,
+      // null (not 0) when the user count is unknown — 0% would read as a real
+      // measurement and is indistinguishable from genuinely zero conversion.
+      conversionPct: usersAvailable && totalUsers ? +((premiumCount / totalUsers) * 100).toFixed(1) : (usersAvailable ? 0 : null),
       estMrr: mrr,
       estArr: +(mrr * 12).toFixed(2),
       pricing: PRICING,
@@ -219,13 +226,13 @@ export default async function handler(req, res) {
 Everything in this block is measured, not estimated. Snapshot: ${m.generatedAt}
 
 USERS
-  - Total registered: ${m.users.total}
+  - Total registered: ${m.users.available ? m.users.total : 'UNAVAILABLE (auth read failed — do not infer a number)'}
   - New in last 7 days: ${m.users.new7d}   |  last 30 days: ${m.users.new30d}
   - Signed in within last 7 days: ${m.users.active7d}
 
 REVENUE (pricing is live: $${m.revenue.pricing.monthly}/mo, $${m.revenue.pricing.annual}/yr)
   - Paying premium users: ${m.revenue.premiumUsers}
-  - Free-to-paid conversion: ${m.revenue.conversionPct}%
+  - Free-to-paid conversion: ${m.revenue.conversionPct == null ? 'unknown (user count unavailable)' : m.revenue.conversionPct + '%'}
   - Estimated MRR: $${m.revenue.estMrr}   |  ARR: $${m.revenue.estArr}
 
 CATALOG
