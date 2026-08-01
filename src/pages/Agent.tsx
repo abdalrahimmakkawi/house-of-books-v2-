@@ -49,7 +49,7 @@ const BUSINESS_AGENTS = [
     color: GRN,
     placeholder: "Describe your current situation: users, MRR, biggest challenge, main channel…",
     suggestions: [
-      "I have 500 free users and $0 MRR. How do I get to $1000 MRR in 90 days?",
+      "Based on my real numbers above, how do I get to $1000 MRR in 90 days?",
       "What's the highest leverage thing I can do this week to grow?",
       "How do I convert free users to paid without being pushy?",
       "Which acquisition channel should I focus on with a $100/month budget?",
@@ -74,8 +74,8 @@ Be brutally specific. Give real tactics, real channels, real numbers. No generic
     color: G,
     placeholder: "Share your numbers: free users, paid users, MRR, churn rate, CAC…",
     suggestions: [
-      "Free users: 500, paid: 0, MRR: $0. What's wrong and how do I fix it?",
-      "I have 20 paid users at $8.99 but 8% monthly churn. How do I fix churn?",
+      "Look at my real conversion rate above — what is wrong and what do I fix first?",
+      "Once I have paying users, what churn rate should worry me and how do I prevent it?",
       "Should I focus on getting more free users or converting existing ones?",
       "What's a realistic MRR target for month 3 of a book summary app?",
     ],
@@ -169,7 +169,7 @@ Prioritize features by: retention impact, conversion impact, differentiation val
     color: "#f07e7e",
     placeholder: "Describe your churn situation or ask about retention strategies…",
     suggestions: [
-      "My churn is 8% monthly. What are the top 3 fixes?",
+      "What are the top 3 churn preventers I should build before I have churn?",
       "What should a win-back email say to a user who cancelled?",
       "How do I identify users who are about to churn before they do?",
       "What in-app features most reduce churn for book apps?",
@@ -273,6 +273,100 @@ async function callAI(messages: any[], systemPrompt: string) {
   if (!res.ok) throw new Error(`API error ${res.status}`)
   const data = await res.json()
   return data.content || "No response."
+}
+
+// ── Live metrics ───────────────────────────────────────────────────
+// The panel used to be a chat box and nothing else — you had to ASK the model
+// how the app was doing, and until recently it answered from placeholder
+// numbers baked into the dashboard (freeUsers:500, conv:4%, price:$10) rather
+// than the database. These cards read the same /api/agent `metrics` action the
+// model's context is built from, so the screen and the model can never
+// disagree, and the important numbers are visible without asking.
+async function fetchMetrics() {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch("/api/agent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "metrics", accessToken: session?.access_token }),
+  })
+  if (!res.ok) throw new Error(`Metrics unavailable (${res.status})`)
+  return res.json()
+}
+
+function StatCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
+  return (
+    <div style={{
+      flex: "1 1 130px", minWidth: 130, padding: "11px 13px", borderRadius: 10,
+      background: SF, border: "1px solid " + GB,
+    }}>
+      <div style={{ fontSize: 10, color: TM, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 5 }}>{label}</div>
+      <div style={{ fontSize: 21, fontWeight: 700, color: tone || TX, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      {sub && <div style={{ fontSize: 10.5, color: TM, marginTop: 4 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function MetricsBar() {
+  const [m, setM] = useState<any>(null)
+  const [err, setErr] = useState("")
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("")
+    try { setM(await fetchMetrics()) }
+    catch (e: any) { setErr(e?.message || "Could not load metrics") }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading && !m) return (
+    <div style={{ padding: "12px 16px", fontSize: 11, color: TM, borderBottom: "1px solid " + GB }}>Loading live metrics…</div>
+  )
+  if (err) return (
+    <div style={{ padding: "10px 16px", fontSize: 11, color: RED, borderBottom: "1px solid " + GB, display: "flex", gap: 10, alignItems: "center" }}>
+      <span>⚠ {err}</span>
+      <button onClick={load} style={{ background: "none", border: "1px solid " + GB, color: G, borderRadius: 6, padding: "3px 9px", fontSize: 10, cursor: "pointer" }}>Retry</button>
+    </div>
+  )
+  if (!m) return null
+
+  const conv = m.revenue.conversionPct
+  return (
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid " + GB, background: "rgba(10,10,15,0.7)", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+        <div style={{ fontSize: 10, color: TM, letterSpacing: ".1em", textTransform: "uppercase" }}>
+          Live · read from the database
+        </div>
+        <button onClick={load} disabled={loading}
+          style={{ background: "none", border: "1px solid " + GB, color: loading ? TM : G, borderRadius: 6, padding: "3px 10px", fontSize: 10, cursor: loading ? "default" : "pointer" }}>
+          {loading ? "…" : "↻ Refresh"}
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+        <StatCard
+          label="Users"
+          value={m.users.available ? String(m.users.total) : "—"}
+          sub={m.users.available ? `+${m.users.new7d} this week · ${m.users.active7d} active` : "auth read failed"}
+          tone={m.users.available ? undefined : RED}
+        />
+        <StatCard label="Premium" value={String(m.revenue.premiumUsers)}
+          sub={conv == null ? "conversion unknown" : `${conv}% conversion`} tone={m.revenue.premiumUsers > 0 ? GRN : TX} />
+        <StatCard label="MRR" value={`$${m.revenue.estMrr}`} sub={`$${m.revenue.pricing.monthly}/mo · $${m.revenue.pricing.annual}/yr`}
+          tone={m.revenue.estMrr > 0 ? GRN : TX} />
+        <StatCard label="Feedback" value={String(m.feedback.writtenCount)}
+          sub={m.feedback.avgRating ? `avg ${m.feedback.avgRating}/5` : "none written yet"}
+          tone={m.feedback.writtenCount > 0 ? G : TX} />
+        <StatCard label="Catalog" value={String(m.catalog.books)}
+          sub={`${m.catalog.withAudio} narrated · ${m.catalog.freeBooks} free`} />
+      </div>
+      {m.feedback.writtenCount === 0 && (
+        <div style={{ fontSize: 10.5, color: TM, marginTop: 9, fontStyle: "italic" }}>
+          No written feedback yet — the in-app prompt asks readers once they finish a summary.
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Sub-components ─────────────────────────────────────────────────
@@ -654,28 +748,28 @@ export default function BookAgent() {
     <div style={{ fontFamily:"Georgia,serif", background:BG, color:TX, height:"100vh", display:"flex", overflow:"hidden" }}>
 
       {/* ── LEFT SIDEBAR — Agent selector ── */}
-      <div style={{ width:220, borderRight:"1px solid " + GB, display:"flex", flexDirection:"column", flexShrink:0, background:"rgba(8,8,14,0.6)" }}>
+      <div style={{ width:248, borderRight:"1px solid " + GB, display:"flex", flexDirection:"column", flexShrink:0, background:"rgba(8,8,14,0.6)" }}>
         {/* Header */}
         <div style={{ padding:"14px 16px", borderBottom:"1px solid " + GB }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:2 }}>
             <div style={{ width:26, height:26, border:"1px solid " + G, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12 }}>✦</div>
             <div style={{ fontSize:"0.9rem", fontWeight:700, color:G, letterSpacing:".06em" }}>Book Agent</div>
           </div>
-          <div style={{ fontSize:7.5, color:TM, letterSpacing:".1em", textTransform:"uppercase", paddingLeft:34 }}>NVIDIA AI · All saved</div>
+          <div style={{ fontSize:9.5, color:TM, letterSpacing:".1em", textTransform:"uppercase", paddingLeft:34 }}>NVIDIA AI · All saved</div>
         </div>
 
         {/* Agent list */}
         <div style={{ flex:1, overflow:"auto", padding:"8px 8px" }}>
-          <div style={{ fontSize:8, color:TM, letterSpacing:".12em", textTransform:"uppercase", padding:"4px 8px 8px" }}>📚 Book</div>
+          <div style={{ fontSize:10, color:TM, letterSpacing:".12em", textTransform:"uppercase", padding:"4px 8px 8px" }}>📚 Book</div>
           {/* Book chat is first */}
           {[{ id:"books", icon:"📚", label:"Book Chat", desc:"Discuss any book with AI", color:G },...BUSINESS_AGENTS].map(agent=>(
             <motion.button key={agent.id} whileHover={{ x:2 }} onClick={()=>{ setActiveAgent(agent as any); if(agent.id!=="competitor") setSelComps([]) }}
               style={{ width:"100%", padding:"9px 10px", borderRadius:8, cursor:"pointer", textAlign:"left", background:activeAgent.id===agent.id?GD:SF, border:"1px solid " + (activeAgent.id===agent.id?(agent.color||G):GB), transition:"all .2s", marginBottom:4 }}>
               <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:2 }}>
                 <span style={{ fontSize:14 }}>{agent.icon}</span>
-                <span style={{ fontSize:11, color:activeAgent.id===agent.id?(agent.color||G):TX, fontWeight:activeAgent.id===agent.id?700:400 }}>{agent.label}</span>
+                <span style={{ fontSize:12.5, color:activeAgent.id===agent.id?(agent.color||G):TX, fontWeight:activeAgent.id===agent.id?700:400 }}>{agent.label}</span>
               </div>
-              <div style={{ fontSize:9, color:TM, paddingLeft:21, lineHeight:1.35 }}>{agent.desc || "AI literary companion"}</div>
+              <div style={{ fontSize:10.5, color:TM, paddingLeft:21, lineHeight:1.35 }}>{agent.desc || "AI literary companion"}</div>
             </motion.button>
           ))}
         </div>
@@ -683,7 +777,7 @@ export default function BookAgent() {
         {/* History button at bottom */}
         <div style={{ padding:"10px 10px", borderTop:"1px solid " + GB }}>
           <button onClick={()=>{ setShowHistory(true); forceUpdate(n=>n+1) }}
-            style={{ width:"100%", padding:"8px 10px", background:GD, border:"1px solid " + GB, color:G, borderRadius:8, fontSize:10, cursor:"pointer", letterSpacing:".07em", textTransform:"uppercase", display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"border-color .2s" }}
+            style={{ width:"100%", padding:"8px 10px", background:GD, border:"1px solid " + GB, color:G, borderRadius:8, fontSize:11, cursor:"pointer", letterSpacing:".07em", textTransform:"uppercase", display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"border-color .2s" }}
             onMouseEnter={(e: any)=>e.currentTarget.style.borderColor=G}
             onMouseLeave={(e: any)=>e.currentTarget.style.borderColor=GB}>
             📋 History {historyCount>0&&`(${historyCount})`}
@@ -698,13 +792,16 @@ export default function BookAgent() {
           <span style={{ fontSize:20 }}>{activeAgent.icon}</span>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:"0.95rem", fontWeight:700, color:activeAgent.color||G, letterSpacing:".04em" }}>{activeAgent.label}</div>
-            <div style={{ fontSize:10, color:TM }}>{(activeAgent as any).desc||"AI literary companion"}</div>
+            <div style={{ fontSize:11, color:TM }}>{(activeAgent as any).desc||"AI literary companion"}</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:5 }}>
             <div style={{ width:5, height:5, borderRadius:"50%", background:GRN, animation:"pulse 2s infinite" }}/>
-            <span style={{ fontSize:8, color:TM, letterSpacing:".08em" }}>NVIDIA</span>
+            <span style={{ fontSize:10, color:TM, letterSpacing:".08em" }}>NVIDIA</span>
           </div>
         </div>
+
+        {/* Live numbers, always on screen — not something you have to ask for */}
+        <MetricsBar />
 
         {/* Chat */}
         <AgentChat key={activeAgent.id} agent={activeAgent} selComps={selComps} onToggleComp={toggleComp}/>
