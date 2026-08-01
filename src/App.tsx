@@ -927,6 +927,122 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// ── Post-summary feedback prompt ─────────────────────────────────
+// Shown only once a reader actually reaches the LAST page of a full summary —
+// i.e. they finished something — rather than on load or behind a link nobody
+// clicks. That passivity is why `app_feedback` sat at zero rows: the form
+// existed, but users were never asked at a moment when they had an opinion.
+//
+// Deliberately one-shot: submitting or dismissing writes a localStorage flag
+// and it never appears again for that person. A nag would cost more goodwill
+// than the feedback is worth.
+const FEEDBACK_ASKED_KEY = 'hob-feedback-asked'
+
+// Long enough that landing on the last page doesn't instantly trigger the ask.
+// Matters most for short summaries that fit on a single page, where "last page"
+// is true the moment the tab opens — arriving is not the same as reading.
+const FEEDBACK_DWELL_MS = 30000
+
+function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
+  const [state, setState] = useState<'idle'|'open'|'sending'|'done'|'hidden'>(() => {
+    try { return localStorage.getItem(FEEDBACK_ASKED_KEY) ? 'hidden' : 'idle' } catch { return 'idle' }
+  })
+  const [rating, setRating] = useState(0)
+  const [note, setNote] = useState('')
+  const [err, setErr] = useState('')
+  const [dwelled, setDwelled] = useState(false)
+
+  useEffect(() => {
+    const id = setTimeout(() => setDwelled(true), FEEDBACK_DWELL_MS)
+    return () => clearTimeout(id)
+  }, [])
+
+  const remember = () => { try { localStorage.setItem(FEEDBACK_ASKED_KEY, String(Date.now())) } catch {} }
+  const dismiss = () => { remember(); setState('hidden') }
+
+  if (state === 'hidden') return null
+  if (!dwelled && state === 'idle') return null
+
+  if (state === 'done') return (
+    <div style={{marginTop:'14px',padding:'14px 16px',borderRadius:'12px',background:'rgba(74,200,120,0.08)',border:'0.5px solid rgba(74,200,120,0.3)',fontSize:'13px',color:'#8fd8a8',fontFamily:'Georgia,serif',textAlign:'center'}}>
+      ✓ Thank you — that genuinely helps.
+    </div>
+  )
+
+  const send = async () => {
+    if (!rating && !note.trim()) { setErr('Pick a rating or write a line first.'); return }
+    setState('sending'); setErr('')
+    try {
+      const r = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit',
+          category: rating >= 4 ? 'praise' : rating > 0 && rating <= 2 ? 'bug' : 'general',
+          rating: rating || null,
+          message: note.trim() || `Rated ${rating}/5 after finishing "${bookTitle || 'a summary'}".`,
+          source: 'app',
+          pageUrl: typeof location !== 'undefined' ? location.href : '',
+        }),
+      })
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not send.')
+      remember(); setState('done')
+    } catch (e: any) {
+      setErr(e?.message || 'Could not send — please try again.')
+      setState('open')
+    }
+  }
+
+  return (
+    <div style={{marginTop:'16px',padding:'16px',borderRadius:'14px',background:'rgba(201,168,76,0.06)',border:'0.5px solid rgba(201,168,76,0.22)',fontFamily:'Georgia,serif'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px'}}>
+        <div style={{fontSize:'14px',color:'#e8e4d9'}}>You finished it — how was this summary?</div>
+        <button onClick={dismiss} aria-label="Dismiss" style={{background:'none',border:'none',color:'#6a6458',fontSize:'16px',cursor:'pointer',lineHeight:1,padding:0}}>✕</button>
+      </div>
+
+      <div style={{display:'flex',gap:'6px',marginTop:'12px'}}>
+        {[1,2,3,4,5].map(n => (
+          <button
+            key={n}
+            onClick={() => { setRating(n); setState('open'); setErr('') }}
+            aria-label={`${n} out of 5`}
+            style={{
+              flex:1,padding:'9px 0',borderRadius:'10px',cursor:'pointer',fontSize:'16px',
+              background: n <= rating ? 'rgba(201,168,76,0.22)' : 'rgba(255,255,255,0.04)',
+              border: `0.5px solid ${n <= rating ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              color: n <= rating ? '#e8c97a' : '#6a6458',
+            }}
+          >★</button>
+        ))}
+      </div>
+
+      {state === 'open' && (
+        <>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value.slice(0, 800))}
+            placeholder="Anything you'd change? (optional)"
+            rows={2}
+            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(201,168,76,0.25)',color:'#e8e4d9',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
+          />
+          {err && <div style={{fontSize:'11px',color:'#e07a7a',marginTop:'6px'}}>{err}</div>}
+          <div style={{display:'flex',gap:'8px',marginTop:'10px'}}>
+            <button
+              onClick={send}
+              style={{flex:1,padding:'10px',borderRadius:'10px',background:'linear-gradient(135deg,#e0be6f,#c9a84c)',color:'#0a0a0f',border:'none',fontSize:'13px',fontWeight:700,fontFamily:'Georgia,serif',cursor:'pointer'}}
+            >Send feedback</button>
+            <button onClick={dismiss} style={{padding:'10px 14px',borderRadius:'10px',background:'none',border:'0.5px solid rgba(255,255,255,0.1)',color:'#9a9080',fontSize:'12px',fontFamily:'Georgia,serif',cursor:'pointer'}}>Not now</button>
+          </div>
+        </>
+      )}
+
+      {state === 'sending' && (
+        <div style={{fontSize:'12px',color:'#9a9080',marginTop:'10px',textAlign:'center'}}>Sending…</div>
+      )}
+    </div>
+  )
+}
+
 // Exposed so the gold "Read Now" CTA above the tabs can start playback. The
 // CTA calls toggle() synchronously inside its onClick so the browser still
 // counts it as a user gesture — going through state/useEffect instead would
@@ -1497,6 +1613,12 @@ function ExpandedPanel({
                       }}
                     >Next →</button>
                   </div>
+
+                  {/* Reached the last page = they actually finished reading.
+                      This is the moment to ask; anywhere earlier is a nag. */}
+                  {page === pages.length - 1 && (
+                    <PostSummaryFeedback bookTitle={book.title} />
+                  )}
                 </>
               )
             })() : (
