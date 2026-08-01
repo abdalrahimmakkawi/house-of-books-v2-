@@ -276,36 +276,54 @@ async function callAI(messages: any[], systemPrompt: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  STUDIO — the admin console for House of Books
+//  THE STUDIO — House of Books, back of house
 //
-//  Replaces the previous layout (a 248px agent list glued to a chat box).
-//  Two things were wrong with it: the numbers that matter were invisible
-//  until you asked for them, and the type was 7.5-9px in places.
+//  Split into two rooms rather than one scrolling column: THE DESK holds
+//  the readings and anything worth flagging, ASK holds the advisors. The
+//  previous single view pushed the conversation below a wall of tiles and
+//  made both halves worse.
 //
-//  Shape now: a live "Today" band across the top so the real figures are
-//  always on screen, a horizontal agent rail that frees the vertical space
-//  the sidebar was eating, and a reading-width conversation column.
+//  On the "3D": every surface here is CSS — layered gradients, an inset
+//  top highlight, and a soft cast shadow that deepens on hover. A real
+//  WebGL panel would have meant shipping a 3D library for decoration, on
+//  a bundle that was just trimmed. This gives the dimensionality without
+//  the weight. Say the word if you want genuine WebGL somewhere it earns
+//  its place.
 //
-//  Visual language follows the reader app deliberately — deep warm black,
-//  gold, Georgia for prose — so this feels like part of House of Books and
-//  not a bolted-on dashboard. Numbers use a system sans with tabular
-//  figures, which is the one place a serif genuinely hurts legibility.
+//  Charts are hand-drawn SVG for the same reason — a charting library is
+//  40-100KB to draw four small figures. Sparse data is drawn sparse: with
+//  a handful of signups, empty days stay empty rather than being smoothed
+//  into a line that flatters.
 // ═══════════════════════════════════════════════════════════════════
 
-const INK    = "#0e0d14"          // app background, warm near-black
-const PANEL  = "rgba(255,255,255,0.022)"
-const PANEL2 = "rgba(255,255,255,0.045)"
-const LINE   = "rgba(201,168,76,0.16)"
-const LINE2  = "rgba(255,255,255,0.07)"
+const INK    = "#0d0c12"
+const INK2   = "#121017"
+const LINE   = "rgba(201,168,76,0.15)"
+const LINE2  = "rgba(255,255,255,0.06)"
 const NUM    = "system-ui,-apple-system,'Segoe UI',sans-serif"
 const SERIF  = "Georgia,'Times New Roman',serif"
 
-const BOOK_AGENT = { id:"books", icon:"📚", label:"Book Chat", desc:"Discuss any book with AI", color:G } as any
+// Layered surface — gradient body, lit top edge, cast shadow.
+const surface = (lifted = false) => ({
+  background: lifted
+    ? "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 42%, rgba(0,0,0,0.16) 100%)"
+    : "linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.012) 45%, rgba(0,0,0,0.14) 100%)",
+  border: "1px solid " + LINE2,
+  boxShadow: lifted
+    ? "0 14px 34px -14px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.09)"
+    : "0 8px 22px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)",
+})
+
+const SEV: any = {
+  error: { dot: RED,   label: "Broken"    },
+  warn:  { dot: "#e0a14c", label: "Attention" },
+  good:  { dot: GRN,   label: "Good"      },
+  info:  { dot: "rgba(232,228,217,0.35)", label: "Note" },
+}
+
+const BOOK_AGENT = { id:"books", icon:"📚", label:"Book Chat", desc:"Talk about any book on the shelf", color:G } as any
 const ALL_AGENTS = [BOOK_AGENT, ...BUSINESS_AGENTS]
 
-// Live figures, straight from the database via the admin-gated `metrics`
-// action. The chat context on the server is built from the same function, so
-// what you read here and what the model reasons about cannot drift apart.
 async function fetchMetrics() {
   const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch("/api/agent", {
@@ -315,114 +333,218 @@ async function fetchMetrics() {
   })
   if (!res.ok) {
     throw new Error(res.status === 401 || res.status === 403
-      ? "Sign in as an admin to load live figures"
-      : `Metrics unavailable (${res.status})`)
+      ? "Sign in as an admin to read the live figures"
+      : `The readings didn't come back (${res.status})`)
   }
   return res.json()
 }
 
-// ── Reading the numbers ────────────────────────────────────────────
-// A plain-English line under the metrics. Deliberately derived in code
-// from the live figures rather than asked of the model: it must never
-// drift from what the cards say, and it costs nothing to compute.
-function readTheRoom(m: any): { text: string; tone: string } {
+// ── The line under the numbers ─────────────────────────────────────
+// Written in code from the same figures the tiles show, so the sentence
+// and the numbers can never tell different stories.
+function theRead(m: any): { text: string; tone: string } {
   if (!m) return { text: "", tone: TM }
-  if (!m.users?.available) return { text: "User count unavailable — the auth read failed, so conversion can't be computed.", tone: RED }
+  if (!m.users?.available) return { text: "The user list wouldn't open, so conversion can't be worked out. Treat the reader figures as missing, not zero.", tone: RED }
   const u = m.users.total, p = m.revenue.premiumUsers, f = m.feedback.writtenCount
-  if (u === 0) return { text: "No registered users yet. Getting the first ten is the only thing that matters.", tone: TM }
-  if (p === 0) return { text: `${u} registered, none paying yet. Conversion is the number to move — everything else is noise until it's above zero.`, tone: G }
-  if (f === 0) return { text: `${p} paying of ${u}. No written feedback yet, so you're flying on numbers alone.`, tone: G }
-  return { text: `${p} paying of ${u} · ${f} written notes · avg ${m.feedback.avgRating ?? "—"}/5.`, tone: GRN }
+  if (u === 0) return { text: "Nobody has signed up yet. The first ten readers are the whole job.", tone: TM }
+  if (p === 0) return { text: `${u} readers on the shelf, none paying. Conversion is the only number that counts until it leaves zero.`, tone: G }
+  if (f === 0) return { text: `${p} of ${u} readers are paying. Nobody has written in yet, so you're reading numbers without voices.`, tone: G }
+  return { text: `${p} of ${u} paying · ${f} notes from readers · averaging ${m.feedback.avgRating ?? "—"} out of 5.`, tone: GRN }
 }
 
-// ── Metric tile ────────────────────────────────────────────────────
-function Tile({ label, value, sub, tone, dim }: any) {
+// ── Charts ─────────────────────────────────────────────────────────
+function BarSeries({ data, tint, height = 54 }: any) {
+  if (!data?.length) return <div style={{ height, display:"flex", alignItems:"center", fontFamily:NUM, fontSize:11, color:TM }}>no readings</div>
+  const max = Math.max(1, ...data.map((d: any) => d.count))
+  const W = 100, gap = 0.8
+  const bw = (W - gap * (data.length - 1)) / data.length
   return (
-    <div style={{
-      flex:"1 1 128px", minWidth:128, padding:"13px 15px", borderRadius:12,
-      background: PANEL, border:"1px solid " + LINE2,
-    }}>
-      <div style={{ fontFamily:NUM, fontSize:10, letterSpacing:".13em", textTransform:"uppercase", color:TM, marginBottom:7 }}>{label}</div>
-      <div style={{
-        fontFamily:NUM, fontSize:26, fontWeight:600, lineHeight:1, letterSpacing:"-.02em",
-        color: dim ? TM : (tone || TX), fontVariantNumeric:"tabular-nums",
-      }}>{value}</div>
-      {sub && <div style={{ fontFamily:NUM, fontSize:11, color:TM, marginTop:6, lineHeight:1.35 }}>{sub}</div>}
-    </div>
-  )
-}
-
-// ── Today band ─────────────────────────────────────────────────────
-function TodayBand({ m, loading, err, onRefresh }: any) {
-  const read = readTheRoom(m)
-  return (
-    <div style={{ padding:"14px 22px 16px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
-      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:11, gap:12 }}>
-        <div style={{ display:"flex", alignItems:"baseline", gap:10 }}>
-          <span style={{ fontFamily:SERIF, fontSize:15, color:TX, letterSpacing:".02em" }}>Today</span>
-          <span style={{ fontFamily:NUM, fontSize:10.5, color:TM, letterSpacing:".08em" }}>
-            {m ? `read from the database · ${new Date(m.generatedAt).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}` : "reading…"}
-          </span>
-        </div>
-        <button onClick={onRefresh} disabled={loading}
-          style={{ fontFamily:NUM, background:"none", border:"1px solid " + LINE, color: loading ? TM : G,
-                   borderRadius:8, padding:"5px 12px", fontSize:11, cursor: loading ? "default" : "pointer" }}>
-          {loading ? "…" : "↻ Refresh"}
-        </button>
-      </div>
-
-      {err ? (
-        <div style={{ fontFamily:NUM, fontSize:12, color:RED }}>⚠ {err}</div>
-      ) : (
-        <>
-          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-            <Tile label="Readers" dim={!m?.users?.available}
-              value={m ? (m.users.available ? m.users.total : "—") : "·"}
-              sub={m ? (m.users.available ? `+${m.users.new7d} this week · ${m.users.active7d} active` : "auth read failed") : ""}
-              tone={m && !m.users.available ? RED : undefined} />
-            <Tile label="Paying" value={m ? m.revenue.premiumUsers : "·"}
-              sub={m ? (m.revenue.conversionPct == null ? "conversion unknown" : `${m.revenue.conversionPct}% of readers`) : ""}
-              tone={m && m.revenue.premiumUsers > 0 ? GRN : undefined} />
-            <Tile label="MRR" value={m ? `$${m.revenue.estMrr}` : "·"}
-              sub={m ? `$${m.revenue.pricing.monthly}/mo · $${m.revenue.pricing.annual}/yr` : ""}
-              tone={m && m.revenue.estMrr > 0 ? GRN : undefined} />
-            <Tile label="Feedback" value={m ? m.feedback.writtenCount : "·"}
-              sub={m ? (m.feedback.avgRating ? `avg ${m.feedback.avgRating}/5` : "none written yet") : ""}
-              tone={m && m.feedback.writtenCount > 0 ? G : undefined} />
-            <Tile label="Library" value={m ? m.catalog.books : "·"}
-              sub={m ? `${m.catalog.withAudio} narrated · ${m.catalog.freeBooks} free` : ""} />
-          </div>
-          {read.text && (
-            <div style={{ fontFamily:SERIF, fontSize:13, color:read.tone, marginTop:12, fontStyle:"italic", lineHeight:1.5 }}>
-              {read.text}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-// ── Agent rail ─────────────────────────────────────────────────────
-function AgentRail({ agents, active, onPick }: any) {
-  return (
-    <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"11px 22px", borderBottom:"1px solid " + LINE2, flexShrink:0, scrollbarWidth:"none" as any }}>
-      {agents.map((a: any) => {
-        const on = active.id === a.id
+    <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" style={{ width:"100%", height, display:"block", overflow:"visible" }}>
+      <defs>
+        <linearGradient id={`g-${tint.replace(/[^a-z0-9]/gi,"")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={tint} stopOpacity="0.95"/>
+          <stop offset="100%" stopColor={tint} stopOpacity="0.28"/>
+        </linearGradient>
+      </defs>
+      {data.map((d: any, i: number) => {
+        const h = d.count === 0 ? 1.2 : Math.max(2.5, (d.count / max) * (height - 6))
         return (
-          <button key={a.id} onClick={() => onPick(a)} title={a.desc}
-            style={{
-              display:"flex", alignItems:"center", gap:7, whiteSpace:"nowrap", flexShrink:0,
-              padding:"8px 14px", borderRadius:999, cursor:"pointer",
-              fontFamily:NUM, fontSize:12.5, letterSpacing:".01em",
-              background: on ? "rgba(201,168,76,0.13)" : PANEL,
-              border:"1px solid " + (on ? "rgba(201,168,76,0.45)" : LINE2),
-              color: on ? GL : TX, fontWeight: on ? 600 : 400, transition:"all .16s",
-            }}>
-            <span style={{ fontSize:14 }}>{a.icon}</span>{a.label}
-          </button>
+          <rect key={i} x={i * (bw + gap)} y={height - h} width={bw} height={h} rx={bw > 2 ? 1 : 0}
+            fill={d.count === 0 ? "rgba(255,255,255,0.07)" : `url(#g-${tint.replace(/[^a-z0-9]/gi,"")})`}>
+            <title>{`${d.date}: ${d.count}`}</title>
+          </rect>
         )
       })}
+    </svg>
+  )
+}
+
+function Split({ parts }: { parts: { label: string; value: number; tint: string }[] }) {
+  const total = parts.reduce((a, p) => a + p.value, 0) || 1
+  return (
+    <>
+      <div style={{ display:"flex", height:11, borderRadius:6, overflow:"hidden", boxShadow:"inset 0 1px 2px rgba(0,0,0,0.45)" }}>
+        {parts.map((p, i) => (
+          <div key={i} title={`${p.label}: ${p.value}`}
+            style={{ width:`${(p.value / total) * 100}%`, background:`linear-gradient(180deg, ${p.tint}, ${p.tint}99)` }}/>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:14, flexWrap:"wrap", marginTop:9 }}>
+        {parts.map((p, i) => (
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:6, fontFamily:NUM, fontSize:11, color:TM }}>
+            <span style={{ width:7, height:7, borderRadius:2, background:p.tint }}/>
+            {p.label} <span style={{ color:TX, fontVariantNumeric:"tabular-nums" }}>{p.value}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function Panel({ title, note, children, span }: any) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+      style={{
+        ...surface(hover), borderRadius:16, padding:"15px 17px 17px",
+        gridColumn: span ? `span ${span}` : undefined,
+        transform: hover ? "translateY(-2px)" : "none",
+        transition:"transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s, background .22s",
+      }}>
+      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:10, marginBottom:12 }}>
+        <span style={{ fontFamily:SERIF, fontSize:13.5, color:TX, letterSpacing:".01em" }}>{title}</span>
+        {note && <span style={{ fontFamily:NUM, fontSize:10.5, color:TM }}>{note}</span>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Reading({ label, value, foot, tint, muted }: any) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+      style={{ ...surface(hover), borderRadius:15, padding:"14px 16px 15px",
+               transform: hover ? "translateY(-2px)" : "none",
+               transition:"transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s, background .22s" }}>
+      <div style={{ fontFamily:NUM, fontSize:9.5, letterSpacing:".16em", textTransform:"uppercase", color:TM, marginBottom:9 }}>{label}</div>
+      <div style={{ fontFamily:NUM, fontSize:29, fontWeight:600, lineHeight:1, letterSpacing:"-.025em",
+                    color: muted ? TM : (tint || TX), fontVariantNumeric:"tabular-nums" }}>{value}</div>
+      {foot && <div style={{ fontFamily:NUM, fontSize:11, color:TM, marginTop:7, lineHeight:1.4 }}>{foot}</div>}
+    </div>
+  )
+}
+
+// ── Anything worth flagging ────────────────────────────────────────
+const SEEN_KEY = "hob_studio_seen"
+
+function Flags({ alerts, onSeen }: any) {
+  useEffect(() => { if (alerts?.length) { try { localStorage.setItem(SEEN_KEY, String(Date.now())) } catch {} ; onSeen?.() } }, [alerts, onSeen])
+  if (!alerts?.length) return (
+    <div style={{ fontFamily:SERIF, fontSize:13, color:TM, fontStyle:"italic" }}>
+      Nothing needs you right now.
+    </div>
+  )
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+      {alerts.map((a: any) => {
+        const s = SEV[a.severity] || SEV.info
+        return (
+          <div key={a.id} style={{ display:"flex", gap:11, padding:"11px 13px", borderRadius:12,
+                                   background:"rgba(255,255,255,0.022)", border:"1px solid " + LINE2 }}>
+            <span style={{ width:7, height:7, borderRadius:"50%", background:s.dot, marginTop:6, flexShrink:0,
+                           boxShadow:`0 0 9px ${s.dot}66` }}/>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontFamily:NUM, fontSize:12.5, color:TX, marginBottom:3 }}>{a.title}</div>
+              <div style={{ fontFamily:SERIF, fontSize:12.5, color:TM, lineHeight:1.55 }}>{a.detail}</div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── The Desk ───────────────────────────────────────────────────────
+function Desk({ m, loading, err, onRefresh }: any) {
+  const read = theRead(m)
+  return (
+    <div style={{ flex:1, overflowY:"auto", padding:"20px 24px 30px" }}>
+      <div style={{ maxWidth:1020, margin:"0 auto" }}>
+
+        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:14, gap:12 }}>
+          <div>
+            <div style={{ fontFamily:SERIF, fontSize:20, color:TX, letterSpacing:".01em" }}>The desk</div>
+            <div style={{ fontFamily:NUM, fontSize:11, color:TM, marginTop:3 }}>
+              {m ? `taken from the database at ${new Date(m.generatedAt).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}` : "taking the readings…"}
+            </div>
+          </div>
+          <button onClick={onRefresh} disabled={loading}
+            style={{ fontFamily:NUM, ...surface(), borderRadius:10, padding:"7px 14px", fontSize:11.5,
+                     color: loading ? TM : G, cursor: loading ? "default" : "pointer" }}>
+            {loading ? "reading…" : "↻ Take again"}
+          </button>
+        </div>
+
+        {err ? (
+          <div style={{ ...surface(), borderRadius:14, padding:"15px 17px", fontFamily:SERIF, fontSize:13.5, color:RED }}>{err}</div>
+        ) : (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(148px,1fr))", gap:11 }}>
+              <Reading label="Readers" muted={m && !m.users.available}
+                value={m ? (m.users.available ? m.users.total : "—") : "·"}
+                foot={m ? (m.users.available ? `${m.users.new7d} joined this week · ${m.users.active7d} came back` : "list wouldn't open") : ""}
+                tint={m && !m.users.available ? RED : undefined}/>
+              <Reading label="Paying" value={m ? m.revenue.premiumUsers : "·"}
+                foot={m ? (m.revenue.conversionPct == null ? "share unknown" : `${m.revenue.conversionPct}% of readers`) : ""}
+                tint={m && m.revenue.premiumUsers > 0 ? GRN : undefined}/>
+              <Reading label="Monthly" value={m ? `$${m.revenue.estMrr}` : "·"}
+                foot={m ? `$${m.revenue.pricing.monthly} · $${m.revenue.pricing.annual}/yr` : ""}
+                tint={m && m.revenue.estMrr > 0 ? GRN : undefined}/>
+              <Reading label="Notes in" value={m ? m.feedback.writtenCount : "·"}
+                foot={m ? (m.feedback.avgRating ? `${m.feedback.avgRating} out of 5` : "none written yet") : ""}
+                tint={m && m.feedback.writtenCount > 0 ? G : undefined}/>
+              <Reading label="On the shelf" value={m ? m.catalog.books : "·"}
+                foot={m ? `${m.catalog.withAudio} narrated · ${m.catalog.freeBooks} open` : ""}/>
+            </div>
+
+            {read.text && (
+              <div style={{ fontFamily:SERIF, fontSize:14, color:read.tone, margin:"15px 2px 20px", fontStyle:"italic", lineHeight:1.6 }}>
+                {read.text}
+              </div>
+            )}
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(290px,1fr))", gap:12, marginBottom:12 }}>
+              <Panel title="Who arrived" note="last 30 days">
+                {m?.series?.signups
+                  ? <BarSeries data={m.series.signups} tint={G}/>
+                  : <div style={{ fontFamily:NUM, fontSize:11, color:TM, height:54, display:"flex", alignItems:"center" }}>reader list unavailable</div>}
+              </Panel>
+              <Panel title="Conversations" note="AI chats per day">
+                <BarSeries data={m?.series?.activity} tint="#7ab8d8"/>
+              </Panel>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(290px,1fr))", gap:12 }}>
+              <Panel title="The shelf" note={m ? `${m.catalog.books} books` : ""}>
+                {m && <Split parts={[
+                  { label:"Open to all", value:m.catalog.freeBooks,    tint:GRN },
+                  { label:"Paid",        value:m.catalog.premiumBooks, tint:G   },
+                ]}/>}
+                <div style={{ height:13 }}/>
+                {m && <Split parts={[
+                  { label:"Narrated",  value:m.catalog.withAudio,                   tint:"#7ab8d8" },
+                  { label:"Not yet",   value:m.catalog.books - m.catalog.withAudio, tint:"rgba(255,255,255,0.13)" },
+                ]}/>}
+              </Panel>
+              <Panel title="Worth flagging" note={m?.alerts?.length ? `${m.alerts.length}` : ""}>
+                <Flags alerts={m?.alerts}/>
+              </Panel>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -431,9 +553,7 @@ function AgentRail({ agents, active, onPick }: any) {
 function Typing() {
   return (
     <div style={{ display:"flex", gap:4, padding:"4px 0" }}>
-      {[0,1,2].map(i => (
-        <span key={i} style={{ width:5, height:5, borderRadius:"50%", background:G, opacity:.45, animation:`bob 1.1s ${i*0.16}s infinite ease-in-out` }}/>
-      ))}
+      {[0,1,2].map(i => <span key={i} style={{ width:5, height:5, borderRadius:"50%", background:G, opacity:.4, animation:`bob 1.1s ${i*0.16}s infinite ease-in-out` }}/>)}
     </div>
   )
 }
@@ -441,123 +561,65 @@ function Typing() {
 function Message({ msg }: any) {
   const mine = msg.role === "user"
   return (
-    <div style={{ display:"flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom:18 }}>
-      <div style={{ maxWidth: mine ? "78%" : "100%" }}>
-        {!mine && (
-          <div style={{ fontFamily:NUM, fontSize:10, letterSpacing:".13em", textTransform:"uppercase", color:TM, marginBottom:7 }}>Studio</div>
-        )}
+    <div style={{ display:"flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom:20 }}>
+      <div style={{ maxWidth: mine ? "76%" : "100%" }}>
+        {!mine && <div style={{ fontFamily:NUM, fontSize:9.5, letterSpacing:".16em", textTransform:"uppercase", color:TM, marginBottom:8 }}>Studio</div>}
         <div style={{
-          fontFamily:SERIF, fontSize:14.5, lineHeight:1.72, whiteSpace:"pre-wrap", wordBreak:"break-word",
+          fontFamily:SERIF, fontSize:15, lineHeight:1.75, whiteSpace:"pre-wrap", wordBreak:"break-word",
           color: mine ? GL : TX,
-          background: mine ? "rgba(201,168,76,0.1)" : "transparent",
-          border: mine ? "1px solid " + LINE : "none",
-          borderRadius: mine ? 14 : 0,
-          padding: mine ? "11px 15px" : 0,
+          ...(mine ? { ...surface(), borderRadius:15, padding:"12px 16px" } : {}),
         }}>{msg.content}</div>
       </div>
     </div>
   )
 }
 
-// ── Composer ───────────────────────────────────────────────────────
 function Composer({ taRef, value, onChange, onSend, loading, placeholder, chips, onChip }: any) {
   return (
-    <div style={{ borderTop:"1px solid " + LINE2, padding:"12px 22px 16px", flexShrink:0, background:"rgba(10,9,14,0.6)" }}>
-      {chips?.length > 0 && (
-        <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:10, scrollbarWidth:"none" as any }}>
-          {chips.map((c: string, i: number) => (
-            <button key={i} onClick={() => onChip(c)} disabled={loading}
-              style={{ fontFamily:NUM, fontSize:11.5, whiteSpace:"nowrap", flexShrink:0, padding:"7px 12px",
-                       borderRadius:999, background:PANEL, border:"1px solid " + LINE2, color:TM,
-                       cursor: loading ? "default" : "pointer", transition:"all .16s" }}
-              onMouseEnter={(e:any)=>{ if(!loading){ e.currentTarget.style.color=GL; e.currentTarget.style.borderColor=LINE } }}
-              onMouseLeave={(e:any)=>{ e.currentTarget.style.color=TM; e.currentTarget.style.borderColor=LINE2 }}>
-              {c}
-            </button>
-          ))}
+    <div style={{ borderTop:"1px solid " + LINE2, padding:"13px 24px 17px", flexShrink:0, background:"rgba(10,9,14,0.55)", backdropFilter:"blur(8px)" }}>
+      <div style={{ maxWidth:780, margin:"0 auto" }}>
+        {chips?.length > 0 && (
+          <div style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:11, scrollbarWidth:"none" as any }}>
+            {chips.map((c: string, i: number) => (
+              <button key={i} onClick={() => onChip(c)} disabled={loading}
+                style={{ fontFamily:NUM, fontSize:11.5, whiteSpace:"nowrap", flexShrink:0, padding:"7px 13px",
+                         ...surface(), borderRadius:999, color:TM, cursor: loading ? "default" : "pointer", transition:"color .18s, border-color .18s" }}
+                onMouseEnter={(e:any)=>{ if(!loading) e.currentTarget.style.color=GL }}
+                onMouseLeave={(e:any)=>{ e.currentTarget.style.color=TM }}>
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ display:"flex", gap:9, alignItems:"flex-end" }}>
+          <textarea ref={taRef} value={value} rows={1} placeholder={placeholder}
+            onChange={(e:any) => { onChange(e.target.value); e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,160)+"px" }}
+            onKeyDown={(e:any) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend() } }}
+            style={{ flex:1, resize:"none", fontFamily:SERIF, fontSize:14.5, lineHeight:1.6, padding:"13px 16px",
+                     ...surface(), borderRadius:14, color:TX, outline:"none", maxHeight:160, boxSizing:"border-box" }}/>
+          <button onClick={onSend} disabled={loading || !value.trim()}
+            style={{ fontFamily:NUM, fontSize:13, fontWeight:600, padding:"13px 22px", borderRadius:14, border:"none",
+                     background: loading || !value.trim() ? "rgba(201,168,76,0.14)" : "linear-gradient(150deg,#efd18a,#c9a84c)",
+                     boxShadow: loading || !value.trim() ? "none" : "0 8px 20px -8px rgba(201,168,76,0.7)",
+                     color: loading || !value.trim() ? TM : "#12101a",
+                     cursor: loading || !value.trim() ? "default" : "pointer", flexShrink:0, transition:"box-shadow .2s" }}>
+            {loading ? "…" : "Ask"}
+          </button>
         </div>
-      )}
-      <div style={{ display:"flex", gap:9, alignItems:"flex-end" }}>
-        <textarea
-          ref={taRef} value={value} rows={1} placeholder={placeholder}
-          onChange={(e:any) => { onChange(e.target.value); e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,150)+"px" }}
-          onKeyDown={(e:any) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend() } }}
-          style={{ flex:1, resize:"none", fontFamily:SERIF, fontSize:14, lineHeight:1.6, padding:"12px 15px",
-                   borderRadius:13, background:PANEL2, border:"1px solid " + LINE2, color:TX, outline:"none",
-                   maxHeight:150, boxSizing:"border-box" }}
-          onFocus={(e:any)=>e.currentTarget.style.borderColor=LINE}
-          onBlur={(e:any)=>e.currentTarget.style.borderColor=LINE2}
-        />
-        <button onClick={onSend} disabled={loading || !value.trim()}
-          style={{ fontFamily:NUM, fontSize:13, fontWeight:600, padding:"12px 20px", borderRadius:13, border:"none",
-                   background: loading || !value.trim() ? "rgba(201,168,76,0.16)" : "linear-gradient(135deg,#e0be6f,#c9a84c)",
-                   color: loading || !value.trim() ? TM : "#100f16",
-                   cursor: loading || !value.trim() ? "default" : "pointer", flexShrink:0 }}>
-          {loading ? "…" : "Ask"}
-        </button>
-      </div>
-      <div style={{ fontFamily:NUM, fontSize:10, color:TM, marginTop:7 }}>
-        Enter to send · Shift+Enter for a new line · answers use the live figures above
+        <div style={{ fontFamily:NUM, fontSize:10, color:TM, marginTop:8 }}>
+          Enter sends · Shift+Enter breaks the line · every answer is grounded in the readings on the desk
+        </div>
       </div>
     </div>
   )
 }
 
-// ── History drawer ─────────────────────────────────────────────────
-function HistoryDrawer({ onClose, onRestore }: any) {
-  const [history] = useState(loadHistory())
-  const [q, setQ] = useState("")
-  const items = history.filter((h: any) =>
-    !q.trim() || h.label?.toLowerCase().includes(q.toLowerCase()) ||
-    h.messages?.some((m: any) => m.content?.toLowerCase().includes(q.toLowerCase())))
+function Conversation({ agent, selComps, onToggleComp }: any) {
+  const opening = agent.id === "books"
+    ? "Ask me about anything on the shelf — an argument, a comparison, where to start."
+    : `${agent.desc}. Your figures are already in front of me, so ask in their terms.`
 
-  return (
-    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-      onClick={onClose}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.62)", zIndex:60, display:"flex", justifyContent:"flex-end" }}>
-      <motion.div initial={{ x:"100%" }} animate={{ x:0 }} exit={{ x:"100%" }} transition={{ type:"tween", duration:.24 }}
-        onClick={(e:any)=>e.stopPropagation()}
-        style={{ width:"min(430px,92vw)", background:INK, borderLeft:"1px solid " + LINE, display:"flex", flexDirection:"column" }}>
-        <div style={{ padding:"16px 20px", borderBottom:"1px solid " + LINE2, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <span style={{ fontFamily:SERIF, fontSize:15, color:TX }}>Past conversations</span>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:TM, fontSize:19, cursor:"pointer", lineHeight:1 }}>✕</button>
-        </div>
-        <div style={{ padding:"12px 20px" }}>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"
-            style={{ width:"100%", fontFamily:NUM, fontSize:12.5, padding:"9px 12px", borderRadius:10,
-                     background:PANEL2, border:"1px solid " + LINE2, color:TX, outline:"none", boxSizing:"border-box" }}/>
-        </div>
-        <div style={{ flex:1, overflowY:"auto", padding:"0 20px 20px" }}>
-          {items.length === 0 && (
-            <div style={{ fontFamily:SERIF, fontSize:13, color:TM, fontStyle:"italic", padding:"18px 0" }}>
-              {history.length === 0 ? "Nothing saved yet." : "No matches."}
-            </div>
-          )}
-          {items.map((h: any, i: number) => (
-            <button key={i} onClick={() => { onRestore(h); onClose() }}
-              style={{ display:"block", width:"100%", textAlign:"left", marginBottom:8, padding:"11px 13px",
-                       borderRadius:11, background:PANEL, border:"1px solid " + LINE2, cursor:"pointer" }}>
-              <div style={{ fontFamily:NUM, fontSize:12, color:GL, marginBottom:3 }}>{h.label}</div>
-              <div style={{ fontFamily:SERIF, fontSize:12, color:TM, lineHeight:1.5,
-                            overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box",
-                            WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any }}>
-                {h.messages?.find((m:any)=>m.role==="user")?.content || "—"}
-              </div>
-            </button>
-          ))}
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
-// ── Chat surface ───────────────────────────────────────────────────
-function Conversation({ agent, metrics, selComps, onToggleComp }: any) {
-  const welcome = agent.id === "books"
-    ? "Ask me about any book in the library — themes, arguments, how it compares to another."
-    : `${agent.desc}. I can see your live figures above, so ask in terms of them.`
-
-  const [messages, setMessages] = useState<any[]>([{ role:"assistant", content:welcome }])
+  const [messages, setMessages] = useState<any[]>([{ role:"assistant", content:opening }])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState("")
@@ -574,33 +636,32 @@ function Conversation({ agent, metrics, selComps, onToggleComp }: any) {
     const next = [...messages, { role:"user", content }]
     setMessages(next); setLoading(true)
     try {
-      let prompt = agent.systemPrompt || "You are a helpful literary assistant for House of Books."
+      let prompt = agent.systemPrompt || "You are a thoughtful literary assistant for House of Books."
       if (agent.id === "competitor" && selComps?.length) {
-        prompt += "\n\nCompetitors selected for comparison:\n" + selComps.map((c:any) =>
+        prompt += "\n\nCompetitors chosen for comparison:\n" + selComps.map((c:any) =>
           `- ${c.name} (${c.pricing}): strengths ${c.strengths.join(", ")}; weaknesses ${c.weaknesses.join(", ")}`).join("\n")
       }
-      const reply = await callAI(next.filter(m => m.role !== "assistant" || m.content !== welcome), prompt)
+      const reply = await callAI(next.filter(m => m.role !== "assistant" || m.content !== opening), prompt)
       const done = [...next, { role:"assistant", content: reply }]
       setMessages(done)
       saveHistory(agent.id, agent.label, done)
     } catch (e: any) {
-      setErr(e?.message || "That didn't go through.")
+      setErr(e?.message || "That didn't get through.")
       setMessages(next)
     } finally { setLoading(false) }
-  }, [input, loading, messages, agent, selComps, welcome])
+  }, [input, loading, messages, agent, selComps, opening])
 
   return (
     <>
       {agent.id === "competitor" && (
-        <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"11px 22px", borderBottom:"1px solid " + LINE2, flexShrink:0, scrollbarWidth:"none" as any }}>
+        <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"11px 24px", borderBottom:"1px solid " + LINE2, flexShrink:0, scrollbarWidth:"none" as any }}>
           {COMPETITORS.map((c:any) => {
             const on = selComps?.some((s:any)=>s.id===c.id)
             return (
               <button key={c.id} onClick={()=>onToggleComp(c)}
                 style={{ display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", flexShrink:0,
-                         fontFamily:NUM, fontSize:11.5, padding:"7px 12px", borderRadius:999, cursor:"pointer",
-                         background: on ? "rgba(201,168,76,0.13)" : PANEL,
-                         border:"1px solid " + (on ? "rgba(201,168,76,0.45)" : LINE2), color: on ? GL : TM }}>
+                         fontFamily:NUM, fontSize:11.5, padding:"7px 13px", borderRadius:999, cursor:"pointer",
+                         ...surface(on), color: on ? GL : TM }}>
                 <span>{c.emoji}</span>{c.name}
               </button>
             )
@@ -608,87 +669,179 @@ function Conversation({ agent, metrics, selComps, onToggleComp }: any) {
         </div>
       )}
 
-      <div style={{ flex:1, overflowY:"auto", padding:"26px 22px" }}>
-        <div style={{ maxWidth:760, margin:"0 auto" }}>
-          {messages.map((m, i) => <Message key={i} msg={m} />)}
+      <div style={{ flex:1, overflowY:"auto", padding:"28px 24px" }}>
+        <div style={{ maxWidth:780, margin:"0 auto" }}>
+          {messages.map((m, i) => <Message key={i} msg={m}/>)}
           {loading && (
-            <div style={{ marginBottom:18 }}>
-              <div style={{ fontFamily:NUM, fontSize:10, letterSpacing:".13em", textTransform:"uppercase", color:TM, marginBottom:7 }}>Studio</div>
-              <Typing />
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontFamily:NUM, fontSize:9.5, letterSpacing:".16em", textTransform:"uppercase", color:TM, marginBottom:8 }}>Studio</div>
+              <Typing/>
             </div>
           )}
           {err && (
-            <div style={{ fontFamily:NUM, fontSize:12, color:RED, padding:"9px 13px", borderRadius:10,
-                          background:"rgba(240,85,85,0.07)", border:"1px solid rgba(240,85,85,0.25)", marginBottom:14 }}>
-              {err}
-            </div>
+            <div style={{ fontFamily:SERIF, fontSize:13, color:RED, padding:"11px 14px", borderRadius:12,
+                          background:"rgba(240,85,85,0.06)", border:"1px solid rgba(240,85,85,0.22)", marginBottom:16 }}>{err}</div>
           )}
           <div ref={endRef}/>
         </div>
       </div>
 
-      <Composer
-        taRef={taRef} value={input} onChange={setInput} onSend={() => send()}
-        loading={loading} placeholder={agent.placeholder || "Ask anything…"}
+      <Composer taRef={taRef} value={input} onChange={setInput} onSend={() => send()}
+        loading={loading} placeholder={agent.placeholder || "Ask away…"}
         chips={messages.length <= 1 ? (agent.suggestions || []) : []}
-        onChip={(c:string) => send(c)}
-      />
+        onChip={(c:string) => send(c)}/>
     </>
+  )
+}
+
+// ── History ────────────────────────────────────────────────────────
+function HistoryDrawer({ onClose, onRestore }: any) {
+  const [history] = useState(loadHistory())
+  const [q, setQ] = useState("")
+  const items = history.filter((h: any) =>
+    !q.trim() || h.label?.toLowerCase().includes(q.toLowerCase()) ||
+    h.messages?.some((m: any) => m.content?.toLowerCase().includes(q.toLowerCase())))
+
+  return (
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={onClose}
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(3px)", zIndex:60, display:"flex", justifyContent:"flex-end" }}>
+      <motion.div initial={{ x:"100%" }} animate={{ x:0 }} exit={{ x:"100%" }} transition={{ type:"tween", duration:.24 }}
+        onClick={(e:any)=>e.stopPropagation()}
+        style={{ width:"min(440px,93vw)", background:INK2, borderLeft:"1px solid " + LINE, display:"flex", flexDirection:"column" }}>
+        <div style={{ padding:"17px 21px", borderBottom:"1px solid " + LINE2, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <span style={{ fontFamily:SERIF, fontSize:16, color:TX }}>Earlier conversations</span>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:TM, fontSize:19, cursor:"pointer", lineHeight:1 }}>✕</button>
+        </div>
+        <div style={{ padding:"13px 21px" }}>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"
+            style={{ width:"100%", fontFamily:NUM, fontSize:12.5, padding:"10px 13px", ...surface(), borderRadius:11,
+                     color:TX, outline:"none", boxSizing:"border-box" }}/>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:"0 21px 21px" }}>
+          {items.length === 0 && (
+            <div style={{ fontFamily:SERIF, fontSize:13, color:TM, fontStyle:"italic", padding:"18px 0" }}>
+              {history.length === 0 ? "Nothing kept yet." : "No matches."}
+            </div>
+          )}
+          {items.map((h: any, i: number) => (
+            <button key={i} onClick={() => { onRestore(h); onClose() }}
+              style={{ display:"block", width:"100%", textAlign:"left", marginBottom:9, padding:"12px 14px",
+                       ...surface(), borderRadius:12, cursor:"pointer" }}>
+              <div style={{ fontFamily:NUM, fontSize:12, color:GL, marginBottom:4 }}>{h.label}</div>
+              <div style={{ fontFamily:SERIF, fontSize:12.5, color:TM, lineHeight:1.5, overflow:"hidden",
+                            textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any }}>
+                {h.messages?.find((m:any)=>m.role==="user")?.content || "—"}
+              </div>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
 // ── Studio ─────────────────────────────────────────────────────────
 export default function BookAgent() {
+  const [room, setRoom] = useState<"desk"|"ask">("desk")
   const [agent, setAgent] = useState<any>(ALL_AGENTS[0])
   const [selComps, setSelComps] = useState<any[]>([])
   const [showHistory, setShowHistory] = useState(false)
 
-  const [metrics, setMetrics] = useState<any>(null)
-  const [mLoading, setMLoading] = useState(true)
-  const [mErr, setMErr] = useState("")
+  const [m, setM] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState("")
 
-  const loadMetrics = useCallback(async () => {
-    setMLoading(true); setMErr("")
-    try { setMetrics(await fetchMetrics()) }
-    catch (e: any) { setMErr(e?.message || "Could not read metrics") }
-    finally { setMLoading(false) }
+  const load = useCallback(async () => {
+    setLoading(true); setErr("")
+    try { setM(await fetchMetrics()) }
+    catch (e: any) { setErr(e?.message || "The readings didn't come back") }
+    finally { setLoading(false) }
   }, [])
-  useEffect(() => { loadMetrics() }, [loadMetrics])
+  useEffect(() => { load() }, [load])
+
+  // Unread = anything flagged since the desk was last opened.
+  const lastSeen = (() => { try { return Number(localStorage.getItem(SEEN_KEY) || 0) } catch { return 0 } })()
+  const unread = (m?.alerts || []).filter((a: any) =>
+    a.severity !== "info" && new Date(a.at).getTime() > lastSeen).length
 
   const toggleComp = (c:any) => setSelComps(p => p.some(x=>x.id===c.id) ? p.filter(x=>x.id!==c.id) : [...p, c])
 
-  return (
-    <div style={{ background:INK, color:TX, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+  const Tab = ({ id, label }: any) => (
+    <button onClick={()=>setRoom(id)}
+      style={{ fontFamily:NUM, fontSize:12.5, padding:"7px 15px", borderRadius:10, cursor:"pointer",
+               background: room===id ? "rgba(201,168,76,0.14)" : "transparent",
+               border:"1px solid " + (room===id ? "rgba(201,168,76,0.42)" : "transparent"),
+               color: room===id ? GL : TM, fontWeight: room===id ? 600 : 400, transition:"all .18s" }}>
+      {label}
+    </button>
+  )
 
-      {/* Masthead */}
-      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"13px 22px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
-        <div style={{ width:28, height:28, borderRadius:8, border:"1px solid " + LINE, display:"flex", alignItems:"center", justifyContent:"center", color:G, fontSize:13 }}>✦</div>
-        <div style={{ flex:1 }}>
-          <div style={{ fontFamily:SERIF, fontSize:15.5, color:GL, letterSpacing:".02em" }}>House of Books <span style={{ color:TM }}>· Studio</span></div>
-          <div style={{ fontFamily:NUM, fontSize:10, color:TM, letterSpacing:".07em" }}>{agent.label}</div>
+  return (
+    <div style={{ background:INK, color:TX, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden",
+                  backgroundImage:"radial-gradient(1100px 520px at 18% -12%, rgba(201,168,76,0.07), transparent 62%)" }}>
+
+      <div style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 24px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
+        <div style={{ width:30, height:30, borderRadius:9, ...surface(), display:"flex", alignItems:"center", justifyContent:"center", color:G, fontSize:14 }}>✦</div>
+        <div style={{ fontFamily:SERIF, fontSize:16, color:GL, letterSpacing:".015em" }}>
+          House of Books <span style={{ color:TM }}>· Studio</span>
         </div>
+
+        <div style={{ display:"flex", gap:4, marginLeft:12 }}>
+          <Tab id="desk" label="The desk"/>
+          <Tab id="ask"  label="Ask"/>
+        </div>
+
+        <div style={{ flex:1 }}/>
+
+        <button onClick={()=>{ setRoom("desk"); load() }} title="Anything worth flagging"
+          style={{ position:"relative", ...surface(), borderRadius:10, padding:"7px 13px", fontFamily:NUM, fontSize:12, color:TM, cursor:"pointer" }}>
+          🔔
+          {unread > 0 && (
+            <span style={{ position:"absolute", top:-5, right:-5, minWidth:17, height:17, padding:"0 4px", borderRadius:9,
+                           background:"linear-gradient(150deg,#efd18a,#c9a84c)", color:"#12101a",
+                           fontFamily:NUM, fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center",
+                           boxShadow:"0 3px 10px -2px rgba(201,168,76,0.8)" }}>{unread}</span>
+          )}
+        </button>
         <button onClick={()=>setShowHistory(true)}
-          style={{ fontFamily:NUM, fontSize:11.5, padding:"7px 13px", borderRadius:9, background:PANEL,
-                   border:"1px solid " + LINE2, color:TM, cursor:"pointer" }}>History</button>
+          style={{ ...surface(), borderRadius:10, padding:"7px 14px", fontFamily:NUM, fontSize:12, color:TM, cursor:"pointer" }}>
+          History
+        </button>
       </div>
 
-      <TodayBand m={metrics} loading={mLoading} err={mErr} onRefresh={loadMetrics} />
-      <AgentRail agents={ALL_AGENTS} active={agent} onPick={(a:any)=>{ setAgent(a); if (a.id!=="competitor") setSelComps([]) }} />
-
-      <Conversation key={agent.id} agent={agent} metrics={metrics} selComps={selComps} onToggleComp={toggleComp} />
+      {room === "desk" ? (
+        <Desk m={m} loading={loading} err={err} onRefresh={load}/>
+      ) : (
+        <>
+          <div style={{ display:"flex", gap:7, overflowX:"auto", padding:"11px 24px", borderBottom:"1px solid " + LINE2, flexShrink:0, scrollbarWidth:"none" as any }}>
+            {ALL_AGENTS.map((a:any) => {
+              const on = agent.id === a.id
+              return (
+                <button key={a.id} onClick={()=>{ setAgent(a); if (a.id!=="competitor") setSelComps([]) }} title={a.desc}
+                  style={{ display:"flex", alignItems:"center", gap:7, whiteSpace:"nowrap", flexShrink:0,
+                           padding:"8px 15px", borderRadius:999, cursor:"pointer", fontFamily:NUM, fontSize:12.5,
+                           ...surface(on), color: on ? GL : TX, fontWeight: on ? 600 : 400, transition:"all .18s" }}>
+                  <span style={{ fontSize:14 }}>{a.icon}</span>{a.label}
+                </button>
+              )
+            })}
+          </div>
+          <Conversation key={agent.id} agent={agent} selComps={selComps} onToggleComp={toggleComp}/>
+        </>
+      )}
 
       <AnimatePresence>
         {showHistory && (
           <HistoryDrawer onClose={()=>setShowHistory(false)}
-            onRestore={(h:any)=>{ const a = ALL_AGENTS.find((x:any)=>x.id===h.agentId); if (a) setAgent(a) }} />
+            onRestore={(h:any)=>{ const a = ALL_AGENTS.find((x:any)=>x.id===h.agentId); if (a) { setAgent(a); setRoom("ask") } }}/>
         )}
       </AnimatePresence>
 
       <style>{`
-        ::-webkit-scrollbar{width:4px;height:0}
+        ::-webkit-scrollbar{width:5px;height:0}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.22);border-radius:2px}
-        @keyframes bob{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-4px);opacity:1}}
+        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);border-radius:3px}
+        @keyframes bob{0%,80%,100%{transform:translateY(0);opacity:.32}40%{transform:translateY(-4px);opacity:1}}
       `}</style>
     </div>
   )

@@ -94,15 +94,16 @@ async function getPlatformMetrics() {
   // it would quietly poison every conversion and revenue figure derived from it.
   // usersAvailable=false makes the gap explicit to both the panel and the model.
   let totalUsers = 0, new7 = 0, new30 = 0, act7 = 0, usersAvailable = true
+  let userList = []
   try {
     const all = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
     if (all?.error) throw all.error
-    const list = all?.data?.users || []
-    totalUsers = list.length
+    userList = all?.data?.users || []
+    totalUsers = userList.length
     const c7 = iso(7), c30 = iso(30)
-    new7 = list.filter(u => u.created_at > c7).length
-    new30 = list.filter(u => u.created_at > c30).length
-    act7 = list.filter(u => u.last_sign_in_at && u.last_sign_in_at > c7).length
+    new7 = userList.filter(u => u.created_at > c7).length
+    new30 = userList.filter(u => u.created_at > c30).length
+    act7 = userList.filter(u => u.last_sign_in_at && u.last_sign_in_at > c7).length
   } catch { usersAvailable = false }
 
   const premiumCount = premium?.count ?? 0
@@ -119,8 +120,83 @@ async function getPlatformMetrics() {
 
   const mrr = +(premiumCount * PRICING.monthly).toFixed(2)
 
+  // ── Daily series for the charts ──────────────────────────────────
+  // Bucketed here rather than in the browser so the panel and the model
+  // read identical numbers. Empty days are emitted as zeros: with a
+  // handful of signups the honest shape is a sparse bar chart, and
+  // dropping blank days would draw a smooth line that implies steady
+  // growth nobody actually had.
+  const days = (n) => {
+    const out = []
+    for (let i = n - 1; i >= 0; i--) {
+      out.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10))
+    }
+    return out
+  }
+  const bucket = (rows, field, n = 30) => {
+    const skeleton = Object.fromEntries(days(n).map(d => [d, 0]))
+    rows.forEach(r => {
+      const d = String(r?.[field] || '').slice(0, 10)
+      if (d in skeleton) skeleton[d]++
+    })
+    return Object.entries(skeleton).map(([date, count]) => ({ date, count }))
+  }
+
+  const series = {
+    signups: usersAvailable ? bucket(userList, 'created_at') : null,
+    activity: bucket(chatRows, 'created_at'),
+    feedback: bucket(writtenRows, 'created_at'),
+  }
+
+  // ── Things worth flagging ────────────────────────────────────────
+  // Every alert below is derived from a real reading. Nothing is invented,
+  // and nothing fires "just to have something in the inbox" — an empty
+  // list is a valid and common answer.
+  const alerts = []
+  const push = (severity, id, title, detail, at) => alerts.push({ id, severity, title, detail, at: at || new Date().toISOString() })
+
+  if (!usersAvailable) {
+    push('error', 'auth-unreadable', 'Cannot read the user list',
+      'The auth admin call failed, so reader counts and conversion are unavailable. Everything derived from them is missing, not zero.')
+  }
+
+  const lowRated = writtenRows.filter(w => typeof w.rating === 'number' && w.rating <= 2)
+  lowRated.slice(0, 5).forEach(w => {
+    push('warn', `low-rating-${w.created_at}`, `Someone rated ${w.rating}/5`,
+      String(w.message || '').replace(/\s+/g, ' ').trim().slice(0, 220) || 'No message left.', w.created_at)
+  })
+
+  writtenRows.slice(0, 8).forEach(w => {
+    if (typeof w.rating === 'number' && w.rating <= 2) return // already flagged above
+    push('info', `feedback-${w.created_at}`, `New feedback · ${w.category || 'general'}`,
+      String(w.message || '').replace(/\s+/g, ' ').trim().slice(0, 220) || 'No message left.', w.created_at)
+  })
+
+  if (usersAvailable && totalUsers > 0 && premiumCount === 0) {
+    push('warn', 'zero-conversion', 'No paying readers yet',
+      `${totalUsers} registered, none converted. Until this moves off zero it is the only metric that matters.`)
+  }
+  if (usersAvailable && new7 > 0) {
+    push('good', 'new-signups', `${new7} new reader${new7 === 1 ? '' : 's'} this week`,
+      `${act7} signed in over the last 7 days.`)
+  }
+  const audioGap = (books?.count ?? 0) - (withAudio?.count ?? 0)
+  if (audioGap > 0) {
+    push('info', 'audio-gap', `${audioGap} books have no narration cached`,
+      'They generate on first listen, so the first reader waits and it costs an ElevenLabs call. Pre-generating the popular ones removes both.')
+  }
+  if (writtenRows.length === 0) {
+    push('info', 'no-feedback', 'No written feedback yet',
+      'The in-app prompt asks readers once they finish a summary. Nothing to read until someone finishes one.')
+  }
+
+  const order = { error: 0, warn: 1, good: 2, info: 3 }
+  alerts.sort((a, b) => (order[a.severity] - order[b.severity]) || String(b.at).localeCompare(String(a.at)))
+
   return {
     generatedAt: new Date().toISOString(),
+    series,
+    alerts,
     users: { total: totalUsers, new7d: new7, new30d: new30, active7d: act7, available: usersAvailable },
     revenue: {
       premiumUsers: premiumCount,
