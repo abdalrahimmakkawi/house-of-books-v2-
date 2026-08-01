@@ -86,43 +86,95 @@ export default async function handler(req, res) {
   // Extract user's latest message
   const lastMessage = messages[messages.length - 1]?.content || ''
 
+  // Feeds the model what users ACTUALLY said. Two things were wrong before:
+  //
+  //  1. `app_feedback` was never queried. That is the table the in-app and
+  //     website feedback forms write to (via api/feedback.js) — i.e. the only
+  //     place real, written, human feedback lands. The agent read only
+  //     `ai_feedback` (auto-derived keywords/sentiment scraped from AI chat
+  //     turns) and `feedback_insights` (an aggregation that only fills when a
+  //     chat message happens to parse as a feature request). So the one source
+  //     of genuine user opinion was invisible to it.
+  //
+  //  2. The block was labelled "REAL USER INSIGHTS" and told the model to give
+  //     "data-driven advice" with no indication of sample size. With a handful
+  //     of rows — most of them the owner testing the app — the model would
+  //     confidently report trends like "your users prefer Philosophy" as fact.
+  //     Sample sizes are now stated explicitly and the model is told to say so
+  //     when the data is too thin to generalise, which is the honest answer
+  //     early on.
   async function getUserInsights() {
     try {
-      const { data: features } = await supabase
-        .from('feedback_insights')
-        .select('insight_value, count')
-        .order('count', { ascending: false })
-        .limit(10)
+      const [featuresRes, sentimentsRes, writtenRes] = await Promise.all([
+        supabase
+          .from('feedback_insights')
+          .select('insight_value, count')
+          .order('count', { ascending: false })
+          .limit(10),
+        supabase
+          .from('ai_feedback')
+          .select('sentiment, book_category')
+          .limit(200),
+        supabase
+          .from('app_feedback')
+          .select('category, rating, message, created_at')
+          .order('created_at', { ascending: false })
+          .limit(40),
+      ])
 
-      const { data: sentiments } = await supabase
-        .from('ai_feedback')
-        .select('sentiment, book_category')
-        .limit(200)
+      const features = featuresRes.data || []
+      const sentiments = sentimentsRes.data || []
+      const written = writtenRes.data || []
 
-      if (!features?.length && !sentiments?.length) return ''
+      if (!features.length && !sentiments.length && !written.length) {
+        return `\n\nUSER FEEDBACK DATA: none collected yet — no written feedback, no chat telemetry.
+If the user asks what their users think, say plainly that there is no data yet rather than speculating.`
+      }
 
       const sentimentCounts = { positive: 0, neutral: 0, negative: 0 }
-      sentiments?.forEach(s => {
-        if (s.sentiment) sentimentCounts[s.sentiment]++
-      })
+      sentiments.forEach(s => { if (s.sentiment) sentimentCounts[s.sentiment]++ })
 
       const categoryCounts = {}
-      sentiments?.forEach(c => {
-        if (c.book_category) {
-          categoryCounts[c.book_category] = (categoryCounts[c.book_category] || 0) + 1
-        }
+      sentiments.forEach(c => {
+        if (c.book_category) categoryCounts[c.book_category] = (categoryCounts[c.book_category] || 0) + 1
       })
       const topCats = Object.entries(categoryCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
         .map(([cat, count]) => `${cat}(${count})`)
 
+      const ratings = written.map(w => w.rating).filter(r => typeof r === 'number')
+      const avgRating = ratings.length
+        ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+        : null
+
+      const quotes = written.slice(0, 15).map(w => {
+        const when = (w.created_at || '').slice(0, 10)
+        const cat = w.category || 'general'
+        const stars = typeof w.rating === 'number' ? `${w.rating}/5` : 'no rating'
+        const msg = String(w.message || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+        return `  - [${when}] (${cat}, ${stars}) "${msg}"`
+      })
+
       return `
-\n\nREAL USER INSIGHTS FROM YOUR PLATFORM (anonymized):
-- Feature requests: ${features?.map(f => `${f.insight_value}(${f.count})`).join(', ')}
-- User sentiment: ${sentimentCounts.positive} positive / ${sentimentCounts.neutral} neutral / ${sentimentCounts.negative} negative
-- Popular categories: ${topCats.join(', ')}
-Use this data to give more accurate, data-driven advice.`
+
+USER FEEDBACK DATA (anonymised, from this platform's own database):
+
+WRITTEN FEEDBACK — ${written.length} submission(s)${avgRating ? `, average rating ${avgRating}/5 across ${ratings.length}` : ''}
+${quotes.length ? quotes.join('\n') : '  (none submitted yet)'}
+
+CHAT TELEMETRY — ${sentiments.length} AI-chat session(s)
+  NOTE: this is auto-classified from what users typed to the book AI. It is a
+  weak signal of interest, NOT stated opinion about the app.
+  - Sentiment: ${sentimentCounts.positive} positive / ${sentimentCounts.neutral} neutral / ${sentimentCounts.negative} negative
+  - Categories touched: ${topCats.length ? topCats.join(', ') : 'none recorded'}
+
+FEATURE REQUESTS DETECTED — ${features.length}
+${features.length ? '  - ' + features.map(f => `${f.insight_value} (${f.count})`).join('\n  - ') : '  (none detected yet)'}
+
+HOW TO USE THIS: cite the real numbers above and quote written feedback directly
+when relevant. These are small samples — if asked to draw conclusions the data
+cannot support, say the sample is too small and state what would be needed
+instead. Never invent feedback, trends, quotes or figures that are not listed here.`
     } catch(e) {
       return ''
     }
