@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
 import type { Book } from './lib/supabase'
 import { collectChatFeedback } from './lib/feedbackCollector'
+import Minerva from './components/Minerva'
 
 // Admin-only pages are lazy-loaded so they never ship to normal users.
 // Loaded on demand the first time an admin opens the Agent/Dashboard tab.
@@ -1809,11 +1810,16 @@ function ExpandedPanel({
         {/* AI CHAT TAB */}
         {activeTab === 'chat' && (
           <motion.div key="chat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
-              ✦ AI Book Expert
-            </div>
-            <div style={{fontSize:'12px',color:'#9a9080',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
-              Ask me anything about "{book.title}"
+            <div style={{display:'flex',alignItems:'center',gap:'11px',marginBottom:'16px'}}>
+              <Minerva size={44} perch state={chatLoading ? 'thinking' : chatStreaming ? 'speaking' : 'idle'} />
+              <div>
+                <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',fontFamily:'Georgia,serif'}}>
+                  Minerva
+                </div>
+                <div style={{fontSize:'12px',color:'#9a9080',fontFamily:'Georgia,serif'}}>
+                  {chatLoading ? 'Thinking…' : chatStreaming ? 'Speaking…' : `Ask me anything about "${book.title}"`}
+                </div>
+              </div>
             </div>
             <div style={{
               background:'rgba(201,168,76,0.04)',
@@ -1821,34 +1827,48 @@ function ExpandedPanel({
               borderRadius:'14px',padding:'16px',marginBottom:'16px',
             }}>
               {chatMessages.length === 0 && (
-                <div style={{
-                  fontSize:'13px',color:'#9a9080',lineHeight:'1.6',
-                  padding:'10px 12px',borderRadius:'14px 14px 14px 4px',
-                  background:'rgba(255,255,255,0.04)',
-                  marginBottom:'8px',fontFamily:'Georgia,serif',
-                  marginRight:'20px',
-                }}>
-                  Hello! I have read every word of "{book.title}". What would you like to explore?
+                <div style={{display:'flex',gap:'8px',alignItems:'flex-start',marginBottom:'8px',marginRight:'20px'}}>
+                  <Minerva size={26} state="reading" />
+                  <div style={{
+                    fontSize:'13px',color:'#9a9080',lineHeight:'1.6',
+                    padding:'10px 12px',borderRadius:'14px 14px 14px 4px',
+                    background:'rgba(255,255,255,0.04)',
+                    fontFamily:'Georgia,serif',
+                  }}>
+                    Hello! I have read every word of "{book.title}". What would you like to explore?
+                  </div>
                 </div>
               )}
               {chatMessages.map((msg: any, i: number) => {
                 const isTyping = chatStreaming && msg.role === 'assistant' && i === chatMessages.length - 1
-                return (
-                <div key={i} style={{
-                  fontSize:'13px',color:'#e8e4d9',lineHeight:'1.6',
-                  padding:'10px 12px',
-                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                  marginBottom:'8px',fontFamily:'Georgia,serif',
-                  background: msg.role === 'user' ? 'rgba(201,168,76,0.14)' : 'rgba(255,255,255,0.04)',
-                  marginLeft: msg.role === 'user' ? '20px' : '0',
-                  marginRight: msg.role === 'assistant' ? '20px' : '0',
-                }}>
-                  {msg.content}
-                  {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#c9a84c',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
-                </div>
-              )})}
+                const bubble = (
+                  <div style={{
+                    fontSize:'13px',color:'#e8e4d9',lineHeight:'1.6',
+                    padding:'10px 12px',
+                    borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    fontFamily:'Georgia,serif',
+                    background: msg.role === 'user' ? 'rgba(201,168,76,0.14)' : 'rgba(255,255,255,0.04)',
+                  }}>
+                    {msg.content}
+                    {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#c9a84c',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
+                  </div>
+                )
+                // Minerva speaks only on the message she is currently writing;
+                // earlier answers keep a still owl so the thread stays calm
+                return msg.role === 'assistant' ? (
+                  <div key={i} style={{display:'flex',gap:'8px',alignItems:'flex-start',marginBottom:'8px',marginRight:'20px'}}>
+                    <Minerva size={26} state={isTyping ? 'speaking' : 'idle'} />
+                    {bubble}
+                  </div>
+                ) : (
+                  <div key={i} style={{marginBottom:'8px',marginLeft:'20px'}}>{bubble}</div>
+                )
+              })}
               {chatLoading && (
-                <div style={{fontSize:'12px',color:'#c9a84c',padding:'8px',fontFamily:'Georgia,serif'}}>✦ Thinking...</div>
+                <div style={{display:'flex',gap:'8px',alignItems:'center',padding:'4px 0 8px',marginRight:'20px'}}>
+                  <Minerva size={26} state="thinking" />
+                  <span style={{fontSize:'12px',color:'#c9a84c',fontFamily:'Georgia,serif'}}>Thinking…</span>
+                </div>
               )}
               <div ref={chatEndRef}/>
               <div style={{display:'flex',gap:'8px',marginTop:'12px'}}>
