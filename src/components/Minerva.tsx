@@ -13,9 +13,9 @@
  */
 import { useEffect, useRef } from 'react'
 
-export type MinervaState = 'idle' | 'thinking' | 'speaking' | 'delighted' | 'puzzled' | 'reading'
+export type MinervaState = 'idle' | 'thinking' | 'speaking' | 'delighted' | 'puzzled' | 'reading' | 'flying'
 
-const STATES: MinervaState[] = ['thinking', 'speaking', 'delighted', 'puzzled', 'reading']
+const STATES: MinervaState[] = ['thinking', 'speaking', 'delighted', 'puzzled', 'reading', 'flying']
 const REDUCED = typeof matchMedia !== 'undefined'
   && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -68,6 +68,15 @@ const CSS = `
 .hobOwl.puzzled .tuft-r{transform:rotate(17deg)}
 .hobOwl.reading .head{transform:rotate(3deg) translateY(2px);animation:none}
 .hobOwl.reading .pupil{transform:translate(0,5px)}
+/* in flight: wings beat, tufts stream back, feet tuck up */
+.hobOwl.flying .wing-l{animation:hobFlapL .3s ease-in-out infinite;transition:none}
+.hobOwl.flying .wing-r{animation:hobFlapR .3s ease-in-out infinite;transition:none}
+@keyframes hobFlapL{0%,100%{transform:rotate(-14deg) translateY(0)}50%{transform:rotate(-56deg) translateY(-5px)}}
+@keyframes hobFlapR{0%,100%{transform:rotate(14deg) translateY(0)}50%{transform:rotate(56deg) translateY(-5px)}}
+.hobOwl.flying .head{animation:none;transform:rotate(-4deg)}
+.hobOwl.flying .tuft-l{transform:rotate(-16deg)}
+.hobOwl.flying .tuft-r{transform:rotate(-9deg)}
+.hobOwl.flying .ground{opacity:0}
 @media (prefers-reduced-motion:reduce){
   .hobOwl .body,.hobOwl .head{animation:none!important}
   .hobOwl3d,.hobOwl .face,.hobOwl .ground{transform:none!important}

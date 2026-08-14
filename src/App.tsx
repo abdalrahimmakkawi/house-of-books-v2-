@@ -4,6 +4,7 @@ import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWith
 import type { Book } from './lib/supabase'
 import { collectChatFeedback } from './lib/feedbackCollector'
 import Minerva from './components/Minerva'
+import MinervaCompanion from './components/MinervaCompanion'
 
 // Admin-only pages are lazy-loaded so they never ship to normal users.
 // Loaded on demand the first time an admin opens the Agent/Dashboard tab.
@@ -2634,6 +2635,17 @@ export default function App() {
     return matchesSearch&&matchesCategory&&matchesView&&matchesInside
   }),[books,searchQuery,activeCategory,activeView,shelf,searchInside,insideIds])
 
+  // Books the reader actually started — the richest thing Minerva can talk about.
+  const minervaInProgress = useMemo(() =>
+    Object.entries(readingProgress)
+      .filter(([,p]) => (p as number) > 0 && (p as number) < 100)
+      .map(([id,p]) => {
+        const b = books.find(x => String(x.id) === String(id))
+        return b ? { id: String(b.id), title: b.title, progress: p as number } : null
+      })
+      .filter(Boolean) as { id:string; title:string; progress:number }[],
+    [readingProgress, books])
+
   // ── Library Page Component ─────────────────────────────
   const LibraryPage = () => (
     <>
@@ -3078,6 +3090,25 @@ export default function App() {
         </Suspense>
       )}
     </main>
+
+    {/* Minerva lives in the app shell, not inside a page, so she survives
+        opening a book and switching tabs instead of flying in every time. */}
+    <MinervaCompanion
+      lang={{ id: lang.id, dir: lang.dir }}
+      streak={streak}
+      inProgress={minervaInProgress}
+      shelfCount={shelfCount}
+      isPremium={isPremium}
+      onOpenBook={(id) => { const b = books.find(x => String(x.id) === String(id)); if (b) openBook(b) }}
+      chatAllowed={() => isPremium || isAdmin(authedEmail) || getChatUses().count < FREE_AI_CHATS}
+      noteChatUse={() => {
+        if (isPremium || isAdmin(authedEmail)) return
+        const uses = getChatUses()
+        const next = { count: uses.count + 1, resetAt: uses.resetAt }
+        try { localStorage.setItem(CHAT_USES_KEY, JSON.stringify(next)) } catch {}
+        setAiChatCount(next.count)
+      }}
+    />
 
     {/* EXPANDED PANEL */}
     <AnimatePresence>
