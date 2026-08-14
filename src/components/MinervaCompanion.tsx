@@ -199,13 +199,56 @@ const LINES: Record<string, Record<string, string>> = {
   },
 }
 
-const DISMISS_KEY = 'hob_minerva_dismissed'
 const SEEN_KEY = 'hob_minerva_seen'
 const SPOKE_KEY = 'hob_minerva_spoke'
+const ASKED_KEY = 'hob_minerva_asked'   // titles already logged, so we don't spam the inbox
+
+export type LibBook = { id: string; title: string; author?: string; category?: string }
+
+const norm = (s: string) =>
+  (s || '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+
+/* The chat API caps systemPrompt at 1500 chars, so 300 books cannot be pasted
+   in. Instead the catalogue is searched HERE, on the client, where the whole
+   list already lives — and only the two or three books the reader actually
+   mentioned are sent along as facts. Retrieval, not stuffing. */
+function findInLibrary(message: string, books: LibBook[]): LibBook[] {
+  const m = norm(message)
+  if (!m) return []
+  const hits: { b: LibBook; score: number }[] = []
+  for (const b of books) {
+    const t = norm(b.title)
+    if (!t) continue
+    let score = 0
+    if (m.includes(t)) score = 100 + t.length          // whole title appears
+    else if (t.split(' ').length === 1 && new RegExp(`\\b${t}\\b`).test(m)) score = 80
+    else {
+      const words = t.split(' ').filter(w => w.length > 3)
+      const hit = words.filter(w => new RegExp(`\\b${w}\\b`).test(m)).length
+      if (words.length && hit === words.length) score = 60 + t.length
+    }
+    const a = norm(b.author || '')
+    if (!score && a && a.length > 5 && m.includes(a)) score = 40
+    if (score) hits.push({ b, score })
+  }
+  return hits.sort((x, y) => y.score - x.score).slice(0, 3).map(h => h.b)
+}
+
+/* Did they ask about a BOOK we don't have? Pull the likely title out so she can
+   name it back to them and we can log the request. */
+function guessRequestedTitle(message: string): string | null {
+  const quoted = message.match(/["“”'‘’]([^"“”'‘’]{2,60})["“”'‘’]/)
+  if (quoted) return quoted[1].trim()
+  const phrase = message.match(/\b(?:book|read|title)\s+(?:called|named|titled)\s+([^?.,!]{2,60})/i)
+    || message.match(/\b(?:do you have|got|find|looking for|is there)\s+([^?.,!]{2,60})/i)
+  return phrase ? phrase[1].trim().replace(/^(the book|a book|any)\s+/i, '') : null
+}
+
+const BOOKISH = /\b(book|read|have|find|where|got|available|looking for|recommend|title)\b/i
 
 export default function MinervaCompanion({
   lang, streak, inProgress, shelfCount, isPremium, onOpenBook,
-  chatAllowed, noteChatUse,
+  chatAllowed, noteChatUse, books = [], sections = [],
 }: {
   lang: { id: string; dir: string }
   streak: number
@@ -213,6 +256,9 @@ export default function MinervaCompanion({
   shelfCount: number
   isPremium: boolean
   onOpenBook: (bookId: string) => void
+  /** the whole catalogue, searched client-side so she answers from real data */
+  books?: LibBook[]
+  sections?: string[]
   /** host decides whether a free chat remains — keeps the paywall in one place */
   chatAllowed: () => boolean
   noteChatUse: () => void
@@ -256,7 +302,6 @@ export default function MinervaCompanion({
 
   useEffect(() => {
     injectCSS()
-    if (localStorage.getItem(DISMISS_KEY) === new Date().toDateString()) return
     const alreadySpoke = sessionStorage.getItem(SPOKE_KEY) === '1'
     setVisible(true)
     // wings beat for the length of the flight, then she folds them and settles
@@ -294,6 +339,28 @@ export default function MinervaCompanion({
     reveal(line.text, () => localStorage.setItem(SEEN_KEY, '1'))
   }
 
+  /* A book we don't stock, asked for by name, is the most useful signal this
+     app can collect. Log it to the same feedback inbox the admin already
+     reads, once per title per device so the inbox stays readable. */
+  function logBookRequest(title: string, context: string) {
+    try {
+      const seen: string[] = JSON.parse(localStorage.getItem(ASKED_KEY) || '[]')
+      const key = norm(title)
+      if (!key || seen.includes(key)) return
+      localStorage.setItem(ASKED_KEY, JSON.stringify([...seen, key].slice(-50)))
+      fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'feature',
+          source: 'app',
+          message: `📚 Book request via Minerva: "${title}"\n\nAsked as: ${context.slice(0, 300)}`,
+          pageUrl: location.href,
+        }),
+      }).catch(() => {})   // a failed log must never interrupt the conversation
+    } catch {}
+  }
+
   /* ── talking to her ─────────────────────────────────────────── */
   async function send(text: string) {
     const content = text.trim()
@@ -302,6 +369,22 @@ export default function MinervaCompanion({
     noteChatUse()
     const next: Msg[] = [...log, { role: 'user', content }]
     setLog(next); setDraft(''); setBusy(true); setState('thinking')
+
+    /* Look the catalogue up before she answers, so she speaks from the real
+       library instead of from whatever the model half-remembers. */
+    const found = findInLibrary(content, books)
+    let facts = ''
+    if (found.length) {
+      facts = 'IN THIS LIBRARY: ' + found
+        .map(b => `"${b.title}"${b.author ? ` by ${b.author}` : ''} — ${b.category || 'Uncategorised'} section`)
+        .join('; ') + '. Tell them it is here and name the section.'
+    } else if (BOOKISH.test(content)) {
+      const wanted = guessRequestedTitle(content)
+      facts = `NOT IN THIS LIBRARY${wanted ? `: "${wanted}"` : ''}. Say plainly that we do not have it yet, ` +
+        'and that it has been noted and will be added because they asked for it. Do not invent a section for it. ' +
+        `Sections available: ${sections.join(', ')}.`
+      if (wanted) logBookRequest(wanted, content)
+    }
     // Without this she sits on "Thinking…" forever if the request hangs —
     // a stuck mascot is worse than one that admits it lost the connection.
     const ctl = new AbortController()
@@ -313,12 +396,13 @@ export default function MinervaCompanion({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: next,
-          systemPrompt:
+          systemPrompt: (
             'You are Minerva, the owl who is the reading companion inside House of Books, ' +
-            'an app of 300+ book summaries. You are warm, wry and brief. Talk like a friend who ' +
-            'reads constantly — never like an assistant. Two to four sentences, no preamble, no ' +
-            'disclaimers, no restating the question. Recommend specific books by name when it helps. ' +
-            `Reply in the user's language (${lang.id}).`,
+            'an app of 300+ book summaries. Warm, wry and brief — a friend who reads constantly, ' +
+            'never an assistant. Two to four sentences, no preamble, no disclaimers. ' +
+            `Reply in the user's language (${lang.id}). ` +
+            'Only claim a book is in the library if the note below says so. ' + facts
+          ).slice(0, 1490),   // the API truncates at 1500; keep the facts intact
         }),
       })
       const data = await res.json()
@@ -348,10 +432,9 @@ export default function MinervaCompanion({
 
   if (!visible) return null
 
-  const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, new Date().toDateString())
-    setOpen(false); setChatting(false); setVisible(false)
-  }
+  /* The × closes what she is saying — it does not send her away. She is meant
+     to be a permanent presence, so there is always an owl to tap. */
+  const closeBubble = () => { setOpen(false); setChatting(false) }
 
   const tapOwl = () => {
     if (chatting) { setChatting(false); return }
@@ -379,7 +462,7 @@ export default function MinervaCompanion({
 
       {open && !chatting && nudge && (
         <div className="hobComp-bubble">
-          <button className="hobComp-x" onClick={dismiss} aria-label="Dismiss">×</button>
+          <button className="hobComp-x" onClick={closeBubble} aria-label="Close">×</button>
           {typed}
           {state === 'speaking' && <i className="hobComp-caret" />}
           {nudge.cta && state !== 'speaking' && (

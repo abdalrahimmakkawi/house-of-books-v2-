@@ -3100,6 +3100,8 @@ export default function App() {
       shelfCount={shelfCount}
       isPremium={isPremium}
       onOpenBook={(id) => { const b = books.find(x => String(x.id) === String(id)); if (b) openBook(b) }}
+      books={books.map(b => ({ id: String(b.id), title: b.title, author: b.author, category: b.category }))}
+      sections={categories.filter(c => c !== 'All')}
       chatAllowed={() => isPremium || isAdmin(authedEmail) || getChatUses().count < FREE_AI_CHATS}
       noteChatUse={() => {
         if (isPremium || isAdmin(authedEmail)) return
