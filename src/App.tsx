@@ -261,7 +261,12 @@ function getChatUses(): { count: number; resetAt: number } {
 // fetch does), and exposing it would hand out premium narration URLs.
 const BOOK_CATALOG_TABLE = 'books_catalog'
 const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,is_premium'
-const BOOKS_CACHE_KEY = 'hob_books_cache_v2' // v2: catalog view + is_premium
+// Bump this key whenever the catalogue itself changes (a book added, covers
+// repaired). Returning visitors hold the previous list for up to the TTL and
+// would otherwise not see the change — a new key retires their copy on the
+// next load, which is the only way to push a catalogue change out promptly.
+// v3: added My Sweet Orange Tree + repaired 50 broken cover URLs.
+const BOOKS_CACHE_KEY = 'hob_books_cache_v3'
 const BOOKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 // ── Cover fallback ────────────────────────────────────────────────
@@ -2140,6 +2145,9 @@ export default function App() {
     // so returning visitors within the window don't hit the DB at all.
     let cancelled=false
     if(!IS_DEMO){
+      // Retired cache keys hold a full copy of the catalogue (~100KB); drop
+      // them so a bumped key doesn't leave dead weight in every user's storage.
+      try{ localStorage.removeItem('hob_books_cache'); localStorage.removeItem('hob_books_cache_v2') }catch{}
       try{
         const c=JSON.parse(localStorage.getItem(BOOKS_CACHE_KEY)||'null')
         if(c && Date.now()-c.at<BOOKS_CACHE_TTL && Array.isArray(c.books) && c.books.length){
