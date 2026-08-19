@@ -200,9 +200,9 @@ const TRACKS = [
 
 // Display-only counts for the landing page stats. Lock state is NOT derived
 // from these — it comes from each book's is_premium flag, which the database
-// paywall enforces. Verified against the DB: 301 total, 85 free, 216 premium.
-const TOTAL_BOOKS = 301
-const FREE_BOOKS = 85
+// paywall enforces. Verified against the DB: 302 total, 86 free, 216 premium.
+const TOTAL_BOOKS = 302
+const FREE_BOOKS = 86
 
 // Vercel Web Analytics custom event helper (no-op until the script loads /
 // Web Analytics is on a plan that records custom events; safe to call always).
@@ -252,7 +252,7 @@ function getChatUses(): { count: number; resetAt: number } {
 // `books` is row-gated by the paywall policy, so selecting the library from it
 // returned only the ~85 free rows to a non-premium visitor — premium titles
 // disappeared from the library entirely instead of showing as locked cards to
-// upgrade for. The view is owner-privileged so it can list all 301 rows, and
+// upgrade for. The view is owner-privileged so it can list all 302 rows, and
 // exposes ONLY marketing metadata, so showing every title leaks no paid
 // content. Opening a book still reads its content from `books`, where the
 // paywall applies.
@@ -905,7 +905,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
     <div className="email-modal-wrap" onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'16px',padding:'2rem',maxWidth:'420px',width:'100%'}}>
         <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.5rem',color:'var(--gold)',marginBottom:'4px'}}>House of Books Premium</h3>
-        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>All 301 books · Unlimited AI chat · Offline audio</p>
+        <p style={{color:'var(--text-muted)',fontSize:'12px',marginBottom:'1.25rem'}}>All 302 books · Unlimited AI chat · Offline audio</p>
 
         {!email && (
           <input
@@ -2764,7 +2764,7 @@ export default function App() {
           </h1>
 
           <p className="landing-sub">
-            Read smarter. Explore 301 books with AI summaries,
+            Read smarter. Explore 302 books with AI summaries,
             audio narration, and an AI companion. Free during beta.
           </p>
 
@@ -2796,7 +2796,7 @@ export default function App() {
             gap:'16px', maxWidth:'800px', width:'100%'
           }}>
             {[
-              ['📚','301 Books','Classics and modern titles from 15+ countries in 5 languages'],
+              ['📚','302 Books','Classics and modern titles from 15+ countries in 5 languages'],
               ['✦','AI Book Chat','10 free AI chats per session — ask anything about any book'],
               ['🎧','Audio Summaries','Listen to any book, narrated by a natural AI voice'],
               ['⭐','Go Premium','Unlimited AI, full library access, PDF exports and more']
