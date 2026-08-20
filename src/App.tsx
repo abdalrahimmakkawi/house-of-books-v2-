@@ -198,6 +198,24 @@ const TRACKS = [
   { id:'cosmos', label:'Cosmos', emoji:'🚀',src:'/music/cosmos.mp3'  },
 ]
 
+// Resolve a book into the reader's language: any field present in
+// translations[lang] wins, everything else falls back to the English columns.
+// Field-by-field on purpose — a book can have an Arabic summary but no Arabic
+// narration yet, and should then show Arabic text with the English audio
+// rather than hiding either.
+export function localizeBook<T extends Book>(book: T, langId: string): T {
+  const tr = book?.translations?.[langId]
+  if (!tr) return book
+  return {
+    ...book,
+    title: tr.title || book.title,
+    summary: tr.summary ?? book.summary,
+    key_insights: tr.key_insights ?? book.key_insights,
+    long_summary: tr.long_summary ?? book.long_summary,
+    audio_url: tr.audio_url ?? book.audio_url,
+  }
+}
+
 // Display-only counts for the landing page stats. Lock state is NOT derived
 // from these — it comes from each book's is_premium flag, which the database
 // paywall enforces. Verified against the DB: 302 total, 86 free, 216 premium.
@@ -1096,7 +1114,7 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
 // lose the gesture and get the play() blocked by autoplay policy.
 export type AudioSummaryHandle = { toggle: () => void }
 
-const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: string; category?: string; audioUrl?: string; onCached?: (bookId: string, url: string) => void; autoPlayOnMount?: boolean; onStateChange?: (s: 'idle'|'loading'|'playing'|'paused'|'error') => void }>(function AudioSummary({ text, bookId, category, audioUrl, onCached, autoPlayOnMount, onStateChange }, ref) {
+const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: string; category?: string; audioUrl?: string; langId?: string; onCached?: (bookId: string, url: string) => void; autoPlayOnMount?: boolean; onStateChange?: (s: 'idle'|'loading'|'playing'|'paused'|'error') => void }>(function AudioSummary({ text, bookId, category, audioUrl, langId, onCached, autoPlayOnMount, onStateChange }, ref) {
   const [state, setState] = useState<'idle'|'loading'|'playing'|'paused'|'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [currentTime, setCurrentTime] = useState(0)
@@ -1152,7 +1170,9 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       const r = await fetch('/api/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId, text, category }),
+        // lang decides which narration slot is read and written, so an Arabic
+        // listen can never overwrite the English recording.
+        body: JSON.stringify({ bookId, text, category, lang: langId || 'en' }),
         signal: AbortSignal.timeout(75000),
       })
       const j = await r.json().catch(() => ({}))
@@ -1322,7 +1342,7 @@ function ExpandedPanel({
   currentNote, noteSaved, chatMessages, chatInput, chatLoading, chatStreaming,
   summaryLoading, onClose, onShelf, onProgress, onExportPDF, onSaveNote,
   onNoteChange, onToggleChat, onGenerateSummary, onAudioCached, onSendMessage, onChatInput,
-  chatEndRef
+  chatEndRef, langId
 }: any) {
   const chatBusy = chatLoading || chatStreaming
   const [activeTab, setActiveTab] = useState<'about'|'full'|'insights'|'shelf'|'chat'>('about')
@@ -1604,6 +1624,7 @@ function ExpandedPanel({
               bookId={book.id}
               category={book.category}
               audioUrl={book.audio_url}
+              langId={langId}
               onCached={onAudioCached}
               autoPlayOnMount={pendingPlayRef.current}
               onStateChange={setAudioState}
@@ -2476,7 +2497,16 @@ export default function App() {
     setBooks(prev=>prev.map(b=>b.id===bookId?{...b,...patch}:b))
     setSelectedBook(prev=>prev&&prev.id===bookId?{...prev,...patch}:prev)
   }
-  const updateBookAudio=(bookId:string, url:string)=>updateBookField(bookId,{audio_url:url} as Partial<Book>)
+  // Cache the freshly-generated narration into the SAME slot the server wrote
+  // it to. Writing an Arabic URL into audio_url would leave English readers in
+  // this session listening to Arabic until the next reload.
+  const updateBookAudio=(bookId:string, url:string)=>{
+    if(langId==='en'){ updateBookField(bookId,{audio_url:url} as Partial<Book>); return }
+    const current=books.find(b=>String(b.id)===String(bookId))
+    const merged={...(current?.translations||{})} as NonNullable<Book['translations']>
+    merged[langId]={...(merged[langId]||{}), audio_url:url}
+    updateBookField(bookId,{translations:merged} as Partial<Book>)
+  }
 
   const generateAISummary=async()=>{
     if(!selectedBook||summaryLoading)return
@@ -2523,7 +2553,7 @@ export default function App() {
       setDetailLoading(true)
       ;(async()=>{
         try{
-          const {data,error}=await supabase.from('books').select('summary,key_insights,audio_url,long_summary').eq('id',book.id).single()
+          const {data,error}=await supabase.from('books').select('summary,key_insights,audio_url,long_summary,translations').eq('id',book.id).single()
           // Only mark detail_loaded on a real success — otherwise a transient
           // network/DB blip permanently skips the fetch for this book for
           // the rest of the session, leaving it stuck with no summary.
@@ -3124,7 +3154,10 @@ export default function App() {
     <AnimatePresence>
       {selectedBook&&(
         <ExpandedPanel
-          book={selectedBook} t={t}
+          // Localized at the boundary, so everything inside the panel — text,
+          // insights, full summary, narration — is already in the reader's
+          // language and nothing downstream has to know about translations.
+          book={localizeBook(selectedBook, langId)} t={t} langId={langId}
           isPremium={isPremium} shelfStatus={shelf[selectedBook.id]||'none'}
           progress={readingProgress[selectedBook.id]||0}
           exportingPDF={exportingPDF}
