@@ -22,4 +22,4 @@ User-agent: Claude-Web
 Disallow: /
 
 # Sitemap location
-Sitemap: https://house-of-books-gamma.vercel.app/sitemap.xml
+Sitemap: https://house-of-books-v2.vercel.app/sitemap.xml
