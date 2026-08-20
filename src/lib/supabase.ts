@@ -102,4 +102,15 @@ export interface Book {
   // true once the per-book detail fetch (summary/key_insights/audio_url)
   // has run for this session — prevents refetching books with no summary yet
   detail_loaded?: boolean
+  // Per-language content, keyed by the app's language id. English always lives
+  // in the columns above; a language present here overrides them for readers
+  // in that language, field by field, falling back to English for anything
+  // missing. See the `translations` column comment in the database.
+  translations?: Record<string, {
+    title?: string
+    summary?: string
+    key_insights?: string
+    long_summary?: string
+    audio_url?: string
+  }> | null
 }

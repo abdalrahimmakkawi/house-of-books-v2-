@@ -17,6 +17,9 @@ const DEFAULT_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'
 const MODEL_ID = 'eleven_turbo_v2_5'
 const MAX_CHARS = 2000 // keep per-request TTS latency and cost bounded
 const AUDIO_BUCKET = 'audio'
+// Languages that may have their own narration stored under books.translations.
+// Anything else falls back to 'en' and the original single-slot behaviour.
+const TRANSLATABLE = ['ar', 'fr', 'es', 'zh']
 
 // Voice assigned per book category (voice IDs are not secrets).
 const VOICE_BY_CATEGORY = {
@@ -58,7 +61,13 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Storage service not configured' })
   }
 
-  const { bookId, text, category } = req.body || {}
+  // `lang` selects WHERE the narration is stored, not just what is spoken.
+  // English keeps the original slot (books.audio_url + <bookId>.mp3); every
+  // other language gets its own file and its own entry inside the
+  // translations JSON, so generating Arabic can never overwrite the English
+  // narration — which is exactly what a single shared slot used to do.
+  const { bookId, text, category, lang } = req.body || {}
+  const langId = TRANSLATABLE.includes(String(lang)) ? String(lang) : 'en'
   if (!isUuid(bookId)) {
     return res.status(400).json({ error: 'Missing or invalid bookId' })
   }
@@ -72,11 +81,14 @@ export default async function handler(req, res) {
   try {
     const { data: existing } = await supabase
       .from('books')
-      .select('audio_url')
+      .select('audio_url, translations')
       .eq('id', bookId)
       .single()
-    if (existing?.audio_url) {
-      return res.status(200).json({ url: existing.audio_url, cached: true })
+    const cachedUrl = langId === 'en'
+      ? existing?.audio_url
+      : existing?.translations?.[langId]?.audio_url
+    if (cachedUrl) {
+      return res.status(200).json({ url: cachedUrl, cached: true })
     }
   } catch (e) {
     console.error('[Voice] cache check failed:', e.message)
@@ -118,7 +130,7 @@ export default async function handler(req, res) {
     }
 
     const audio = Buffer.from(await r.arrayBuffer())
-    const path = `${bookId}.mp3`
+    const path = langId === 'en' ? `${bookId}.mp3` : `${bookId}-${langId}.mp3`
 
     const { error: uploadError } = await supabase.storage
       .from(AUDIO_BUCKET)
@@ -136,12 +148,28 @@ export default async function handler(req, res) {
     const { data: pub } = supabase.storage.from(AUDIO_BUCKET).getPublicUrl(path)
     const publicUrl = pub.publicUrl
 
-    const { error: updateError } = await supabase
-      .from('books')
-      .update({ audio_url: publicUrl })
-      .eq('id', bookId)
+    // English writes the column; other languages write their own slot inside
+    // the translations JSON. jsonb_set is done server-side via rpc-free SQL
+    // semantics by merging the object we already read, so we never clobber a
+    // sibling language that was written between our read and this write.
+    let updateError = null
+    if (langId === 'en') {
+      ({ error: updateError } = await supabase
+        .from('books')
+        .update({ audio_url: publicUrl })
+        .eq('id', bookId))
+    } else {
+      const { data: fresh } = await supabase
+        .from('books').select('translations').eq('id', bookId).single()
+      const merged = { ...(fresh?.translations || {}) }
+      merged[langId] = { ...(merged[langId] || {}), audio_url: publicUrl }
+      ;({ error: updateError } = await supabase
+        .from('books')
+        .update({ translations: merged })
+        .eq('id', bookId))
+    }
     if (updateError) {
-      console.error('[Voice] failed to save audio_url:', updateError.message)
+      console.error('[Voice] failed to save audio url:', updateError.message)
     }
 
     return res.status(200).json({ url: publicUrl, cached: false })
