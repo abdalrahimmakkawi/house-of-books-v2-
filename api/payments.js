@@ -278,8 +278,50 @@ async function adminRefund(req, res, body) {
   }
 }
 
+// Redeem an access code (book-club free month). All of the real work — the
+// redemption cap, one-per-email, not downgrading an existing subscriber — is
+// done inside the redeem_access_code SQL function, in one locked transaction,
+// so two people redeeming the last slot at the same instant cannot both win.
+// This handler only shapes the response.
+async function redeemCode(req, res, body) {
+  const { code, email } = body
+  if (!isValidEmail(email)) return res.status(400).json({ ok: false, error: 'Please enter a valid email.' })
+  if (typeof code !== 'string' || !code.trim() || code.length > 64) {
+    return res.status(400).json({ ok: false, error: 'Please enter a code.' })
+  }
+  // Tighter than the shared payments limit: codes are guessable in a way that
+  // a subscription id is not, so brute-forcing gets a much smaller budget.
+  if (enforceRateLimit(req, res, 'redeem', 8, 60 * 60 * 1000)) return
+
+  try {
+    const { data, error } = await supabase.rpc('redeem_access_code', {
+      p_code: code,
+      p_email: email,
+    })
+    if (error) {
+      console.error('[payments redeem-code]', error.message)
+      return res.status(500).json({ ok: false, error: 'Could not redeem that code right now.' })
+    }
+    if (data?.ok) {
+      return res.status(200).json({ ok: true, until: data.until, already: !!data.already })
+    }
+    // Deliberately vague on not_found vs inactive — a precise answer would let
+    // someone probe for which codes exist.
+    const MESSAGES = {
+      limit_reached: 'This code has reached its limit. Ask your club organiser.',
+      expired: 'This code has expired.',
+      invalid_email: 'Please enter a valid email.',
+    }
+    return res.status(200).json({ ok: false, error: MESSAGES[data?.reason] || "That code isn't valid." })
+  } catch (e) {
+    console.error('[payments redeem-code]', e.message)
+    return res.status(500).json({ ok: false, error: 'Could not redeem that code right now.' })
+  }
+}
+
 const HANDLERS = {
   'check-premium': checkPremium,
+  'redeem-code': redeemCode,
   'create-paypal-subscription': createPaypalSubscription,
   'confirm-paypal-subscription': confirmPaypalSubscription,
   'cancel-paypal-subscription': cancelPaypalSubscription,
