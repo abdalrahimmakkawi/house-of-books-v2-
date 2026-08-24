@@ -2398,14 +2398,21 @@ export default function App() {
     setCancelling(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        window.alert('Please sign in again to cancel, or cancel directly from your PayPal account.')
+      // Someone who unlocked with an invite code was never signed in — that
+      // flow is email-only. Requiring a session here meant they could never
+      // turn their own free access off. Fall back to the email the access is
+      // under; the server refuses this route for paid subscriptions.
+      const unlockEmail = (userEmail || localStorage.getItem('hob_email') || '').trim()
+      if (!session?.access_token && !unlockEmail) {
+        window.alert('Enter the email your access is under, then try again.')
         return
       }
       const r = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cancel-paypal-subscription', accessToken: session.access_token }),
+        body: JSON.stringify(session?.access_token
+          ? { action: 'cancel-paypal-subscription', accessToken: session.access_token }
+          : { action: 'cancel-paypal-subscription', email: unlockEmail }),
       })
       const j = await r.json().catch(() => ({}))
       if (r.ok && j.success) {

@@ -125,17 +125,38 @@ async function confirmPaypalSubscription(req, res, body) {
 // someone else's by guessing an email. (Users without an app session can
 // still cancel from their PayPal account directly.)
 async function cancelPaypalSubscription(req, res, body) {
-  const { accessToken } = body
-  if (!accessToken || typeof accessToken !== 'string') {
-    return res.status(401).json({ error: 'Sign in to cancel your subscription.' })
-  }
-  let email
-  try {
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(accessToken)
-    if (authErr || !user?.email) return res.status(401).json({ error: 'Invalid or expired session.' })
-    email = user.email.toLowerCase().trim()
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired session.' })
+  // Two ways to prove who you are, because there are two ways to HAVE access.
+  //
+  // A paid subscription always requires a real Supabase session — that touches
+  // money, so it stays authenticated.
+  //
+  // Access granted by an invite code never involved signing in at all: you type
+  // an email and a code and the app unlocks. Demanding a session to give that
+  // access up was asking for a login the user was never made to create, which
+  // left code redeemers permanently unable to turn off their own free access.
+  // For granted access the email is the same identity that unlocked it, so it
+  // is what we accept back — never for a paid row (guarded below).
+  const { accessToken, email: claimedEmail } = body
+
+  let email = null
+  let sessionVerified = false
+
+  if (accessToken && typeof accessToken === 'string') {
+    try {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(accessToken)
+      if (authErr || !user?.email) return res.status(401).json({ error: 'Invalid or expired session.' })
+      email = user.email.toLowerCase().trim()
+      sessionVerified = true
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired session.' })
+    }
+  } else if (isValidEmail(claimedEmail)) {
+    email = claimedEmail.toLowerCase().trim()
+    // Turning off free access is low-stakes and reversible, but it is still an
+    // unauthenticated write, so it gets its own tight budget.
+    if (enforceRateLimit(req, res, 'cancel-free', 10, 60 * 60 * 1000)) return
+  } else {
+    return res.status(401).json({ error: 'Sign in, or enter the email your access is under.' })
   }
 
   const { data: row } = await supabase
@@ -143,6 +164,12 @@ async function cancelPaypalSubscription(req, res, body) {
     .select('paypal_subscription_id, plan, provider, active, current_period_end')
     .eq('email', email)
     .single()
+
+  // A paid subscription can only ever be cancelled from a verified session —
+  // an email alone must never be able to stop someone's billing.
+  if (row?.paypal_subscription_id && !sessionVerified) {
+    return res.status(401).json({ error: 'Please sign in to cancel a paid subscription.' })
+  }
 
   // Nothing at all on this account — that is the only real "nothing to cancel".
   if (!row || row.active === false) {
