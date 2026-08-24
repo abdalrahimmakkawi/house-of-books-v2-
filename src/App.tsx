@@ -2309,9 +2309,15 @@ export default function App() {
       })
       const j = await r.json().catch(() => ({ active: false }))
       setIsPremium(!!j.active)
+      // Remember HOW they got access. A PayPal subscriber and someone on a
+      // club invite code both read as "premium", but only one of them has a
+      // billing agreement — and telling the second group about billing periods
+      // and refunds is nonsense.
+      setPremiumProvider(j.active ? (j.provider || null) : null)
       if (j.active) setShowEmailModal(false)
     }catch{
       setIsPremium(false)
+      setPremiumProvider(null)
     }
   }
   // Redeem a club/partner invite code. The server does the real validation;
@@ -2381,8 +2387,14 @@ export default function App() {
     window.alert('Your account and data have been deleted.')
   }
   const [cancelling,setCancelling]=useState(false)
+  // 'paypal' = a real subscription; 'manual' / 'code:XXX' = access we granted.
+  const [premiumProvider,setPremiumProvider]=useState<string|null>(null)
+  const isPaidSubscriber = premiumProvider === 'paypal'
   const cancelSubscription = async () => {
-    if (!window.confirm("Cancel your subscription? You'll keep Premium until the end of your current paid period, and it won't renew after that.")) return
+    const confirmText = isPaidSubscriber
+      ? "Cancel your subscription? You'll keep Premium until the end of your current paid period, and it won't renew after that."
+      : "Turn off your free access? You can't re-use the same invite code afterwards, so you'd need a new one to get it back."
+    if (!window.confirm(confirmText)) return
     setCancelling(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -2398,7 +2410,10 @@ export default function App() {
       const j = await r.json().catch(() => ({}))
       if (r.ok && j.success) {
         setIsPremium(false)
-        window.alert("Your subscription has been cancelled. You'll keep Premium access until your current period ends.")
+        setPremiumProvider(null)
+        window.alert(j.wasFree
+          ? 'Your free access has been turned off.'
+          : "Your subscription has been cancelled. You'll keep Premium access until your current period ends.")
       } else {
         window.alert(j.error || 'Could not cancel. You can also cancel from your PayPal account, or contact support.')
       }
@@ -3385,12 +3400,25 @@ export default function App() {
                     fontSize:'13px', cursor: cancelling ? 'default' : 'pointer', fontFamily:'Georgia, serif',
                     textAlign:'left', paddingLeft:'16px', marginTop:'4px', opacity: cancelling ? 0.6 : 1
                   }}>
-                  {cancelling ? '⏳ Cancelling…' : '✕ Cancel subscription'}
+                  {cancelling
+                    ? (isPaidSubscriber ? '⏳ Cancelling…' : '⏳ Turning off…')
+                    : (isPaidSubscriber ? '✕ Cancel subscription' : '✕ Turn off free access')}
                 </button>
+                {/* Refunds and billing periods only mean something to someone who
+                    actually paid. Free access came from a code — say that instead. */}
                 <div style={{fontSize:'11px', color:'var(--text-muted)', padding:'2px 4px 2px 16px', lineHeight:1.5}}>
-                  Cancel anytime — you keep Premium until your period ends. Need a refund? See our{' '}
-                  <a href="/refund.html" target="_blank" rel="noopener" style={{color:'var(--gold)'}}>Refund Policy</a> or email{' '}
-                  <a href="mailto:abdalrahimmakkawi@gmail.com" style={{color:'var(--gold)'}}>support</a>.
+                  {isPaidSubscriber ? (
+                    <>
+                      Cancel anytime — you keep Premium until your period ends. Need a refund? See our{' '}
+                      <a href="/refund.html" target="_blank" rel="noopener" style={{color:'var(--gold)'}}>Refund Policy</a> or email{' '}
+                      <a href="mailto:abdalrahimmakkawi@gmail.com" style={{color:'var(--gold)'}}>support</a>.
+                    </>
+                  ) : (
+                    <>
+                      Your access is free — there's nothing to pay and nothing to refund. It ends on its
+                      own, or you can turn it off now.
+                    </>
+                  )}
                 </div>
               </>
             )}

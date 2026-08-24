@@ -140,11 +140,28 @@ async function cancelPaypalSubscription(req, res, body) {
 
   const { data: row } = await supabase
     .from('premium_users')
-    .select('paypal_subscription_id, plan, active')
+    .select('paypal_subscription_id, plan, provider, active, current_period_end')
     .eq('email', email)
     .single()
-  if (!row?.paypal_subscription_id) {
-    return res.status(404).json({ error: 'No active subscription found for your account.' })
+
+  // Nothing at all on this account — that is the only real "nothing to cancel".
+  if (!row || row.active === false) {
+    return res.status(404).json({ error: 'No active access found for your account.' })
+  }
+
+  // Access that was granted rather than bought — an invite code, or a
+  // complimentary grant. There is no billing agreement behind it, so there is
+  // nothing to cancel with PayPal; "cancel" here means "switch my access off".
+  // This used to 404 because the handler only looked for a PayPal id, which
+  // left anyone on a code unable to turn off access the app told them they had.
+  if (!row.paypal_subscription_id) {
+    await supabase
+      .from('premium_users')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('email', email)
+    // Deliberately no cancellation email: those are written for paid plans and
+    // talk about billing periods that never existed here.
+    return res.status(200).json({ success: true, wasFree: true })
   }
 
   try {
