@@ -1,6 +1,34 @@
 import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
 import { callNvidia, hasNvidiaKey } from './_lib/nvidia.js'
+import { fetchNews, fetchTrends } from './_lib/world.js'
+
+// ── Time budget ───────────────────────────────────────────────────────────
+// This endpoint 504'd because nothing here was bounded, and the pieces could
+// add up to more than the function was allowed to live for. A single chat
+// request could spend ~10s on world data (two un-timed calls to our own
+// domain) and then up to 30s waiting on the model — 40s+ inside a function
+// capped at 30s. It worked only while the model happened to answer quickly;
+// the day it slowed down, every request died with a gateway timeout and the
+// panel showed nothing.
+//
+// The rule now: every outbound call has a timeout, and the timeouts sum to
+// less than maxDuration (60s in vercel.json) with headroom to spare. A slow
+// dependency degrades one section of the answer — it can never kill the
+// request.
+const AUTH_BUDGET_MS  = 8000    // Supabase auth (getUser / listUsers)
+const WORLD_BUDGET_MS = 6000    // news + trends, run in parallel
+const MODEL_BUDGET_MS = 30000   // the model itself
+// worst case ≈ 8 + 6 + 30 + query time ≈ 45s, inside a 60s ceiling
+
+// Bound any promise. On timeout we resolve to `fallback` rather than throwing,
+// so a slow dependency degrades the answer instead of failing the request.
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
 
 // This endpoint powers the admin-only Agent/Dashboard pages. The client UI
 // hides those pages behind an email check, but that's cosmetic — anyone can
@@ -17,23 +45,17 @@ const supabase = createClient(
 async function gatherWorldData(query) {
   let context = ''
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:5173'
-
+    // In-process, not an HTTP round trip to our own domain. See _lib/world.js
+    // for why. Both are internally bounded and resolve to [] on failure.
     const [newsRes, trendsRes] = await Promise.allSettled([
-      fetch(`${baseUrl}/api/news`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query })
-      }).then(r => r.json()),
-      fetch(`${baseUrl}/api/trends`).then(r => r.json())
+      fetchNews(query, { timeoutMs: WORLD_BUDGET_MS }),
+      fetchTrends({ timeoutMs: WORLD_BUDGET_MS }),
     ])
 
     // Limit each news article to title only, no description
     let articles = ''
-    if (newsRes.status === 'fulfilled' && newsRes.value.articles?.length) {
-      articles = newsRes.value.articles
+    if (newsRes.status === 'fulfilled' && newsRes.value?.length) {
+      articles = newsRes.value
         .slice(0, 3)
         .map(a => `- ${a.title} (${a.source})`)
         .join('\n')
@@ -41,8 +63,8 @@ async function gatherWorldData(query) {
 
     // Limit trends to 5 items only
     let trending = ''
-    if (trendsRes.status === 'fulfilled' && trendsRes.value.trending?.length) {
-      trending = trendsRes.value.trending
+    if (trendsRes.status === 'fulfilled' && trendsRes.value?.length) {
+      trending = trendsRes.value
         .slice(0, 5)
         .join(', ')
     }
@@ -96,7 +118,14 @@ async function getPlatformMetrics() {
   let totalUsers = 0, new7 = 0, new30 = 0, act7 = 0, usersAvailable = true
   let userList = []
   try {
-    const all = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+    // Bounded: this is the Auth admin API, not PostgREST, and an unbounded
+    // call here was one of the two ways this endpoint could hang forever.
+    const all = await withTimeout(
+      supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      AUTH_BUDGET_MS,
+      null,
+    )
+    if (!all) throw new Error('listUsers timed out')
     if (all?.error) throw all.error
     userList = all?.data?.users || []
     totalUsers = userList.length
@@ -247,7 +276,14 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Sign in as an admin to use this.' })
   }
   try {
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(accessToken)
+    // Bounded — the other way this endpoint could hang. A slow auth service
+    // should answer "try again", not burn the whole function budget and
+    // surface as an unexplained gateway timeout.
+    const auth = await withTimeout(supabase.auth.getUser(accessToken), AUTH_BUDGET_MS, null)
+    if (!auth) {
+      return res.status(503).json({ error: 'Sign-in check timed out. Try again in a moment.' })
+    }
+    const { data: { user } = {}, error: authErr } = auth
     if (authErr || !user?.email || !isAdminEmail(user.email)) {
       return res.status(403).json({ error: 'Admin access required.' })
     }
@@ -368,6 +404,7 @@ HOW TO USE THIS
         ...messages.slice(-4)
       ],
       maxTokens: 600,
+      timeoutMs: MODEL_BUDGET_MS,
     })
     return res.json({ content, provider: 'nvidia' })
   } catch (nvidiaError) {
