@@ -218,9 +218,9 @@ export function localizeBook<T extends Book>(book: T, langId: string): T {
 
 // Display-only counts for the landing page stats. Lock state is NOT derived
 // from these — it comes from each book's is_premium flag, which the database
-// paywall enforces. Verified against the DB: 302 total, 86 free, 216 premium.
+// paywall enforces. Verified against the DB: 302 total, 87 free, 215 premium.
 const TOTAL_BOOKS = 302
-const FREE_BOOKS = 86
+const FREE_BOOKS = 87
 
 // Vercel Web Analytics custom event helper (no-op until the script loads /
 // Web Analytics is on a plan that records custom events; safe to call always).
@@ -1123,6 +1123,10 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
   const scrubbingRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const loadedForRef = useRef<string>('')
+  // The loaded <audio> is keyed by book AND language: the same book has a
+  // different recording per language, so a reader who switches to Arabic
+  // with the book still open must not keep hearing the English narration.
+  const trackKey = `${bookId}|${langId || 'en'}`
   const barRef = useRef<HTMLDivElement | null>(null)
 
   const setScrub = (v: boolean) => { scrubbingRef.current = v; setScrubbing(v) }
@@ -1139,15 +1143,15 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
     return () => {
       audioRef.current?.pause()
       audioRef.current = null; loadedForRef.current = ''
-      setCurrentTime(0); setDuration(0)
+      setCurrentTime(0); setDuration(0); setState('idle')
     }
-  }, [bookId])
+  }, [bookId, langId])
 
   const toggle = async () => {
     if (!text?.trim()) return
     if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
     if (state === 'idle') track('listen_narration', { category })
-    if (audioRef.current && loadedForRef.current === bookId) {
+    if (audioRef.current && loadedForRef.current === trackKey) {
       try { await audioRef.current.play(); setState('playing') } catch { setState('paused') }
       return
     }
@@ -1160,7 +1164,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       audio.onended = () => setState('paused')
       attachTimeListeners(audio)
       audioRef.current = audio
-      loadedForRef.current = bookId
+      loadedForRef.current = trackKey
       try { await audio.play(); setState('playing') } catch { setState('paused') }
       return
     }
@@ -1187,7 +1191,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       audio.onended = () => setState('paused')
       attachTimeListeners(audio)
       audioRef.current = audio
-      loadedForRef.current = bookId
+      loadedForRef.current = trackKey
       try {
         await audio.play()
         setState('playing')
