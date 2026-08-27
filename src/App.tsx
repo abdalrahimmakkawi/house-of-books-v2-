@@ -218,9 +218,9 @@ export function localizeBook<T extends Book>(book: T, langId: string): T {
 
 // Display-only counts for the landing page stats. Lock state is NOT derived
 // from these — it comes from each book's is_premium flag, which the database
-// paywall enforces. Verified against the DB: 302 total, 86 free, 216 premium.
+// paywall enforces. Verified against the DB: 302 total, 87 free, 215 premium.
 const TOTAL_BOOKS = 302
-const FREE_BOOKS = 86
+const FREE_BOOKS = 87
 
 // Vercel Web Analytics custom event helper (no-op until the script loads /
 // Web Analytics is on a plan that records custom events; safe to call always).
