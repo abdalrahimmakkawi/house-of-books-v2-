@@ -203,16 +203,22 @@ const TRACKS = [
 // Field-by-field on purpose — a book can have an Arabic summary but no Arabic
 // narration yet, and should then show Arabic text with the English audio
 // rather than hiding either.
+// Two sources, because the title is needed earlier than everything else: the
+// library grid loads from books_catalog, which carries per-language titles
+// only (title_translations), while the full translations blob arrives with
+// the per-book detail fetch when a book is opened. Either can localize the
+// title; only the latter can localize the body text and narration.
 export function localizeBook<T extends Book>(book: T, langId: string): T {
   const tr = book?.translations?.[langId]
-  if (!tr) return book
+  const localTitle = tr?.title || book?.title_translations?.[langId]
+  if (!tr && !localTitle) return book
   return {
     ...book,
-    title: tr.title || book.title,
-    summary: tr.summary ?? book.summary,
-    key_insights: tr.key_insights ?? book.key_insights,
-    long_summary: tr.long_summary ?? book.long_summary,
-    audio_url: tr.audio_url ?? book.audio_url,
+    title: localTitle || book.title,
+    summary: tr?.summary ?? book.summary,
+    key_insights: tr?.key_insights ?? book.key_insights,
+    long_summary: tr?.long_summary ?? book.long_summary,
+    audio_url: tr?.audio_url ?? book.audio_url,
   }
 }
 
@@ -278,7 +284,7 @@ function getChatUses(): { count: number; resetAt: number } {
 // audio_url is deliberately NOT here: the grid never used it (only the detail
 // fetch does), and exposing it would hand out premium narration URLs.
 const BOOK_CATALOG_TABLE = 'books_catalog'
-const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,is_premium'
+const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,is_premium,title_translations'
 // Bump this key whenever the catalogue itself changes (a book added, covers
 // repaired). Returning visitors hold the previous list for up to the TTL and
 // would otherwise not see the change — a new key retires their copy on the
@@ -2722,7 +2728,12 @@ export default function App() {
   )
 
   const filteredBooks=useMemo(()=>books.filter(book=>{
-    const matchesSearch=book.title.toLowerCase().includes(searchQuery.toLowerCase())||book.author.toLowerCase().includes(searchQuery.toLowerCase())
+    // Match the reader's own language too, not just the English columns —
+    // otherwise someone reading in Arabic types the only title they've been
+    // shown (أشياء تتداعى) and gets "no results" for a book that is right there.
+    const q=searchQuery.toLowerCase()
+    const localTitle=(book.title_translations?.[langId]||'').toLowerCase()
+    const matchesSearch=book.title.toLowerCase().includes(q)||book.author.toLowerCase().includes(q)||(!!localTitle&&localTitle.includes(q))
     const matchesCategory=activeCategory==='All'||book.category===activeCategory
     const matchesView=activeView==='all'||(activeView==='shelf'&&shelf[book.id]&&shelf[book.id]!=='none')
     // Demo books carry their summaries locally; the full app matches against
@@ -2733,7 +2744,13 @@ export default function App() {
       ? `${book.summary||''}\n${book.key_insights||''}`.toLowerCase().includes(insideQ)
       : (insideIds?insideIds.has(book.id):true))
     return matchesSearch&&matchesCategory&&matchesView&&matchesInside
-  }),[books,searchQuery,activeCategory,activeView,shelf,searchInside,insideIds])
+  }),[books,searchQuery,activeCategory,activeView,shelf,searchInside,insideIds,langId])
+
+  // Cards render the localized copy; openBook still gets the raw row, whose
+  // English columns are what the per-book detail fetch merges into. Memoized
+  // rather than localized inline in the map, so FocusCard's memo() still sees
+  // a stable reference and 302 cards don't re-render on every keystroke.
+  const localizedCards=useMemo(()=>filteredBooks.map(b=>localizeBook(b,langId)),[filteredBooks,langId])
 
   // Books the reader actually started — the richest thing Minerva can talk about.
   const minervaInProgress = useMemo(() =>
@@ -2779,7 +2796,7 @@ export default function App() {
             {filteredBooks.map((book,index)=>(
               <FocusCard
                 key={book.id}
-                book={book}
+                book={localizedCards[index]}
                 index={index}
                 hovered={hovered}
                 setHovered={setHovered}

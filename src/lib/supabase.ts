@@ -113,4 +113,12 @@ export interface Book {
     long_summary?: string
     audio_url?: string
   }> | null
+  // Per-language TITLES only, keyed by language id — the one piece of
+  // `translations` the library grid needs before a book is opened, so a
+  // reader in Arabic sees Arabic titles on the cards and can search them.
+  // Comes from the books_catalog view, which projects just ->>'title' out of
+  // `translations`: that view bypasses RLS, so it must never carry summary
+  // text, and shipping the whole blob would put every book's long_summary in
+  // the list payload. Null for books with no translations.
+  title_translations?: Record<string, string> | null
 }
