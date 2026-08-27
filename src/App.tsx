@@ -1123,6 +1123,10 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
   const scrubbingRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const loadedForRef = useRef<string>('')
+  // The loaded <audio> is keyed by book AND language: the same book has a
+  // different recording per language, so a reader who switches to Arabic
+  // with the book still open must not keep hearing the English narration.
+  const trackKey = `${bookId}|${langId || 'en'}`
   const barRef = useRef<HTMLDivElement | null>(null)
 
   const setScrub = (v: boolean) => { scrubbingRef.current = v; setScrubbing(v) }
@@ -1139,15 +1143,15 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
     return () => {
       audioRef.current?.pause()
       audioRef.current = null; loadedForRef.current = ''
-      setCurrentTime(0); setDuration(0)
+      setCurrentTime(0); setDuration(0); setState('idle')
     }
-  }, [bookId])
+  }, [bookId, langId])
 
   const toggle = async () => {
     if (!text?.trim()) return
     if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
     if (state === 'idle') track('listen_narration', { category })
-    if (audioRef.current && loadedForRef.current === bookId) {
+    if (audioRef.current && loadedForRef.current === trackKey) {
       try { await audioRef.current.play(); setState('playing') } catch { setState('paused') }
       return
     }
@@ -1160,7 +1164,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       audio.onended = () => setState('paused')
       attachTimeListeners(audio)
       audioRef.current = audio
-      loadedForRef.current = bookId
+      loadedForRef.current = trackKey
       try { await audio.play(); setState('playing') } catch { setState('paused') }
       return
     }
@@ -1187,7 +1191,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       audio.onended = () => setState('paused')
       attachTimeListeners(audio)
       audioRef.current = audio
-      loadedForRef.current = bookId
+      loadedForRef.current = trackKey
       try {
         await audio.play()
         setState('playing')
