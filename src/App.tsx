@@ -1,3 +1,5 @@
+import { Icon, categoryIcon } from './components/Icon'
+import { DepthSurface, MetricTile } from './components/DepthSurface'
 import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense, forwardRef, useImperativeHandle } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
@@ -145,7 +147,7 @@ interface ReadingProgress { [bookId: string]: number } // 0-100
 //               animation: 'aiSpin 1.4s linear infinite',
 //             }}/>
 //           ) : (
-//             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={value.trim() ? '#0a0a0f' : 'var(--gold)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+//             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={value.trim() ? '#17201d' : 'var(--gold)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
 //               <path d="M12 19V5M5 12l7-7 7 7"/>
 //             </svg>
 //           )}
@@ -166,36 +168,138 @@ interface ReadingProgress { [bookId: string]: number } // 0-100
 // }
 
 const LANGUAGES = [
-  { id:'en', label:'English',  emoji:'🇬🇧', dir:'ltr' },
-  { id:'ar', label:'العربية', emoji:'🇸🇦', dir:'rtl' },
-  { id:'fr', label:'Français', emoji:'🇫🇷', dir:'ltr' },
-  { id:'es', label:'Español',  emoji:'🇪🇸', dir:'ltr' },
-  { id:'zh', label:'中文',     emoji:'🇨🇳', dir:'ltr' },
+  { id:'en', label:'English',  icon:"globe", dir:'ltr' },
+  { id:'ar', label:'العربية', icon:"globe", dir:'rtl' },
+  { id:'fr', label:'Français', icon:"globe", dir:'ltr' },
+  { id:'es', label:'Español',  icon:"globe", dir:'ltr' },
+  { id:'zh', label:'中文',     icon:"globe", dir:'ltr' },
 ]
 
 const T: Record<string,Record<string,string>> = {
-  en:{ haveCode:'Part of a book club? Enter your invite code.',codePlaceholder:'INVITE CODE',redeem:'Redeem',codeOk:'✓ Unlocked — free access until',codeBad:"That code isn't valid.",codeNeedEmail:'Enter your email above first.',appName:'House of Books',appSub:'AI-Powered Reading',searchPlaceholder:'Search books, authors, topics…',upgrade:'Upgrade',wallpaper:'Theme',music:'Ambient Music',language:'Language',sectionTitle:"The World's Greatest Books,",sectionTitleSpan:'Distilled by AI',books:'books',unlockTitle:'✦ Go Premium',unlockDesc:'Full library · Unlimited AI chat · PDF exports',startFor:'✦ Upgrade',overview:'Overview',fullSummary:'Full Summary',keyInsights:'Key Insights',aboutBook:'About This Book',aboutBookDesc:'Click ✦ AI Summary to generate a comprehensive summary, or open ✦ AI Chat to ask any question.',aiSummary:'✦ AI Summary',generating:'✦ Generating…',aiChat:'✦ AI Chat',hideChat:'Hide Chat',aiExpert:'AI Book Expert',askAnything:'Ask me anything about this book.',askPlaceholder:'Ask a question…',send:'→',premium:'Premium',audioComingSoon:'Audio Summary — Coming Soon',minRead:'min read',loading:'House of Books',alreadyMember:'Already a member? Enter your email to unlock.',unlockAccess:'Unlock Access',upgradePremium:'Premium',premiumBook:'Premium Book',connectionError:'Connection error.',noResponse:'No response.',failedSummary:'Failed to generate summary.',summarizing:'✦ Generating summary…',by:'by',vol:'Vol',wantRead:'Want to Read',reading:'Reading',finished:'Finished',myShelf:'My Shelf',allBooks:'All Books',notes:'My Notes',notesPlaceholder:'Write your personal notes about this book…',saveNotes:'Save Notes',notesSaved:'Saved ✓',streak:'day streak',dailyQuote:'Quote of the Day',recommendations:'Recommended for You',loadingRecs:'Finding books for you…',searchInside:'Search inside summaries',noResults:'No results found.',readProgress:'Reading Progress',exportPDF:'Export Insights PDF',exportingPDF:'Exporting…',pdfPremium:'PDF export is a premium feature' },
-  ar:{ haveCode:'عضو في نادي قراءة؟ أدخل رمز الدعوة.',codePlaceholder:'رمز الدعوة',redeem:'تفعيل',codeOk:'✓ تم الفتح — وصول مجاني حتى',codeBad:'هذا الرمز غير صالح.',codeNeedEmail:'أدخل بريدك الإلكتروني أولاً.',appName:'بيت الكتب',appSub:'قراءة مدعومة بالذكاء الاصطناعي',searchPlaceholder:'ابحث في الكتب…',upgrade:'ترقية',wallpaper:'المظهر',music:'موسيقى محيطية',language:'اللغة',sectionTitle:'أعظم كتب العالم،',sectionTitleSpan:'مُقطَّرة بالذكاء الاصطناعي',books:'كتاب',unlockTitle:'✦ الترقية إلى Premium',unlockDesc:'مكتبة كاملة · دردشة ذكاء اصطناعي غير محدودة · تصدير PDF',startFor:'✦ ترقية',overview:'نظرة عامة',fullSummary:'الملخص الكامل',keyInsights:'الأفكار الرئيسية',aboutBook:'عن هذا الكتاب',aboutBookDesc:'اضغط ✦ ملخص ذكاء اصطناعي.',aiSummary:'✦ ملخص',generating:'✦ جارٍ…',aiChat:'✦ دردشة',hideChat:'إخفاء',aiExpert:'خبير الكتاب',askAnything:'اسألني أي شيء.',askPlaceholder:'اطرح سؤالاً…',send:'→',premium:'مميز',audioComingSoon:'الملخص الصوتي — قريباً',minRead:'دقيقة',loading:'بيت الكتب',alreadyMember:'عضو بالفعل؟ أدخل بريدك.',unlockAccess:'فتح الوصول',upgradePremium:'Premium',premiumBook:'كتاب مميز',connectionError:'خطأ في الاتصال.',noResponse:'لا يوجد رد.',failedSummary:'فشل.',summarizing:'✦ جارٍ…',by:'بقلم',vol:'صوت',wantRead:'أريد قراءته',reading:'أقرأه',finished:'أنهيته',myShelf:'رفي',allBooks:'كل الكتب',notes:'ملاحظاتي',notesPlaceholder:'اكتب ملاحظاتك…',saveNotes:'حفظ',notesSaved:'تم ✓',streak:'أيام',dailyQuote:'اقتباس اليوم',recommendations:'موصى لك',loadingRecs:'جارٍ البحث…',searchInside:'البحث داخل الملخصات',noResults:'لا توجد نتائج.',readProgress:'تقدم القراءة',exportPDF:'تصدير ملف PDF',exportingPDF:'جا...',pdfPremium:'PDF export is a premium feature' },
-  fr:{ haveCode:"Membre d'un club de lecture ? Entrez votre code.",codePlaceholder:'CODE',redeem:'Activer',codeOk:'✓ Débloqué — accès gratuit jusqu’au',codeBad:"Ce code n'est pas valide.",codeNeedEmail:'Entrez d’abord votre email.',appName:'House of Books',appSub:'Lecture par IA',searchPlaceholder:'Rechercher…',upgrade:'Premium',wallpaper:'Thème',music:"Musique d'ambiance",language:'Langue',sectionTitle:'Les Plus Grands Livres,',sectionTitleSpan:"Distillés par l'IA",books:'livres',unlockTitle:'✦ Passer à Premium',unlockDesc:'Bibliothèque complète · Chat IA illimité · Exports PDF',startFor:'✦ Mettre à niveau',overview:'Aperçu',fullSummary:'Résumé Complet',keyInsights:'Points Clés',aboutBook:'À Propos',aboutBookDesc:'Cliquez ✦ Résumé IA.',aiSummary:'✦ Résumé IA',generating:'✦ Génération…',aiChat:'✦ Chat IA',hideChat:'Masquer',aiExpert:'Expert IA',askAnything:'Posez une question.',askPlaceholder:'Question…',send:'→',premium:'Premium',audioComingSoon:'Audio — Bientôt',minRead:'min',loading:'House of Books',alreadyMember:'Déjà membre?',unlockAccess:'Débloquer',upgradePremium:'Premium',premiumBook:'Livre Premium',connectionError:'Erreur.',noResponse:'Pas de réponse.',failedSummary:'Échec.',summarizing:'✦ Génération…',by:'par',vol:'Vol',wantRead:'À lire',reading:'En cours',finished:'Terminé',myShelf:'Ma Bibliothèque',allBooks:'Tous',notes:'Notes',notesPlaceholder:'Vos notes…',saveNotes:'Sauvegarder',notesSaved:'Sauvegardé ✓',streak:'jours',dailyQuote:'Citation du Jour',recommendations:'Recommandé',loadingRecs:'Recherche…',searchInside:'Rechercher',noResults:'Aucun résultat.',readProgress:'Progression',exportPDF:'Exporter PDF',exportingPDF:'Exportation…',pdfPremium:'Export PDF est premium' },
-  es:{ haveCode:'¿Perteneces a un club de lectura? Introduce tu código.',codePlaceholder:'CÓDIGO',redeem:'Canjear',codeOk:'✓ Desbloqueado — acceso gratis hasta',codeBad:'Ese código no es válido.',codeNeedEmail:'Introduce tu email primero.',appName:'House of Books',appSub:'Lectura con IA',searchPlaceholder:'Buscar…',upgrade:'Premium',wallpaper:'Tema',music:'Música',language:'Idioma',sectionTitle:'Los Mejores Libros,',sectionTitleSpan:'Destilados por IA',books:'libros',unlockTitle:'✦ Pasar a Premium',unlockDesc:'Biblioteca completa · Chat IA ilimitado · Exports PDF',startFor:'✦ Mejorar',overview:'Resumen',fullSummary:'Resumen Completo',keyInsights:'Ideas Clave',aboutBook:'Sobre el Libro',aboutBookDesc:'Haz clic en ✦ Resumen IA.',aiSummary:'✦ Resumen IA',generating:'✦ Generando…',aiChat:'✦ Chat IA',hideChat:'Ocultar',aiExpert:'Experto IA',askAnything:'Pregúntame.',askPlaceholder:'Pregunta…',send:'→',premium:'Premium',audioComingSoon:'Audio — Próximamente',minRead:'min',loading:'House of Books',alreadyMember:'¿Ya eres miembro?',unlockAccess:'Desbloquear',upgradePremium:'Premium',premiumBook:'Libro Premium',connectionError:'Error.',noResponse:'Sin respuesta.',failedSummary:'Error.',summarizing:'✦ Generando…',by:'por',vol:'Vol',wantRead:'Quiero leer',reading:'Leyendo',finished:'Terminado',myShelf:'Mi Biblioteca',allBooks:'Todos',notes:'Notas',notesPlaceholder:'Tus notas…',saveNotes:'Guardar',notesSaved:'Guardado ✓',streak:'días',dailyQuote:'Cita del Día',recommendations:'Recomendado',loadingRecs:'Buscando…',searchInside:'Buscar',noResults:'Sin resultados.',readProgress:'Progreso',exportPDF:'Exportar PDF',exportingPDF:'Exportando…',pdfPremium:'Export PDF es premium' },
-  zh:{ haveCode:'加入了读书会？输入邀请码。',codePlaceholder:'邀请码',redeem:'兑换',codeOk:'✓ 已解锁 — 免费使用至',codeBad:'邀请码无效。',codeNeedEmail:'请先输入邮箱。',appName:'书之屋',appSub:'AI 智能阅读',searchPlaceholder:'搜索书籍…',upgrade:'升级',wallpaper:'主题',music:'环境音乐',language:'语言',sectionTitle:'世界最伟大的书籍，',sectionTitleSpan:'由AI精炼提取',books:'本书',unlockTitle:'✦ 升级到 Premium',unlockDesc:'完整书库 · 无限AI聊天 · PDF导出',startFor:'✦ 升级',overview:'概述',fullSummary:'完整摘要',keyInsights:'核心洞见',aboutBook:'关于本书',aboutBookDesc:'点击 ✦ AI摘要。',aiSummary:'✦ AI摘要',generating:'✦ 生成中…',aiChat:'✦ AI对话',hideChat:'隐藏',aiExpert:'AI图书专家',askAnything:'向我提问。',askPlaceholder:'提问…',send:'→',premium:'高级',audioComingSoon:'语音摘要 — 即将推出',minRead:'分钟',loading:'书之屋',alreadyMember:'已是会员？',unlockAccess:'解锁',upgradePremium:'Premium',premiumBook:'高级书籍',connectionError:'连接错误。',noResponse:'无响应。',failedSummary:'生成失败。',summarizing:'✦ 生成中…',by:'作者',vol:'音量',wantRead:'想读',reading:'正在读',finished:'已读完',myShelf:'我的书架',allBooks:'全部',notes:'笔记',notesPlaceholder:'写下笔记…',saveNotes:'保存',notesSaved:'已保存 ✓',streak:'天',dailyQuote:'每日书摘',recommendations:'为你推荐',loadingRecs:'搜索中…',searchInside:'搜索摘要',noResults:'未找到。',readProgress:'阅读进度',exportPDF:'导出PDF',exportingPDF:'导出中…',pdfPremium:'PDF导出是高级功能' },
+  en:{ haveCode:'Part of a book club? Enter your invite code.',codePlaceholder:'INVITE CODE',redeem:'Redeem',codeOk:"Unlocked — free access until",codeBad:"That code isn't valid.",codeNeedEmail:'Enter your email above first.',appName:'House of Books',appSub:'AI-Powered Reading',searchPlaceholder:'Search books, authors, topics…',upgrade:'Upgrade',wallpaper:'Theme',music:'Ambient Music',language:'Language',sectionTitle:"The World's Greatest Books,",sectionTitleSpan:'Distilled by AI',books:'books',unlockTitle:"Go Premium",unlockDesc:'Full library · Unlimited AI chat · PDF exports',startFor:"Upgrade",overview:'Overview',fullSummary:'Full Summary',keyInsights:'Key Insights',aboutBook:'About This Book',aboutBookDesc:"Click  AI Summary to generate a comprehensive summary, or open  AI Chat to ask any question.",aiSummary:"AI Summary",generating:"Generating…",aiChat:"AI Chat",hideChat:'Hide Chat',aiExpert:'AI Book Expert',askAnything:'Ask me anything about this book.',askPlaceholder:'Ask a question…',send:"Send",premium:'Premium',audioComingSoon:'Audio Summary — Coming Soon',minRead:'min read',loading:'House of Books',alreadyMember:'Already a member? Enter your email to unlock.',unlockAccess:'Unlock Access',upgradePremium:'Premium',premiumBook:'Premium Book',connectionError:'Connection error.',noResponse:'No response.',failedSummary:'Failed to generate summary.',summarizing:"Generating summary…",by:'by',vol:'Vol',wantRead:'Want to Read',reading:'Reading',finished:'Finished',myShelf:'My Shelf',allBooks:'All Books',notes:'My Notes',notesPlaceholder:'Write your personal notes about this book…',saveNotes:'Save Notes',notesSaved:"Saved",streak:'day streak',dailyQuote:'Quote of the Day',recommendations:'Recommended for You',loadingRecs:'Finding books for you…',searchInside:'Search inside summaries',noResults:'No results found.',readProgress:'Reading Progress',exportPDF:'Export Insights PDF',exportingPDF:'Exporting…',pdfPremium:'PDF export is a premium feature' },
+  ar:{ haveCode:'عضو في نادي قراءة؟ أدخل رمز الدعوة.',codePlaceholder:'رمز الدعوة',redeem:'تفعيل',codeOk:"تم الفتح — وصول مجاني حتى",codeBad:'هذا الرمز غير صالح.',codeNeedEmail:'أدخل بريدك الإلكتروني أولاً.',appName:'بيت الكتب',appSub:'قراءة مدعومة بالذكاء الاصطناعي',searchPlaceholder:'ابحث في الكتب…',upgrade:'ترقية',wallpaper:'المظهر',music:'موسيقى محيطية',language:'اللغة',sectionTitle:'أعظم كتب العالم،',sectionTitleSpan:'مُقطَّرة بالذكاء الاصطناعي',books:'كتاب',unlockTitle:"الترقية إلى Premium",unlockDesc:'مكتبة كاملة · دردشة ذكاء اصطناعي غير محدودة · تصدير PDF',startFor:"ترقية",overview:'نظرة عامة',fullSummary:'الملخص الكامل',keyInsights:'الأفكار الرئيسية',aboutBook:'عن هذا الكتاب',aboutBookDesc:"اضغط  ملخص ذكاء اصطناعي.",aiSummary:"ملخص",generating:"جارٍ…",aiChat:"دردشة",hideChat:'إخفاء',aiExpert:'خبير الكتاب',askAnything:'اسألني أي شيء.',askPlaceholder:'اطرح سؤالاً…',send:"إرسال",premium:'مميز',audioComingSoon:'الملخص الصوتي — قريباً',minRead:'دقيقة',loading:'بيت الكتب',alreadyMember:'عضو بالفعل؟ أدخل بريدك.',unlockAccess:'فتح الوصول',upgradePremium:'Premium',premiumBook:'كتاب مميز',connectionError:'خطأ في الاتصال.',noResponse:'لا يوجد رد.',failedSummary:'فشل.',summarizing:"جارٍ…",by:'بقلم',vol:'صوت',wantRead:'أريد قراءته',reading:'أقرأه',finished:'أنهيته',myShelf:'رفي',allBooks:'كل الكتب',notes:'ملاحظاتي',notesPlaceholder:'اكتب ملاحظاتك…',saveNotes:'حفظ',notesSaved:"تم",streak:'أيام',dailyQuote:'اقتباس اليوم',recommendations:'موصى لك',loadingRecs:'جارٍ البحث…',searchInside:'البحث داخل الملخصات',noResults:'لا توجد نتائج.',readProgress:'تقدم القراءة',exportPDF:'تصدير ملف PDF',exportingPDF:'جا...',pdfPremium:'PDF export is a premium feature' },
+  fr:{ haveCode:"Membre d'un club de lecture ? Entrez votre code.",codePlaceholder:'CODE',redeem:'Activer',codeOk:"Débloqué — accès gratuit jusqu’au",codeBad:"Ce code n'est pas valide.",codeNeedEmail:'Entrez d’abord votre email.',appName:'House of Books',appSub:'Lecture par IA',searchPlaceholder:'Rechercher…',upgrade:'Premium',wallpaper:'Thème',music:"Musique d'ambiance",language:'Langue',sectionTitle:'Les Plus Grands Livres,',sectionTitleSpan:"Distillés par l'IA",books:'livres',unlockTitle:"Passer à Premium",unlockDesc:'Bibliothèque complète · Chat IA illimité · Exports PDF',startFor:"Mettre à niveau",overview:'Aperçu',fullSummary:'Résumé Complet',keyInsights:'Points Clés',aboutBook:'À Propos',aboutBookDesc:"Cliquez  Résumé IA.",aiSummary:"Résumé IA",generating:"Génération…",aiChat:"Chat IA",hideChat:'Masquer',aiExpert:'Expert IA',askAnything:'Posez une question.',askPlaceholder:'Question…',send:"Envoyer",premium:'Premium',audioComingSoon:'Audio — Bientôt',minRead:'min',loading:'House of Books',alreadyMember:'Déjà membre?',unlockAccess:'Débloquer',upgradePremium:'Premium',premiumBook:'Livre Premium',connectionError:'Erreur.',noResponse:'Pas de réponse.',failedSummary:'Échec.',summarizing:"Génération…",by:'par',vol:'Vol',wantRead:'À lire',reading:'En cours',finished:'Terminé',myShelf:'Ma Bibliothèque',allBooks:'Tous',notes:'Notes',notesPlaceholder:'Vos notes…',saveNotes:'Sauvegarder',notesSaved:"Sauvegardé",streak:'jours',dailyQuote:'Citation du Jour',recommendations:'Recommandé',loadingRecs:'Recherche…',searchInside:'Rechercher',noResults:'Aucun résultat.',readProgress:'Progression',exportPDF:'Exporter PDF',exportingPDF:'Exportation…',pdfPremium:'Export PDF est premium' },
+  es:{ haveCode:'¿Perteneces a un club de lectura? Introduce tu código.',codePlaceholder:'CÓDIGO',redeem:'Canjear',codeOk:"Desbloqueado — acceso gratis hasta",codeBad:'Ese código no es válido.',codeNeedEmail:'Introduce tu email primero.',appName:'House of Books',appSub:'Lectura con IA',searchPlaceholder:'Buscar…',upgrade:'Premium',wallpaper:'Tema',music:'Música',language:'Idioma',sectionTitle:'Los Mejores Libros,',sectionTitleSpan:'Destilados por IA',books:'libros',unlockTitle:"Pasar a Premium",unlockDesc:'Biblioteca completa · Chat IA ilimitado · Exports PDF',startFor:"Mejorar",overview:'Resumen',fullSummary:'Resumen Completo',keyInsights:'Ideas Clave',aboutBook:'Sobre el Libro',aboutBookDesc:"Haz clic en  Resumen IA.",aiSummary:"Resumen IA",generating:"Generando…",aiChat:"Chat IA",hideChat:'Ocultar',aiExpert:'Experto IA',askAnything:'Pregúntame.',askPlaceholder:'Pregunta…',send:"Enviar",premium:'Premium',audioComingSoon:'Audio — Próximamente',minRead:'min',loading:'House of Books',alreadyMember:'¿Ya eres miembro?',unlockAccess:'Desbloquear',upgradePremium:'Premium',premiumBook:'Libro Premium',connectionError:'Error.',noResponse:'Sin respuesta.',failedSummary:'Error.',summarizing:"Generando…",by:'por',vol:'Vol',wantRead:'Quiero leer',reading:'Leyendo',finished:'Terminado',myShelf:'Mi Biblioteca',allBooks:'Todos',notes:'Notas',notesPlaceholder:'Tus notas…',saveNotes:'Guardar',notesSaved:"Guardado",streak:'días',dailyQuote:'Cita del Día',recommendations:'Recomendado',loadingRecs:'Buscando…',searchInside:'Buscar',noResults:'Sin resultados.',readProgress:'Progreso',exportPDF:'Exportar PDF',exportingPDF:'Exportando…',pdfPremium:'Export PDF es premium' },
+  zh:{ haveCode:'加入了读书会？输入邀请码。',codePlaceholder:'邀请码',redeem:'兑换',codeOk:"已解锁 — 免费使用至",codeBad:'邀请码无效。',codeNeedEmail:'请先输入邮箱。',appName:'书之屋',appSub:'AI 智能阅读',searchPlaceholder:'搜索书籍…',upgrade:'升级',wallpaper:'主题',music:'环境音乐',language:'语言',sectionTitle:'世界最伟大的书籍，',sectionTitleSpan:'由AI精炼提取',books:'本书',unlockTitle:"升级到 Premium",unlockDesc:'完整书库 · 无限AI聊天 · PDF导出',startFor:"升级",overview:'概述',fullSummary:'完整摘要',keyInsights:'核心洞见',aboutBook:'关于本书',aboutBookDesc:"点击  AI摘要。",aiSummary:"AI摘要",generating:"生成中…",aiChat:"AI对话",hideChat:'隐藏',aiExpert:'AI图书专家',askAnything:'向我提问。',askPlaceholder:'提问…',send:"发送",premium:'高级',audioComingSoon:'语音摘要 — 即将推出',minRead:'分钟',loading:'书之屋',alreadyMember:'已是会员？',unlockAccess:'解锁',upgradePremium:'Premium',premiumBook:'高级书籍',connectionError:'连接错误。',noResponse:'无响应。',failedSummary:'生成失败。',summarizing:"生成中…",by:'作者',vol:'音量',wantRead:'想读',reading:'正在读',finished:'已读完',myShelf:'我的书架',allBooks:'全部',notes:'笔记',notesPlaceholder:'写下笔记…',saveNotes:'保存',notesSaved:"已保存",streak:'天',dailyQuote:'每日书摘',recommendations:'为你推荐',loadingRecs:'搜索中…',searchInside:'搜索摘要',noResults:'未找到。',readProgress:'阅读进度',exportPDF:'导出PDF',exportingPDF:'导出中…',pdfPremium:'PDF导出是高级功能' },
 }
 
-const THEMES = [
-  { id:'classic',label:'Classic',emoji:'🏛️',image:'/wallpaper/classic.jpg',accent:'#cba86a',accentLight:'#e4cf95',overlay:'rgba(8,6,2,0.80)',isLight:false,bg:'#0a0a0f',text:'#ebe6da',textMuted:'rgba(235,230,218,0.56)',border:'rgba(203,168,106,0.22)',headerBg:'rgba(10,10,15,0.90)',modalBg:'rgba(14,14,20,0.97)',surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
-  { id:'cosmos', label:'Cosmos', emoji:'🌌',image:'/wallpaper/cosmos.jpg', accent:'#93bde0',accentLight:'#c2dbef',overlay:'rgba(2,4,18,0.78)', isLight:false,bg:'#02040f',text:'#e0eaf6',textMuted:'rgba(224,234,246,0.54)', border:'rgba(147,189,224,0.22)',headerBg:'rgba(2,4,18,0.90)',  modalBg:'rgba(4,8,22,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
-  { id:'nature', label:'Nature', emoji:'🌿',image:'/wallpaper/nature.jpg', accent:'#93c795',accentLight:'#bcdcbe',overlay:'rgba(2,10,4,0.78)',  isLight:false,bg:'#020a04',text:'#dfeedf',textMuted:'rgba(223,238,223,0.54)', border:'rgba(147,199,149,0.22)',headerBg:'rgba(2,10,4,0.90)',  modalBg:'rgba(4,14,6,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
-  { id:'beach',  label:'Beach',  emoji:'🌊',image:'/wallpaper/beach.jpg',  accent:'#68c4c2',accentLight:'#a0dcda',overlay:'rgba(2,12,18,0.77)', isLight:false,bg:'#020c12',text:'#dceff0',textMuted:'rgba(220,239,240,0.54)', border:'rgba(104,196,194,0.22)', headerBg:'rgba(2,12,18,0.90)', modalBg:'rgba(4,16,22,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
-  { id:'light',  label:'Light',  emoji:'☀️',image:'none',                  accent:'#9a6f2a',accentLight:'#c9a84c',overlay:'none',              isLight:true, bg:'#faf6ef',text:'#2a1f0e',textMuted:'rgba(42,31,14,0.5)',   border:'rgba(154,111,42,0.2)', headerBg:'rgba(250,246,239,0.96)',modalBg:'rgba(252,249,243,0.99)',surface:'rgba(154,111,42,0.06)',inputBg:'rgba(154,111,42,0.05)' },
-  { id:'dark',   label:'Dark',   emoji:'🌙',image:'none',                  accent:'#c9a84c',accentLight:'#e8c97a',overlay:'none',              isLight:false,bg:'#0d0d0d',text:'#e8e4d9',textMuted:'rgba(232,228,217,0.42)',border:'rgba(201,168,76,0.16)', headerBg:'rgba(13,13,13,0.98)', modalBg:'rgba(16,16,16,0.99)',  surface:'rgba(255,255,255,0.03)',inputBg:'rgba(255,255,255,0.03)' },
+export const THEMES = [
+  {
+    "id": "classic",
+    "label": "Classic",
+    "icon": "philosophy",
+    "image": "none",
+    "accent": "#b4c5b4",
+    "accentLight": "#d4ddcb",
+    "overlay": "none",
+    "isLight": false,
+    "bg": "#171d20",
+    "text": "#e7e9e3",
+    "textMuted": "#aab5ad",
+    "border": "rgba(180,197,180,0.20)",
+    "headerBg": "#171d20f2",
+    "modalBg": "#212a2d",
+    "surface": "rgba(208,222,216,0.045)",
+    "inputBg": "rgba(208,222,216,0.055)"
+  },
+  {
+    "id": "cosmos",
+    "label": "Cosmos",
+    "icon": "moon",
+    "image": "none",
+    "accent": "#b4b4cf",
+    "accentLight": "#d4d4e4",
+    "overlay": "none",
+    "isLight": false,
+    "bg": "#1b1e2b",
+    "text": "#e5e6ee",
+    "textMuted": "#b0b2c1",
+    "border": "rgba(180,197,180,0.20)",
+    "headerBg": "#1b1e2bf2",
+    "modalBg": "#252939",
+    "surface": "rgba(208,222,216,0.045)",
+    "inputBg": "rgba(208,222,216,0.055)"
+  },
+  {
+    "id": "nature",
+    "label": "Nature",
+    "icon": "leaf",
+    "image": "none",
+    "accent": "#b2c3a5",
+    "accentLight": "#d6dfc8",
+    "overlay": "none",
+    "isLight": false,
+    "bg": "#1b2420",
+    "text": "#e6ebe1",
+    "textMuted": "#b0bcae",
+    "border": "rgba(180,197,180,0.20)",
+    "headerBg": "#1b2420f2",
+    "modalBg": "#26312a",
+    "surface": "rgba(208,222,216,0.045)",
+    "inputBg": "rgba(208,222,216,0.055)"
+  },
+  {
+    "id": "beach",
+    "label": "Beach",
+    "icon": "waves",
+    "image": "none",
+    "accent": "#a4c1c4",
+    "accentLight": "#cddfe0",
+    "overlay": "none",
+    "isLight": false,
+    "bg": "#1b252b",
+    "text": "#e2e9ea",
+    "textMuted": "#a8bcc1",
+    "border": "rgba(180,197,180,0.20)",
+    "headerBg": "#1b252bf2",
+    "modalBg": "#26333a",
+    "surface": "rgba(208,222,216,0.045)",
+    "inputBg": "rgba(208,222,216,0.055)"
+  },
+  {
+    "id": "light",
+    "label": "Light",
+    "icon": "sun",
+    "image": "none",
+    "accent": "#536b60",
+    "accentLight": "#637962",
+    "overlay": "none",
+    "isLight": true,
+    "bg": "#f3f1e9",
+    "text": "#303c37",
+    "textMuted": "#626f67",
+    "border": "rgba(70,91,79,0.22)",
+    "headerBg": "#f3f1e9f2",
+    "modalBg": "#f9f8f2",
+    "surface": "rgba(255,255,255,0.58)",
+    "inputBg": "rgba(255,255,255,0.65)"
+  },
+  {
+    "id": "dark",
+    "label": "Dark",
+    "icon": "moon",
+    "image": "none",
+    "accent": "#beb9a9",
+    "accentLight": "#d9d4c7",
+    "overlay": "none",
+    "isLight": false,
+    "bg": "#1b1e20",
+    "text": "#e6e7e1",
+    "textMuted": "#adb3ad",
+    "border": "rgba(180,197,180,0.20)",
+    "headerBg": "#1b1e20f2",
+    "modalBg": "#252b2d",
+    "surface": "rgba(208,222,216,0.045)",
+    "inputBg": "rgba(208,222,216,0.055)"
+  }
 ]
 
 const TRACKS = [
-  { id:'library',label:'Library',emoji:'📚',src:'/music/library.mp3' },
-  { id:'beach',  label:'Beach',  emoji:'🏖️',src:'/music/beach.mp3'   },
-  { id:'forest', label:'Forest', emoji:'🌲',src:'/music/forest.mp3'  },
-  { id:'rain',   label:'Rain',   emoji:'🌧️',src:'/music/rain.mp3'    },
-  { id:'cosmos', label:'Cosmos', emoji:'🚀',src:'/music/cosmos.mp3'  },
+  { id:'library',label:'Library',icon:"library",src:'/music/library.mp3' },
+  { id:'beach',  label:'Beach',  icon:"waves",src:'/music/beach.mp3'   },
+  { id:'forest', label:'Forest', icon:"tree",src:'/music/forest.mp3'  },
+  { id:'rain',   label:'Rain',   icon:"rain",src:'/music/rain.mp3'    },
+  { id:'cosmos', label:'Cosmos', icon:"trend",src:'/music/cosmos.mp3'  },
 ]
 
 // Resolve a book into the reader's language: any field present in
@@ -321,23 +425,23 @@ const coverFallback = (title?: string, author?: string) => {
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">
 <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0%" stop-color="#1c1926"/><stop offset="55%" stop-color="#15131c"/><stop offset="100%" stop-color="#0d0c12"/>
+<stop offset="0%" stop-color="#1c1926"/><stop offset="55%" stop-color="#15131c"/><stop offset="100%" stop-color="#171d20"/>
 </linearGradient></defs>
 <rect width="200" height="300" fill="url(#g)"/>
-<rect x="0" y="0" width="4" height="300" fill="#c9a84c" opacity="0.55"/>
-<text x="100" y="52" text-anchor="middle" font-family="Georgia,serif" font-size="15" fill="#c9a84c" opacity="0.75">✦</text>
-${lines.map((l, i) => `<text x="100" y="${startY + i * 26}" text-anchor="middle" font-family="Georgia,serif" font-size="17" fill="#e8e4d9">${esc(l)}</text>`).join('')}
-${author ? `<text x="100" y="${startY + lines.length * 26 + 14}" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-style="italic" fill="#9a9080">${esc(String(author).slice(0, 26))}</text>` : ''}
-<text x="100" y="272" text-anchor="middle" font-family="Georgia,serif" font-size="9.5" fill="#6a6458" letter-spacing="1.6">HOUSE OF BOOKS</text>
+<rect x="0" y="0" width="4" height="300" fill="#b4c5b4" opacity="0.55"/>
+<text x="100" y="52" text-anchor="middle" font-family="Georgia,serif" font-size="15" fill="#b4c5b4" opacity="0.75"></text>
+${lines.map((l, i) => `<text x="100" y="${startY + i * 26}" text-anchor="middle" font-family="Georgia,serif" font-size="17" fill="#e7e9e3">${esc(l)}</text>`).join('')}
+${author ? `<text x="100" y="${startY + lines.length * 26 + 14}" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-style="italic" fill="#abb6ae">${esc(String(author).slice(0, 26))}</text>` : ''}
+<text x="100" y="272" text-anchor="middle" font-family="Georgia,serif" font-size="9.5" fill="#89978f" letter-spacing="1.6">HOUSE OF BOOKS</text>
 </svg>`
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
 // ── CSS ───────────────────────────────────────────────────────────
-const buildStyles = (th: typeof THEMES[0], dir: string) => `
+export const buildStyles = (th: typeof THEMES[0], dir: string) => `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --gold:${th.accent};--gold-light:${th.accentLight};
+  --gold:${th.accent};--gold-light:${th.accentLight};--icon-brightness:${th.isLight?0.62:1};
   --gold-dim:${th.accent}22;--gold-border:${th.border};
   --bg:${th.bg};--surface:${th.surface};--text:${th.text};--text-muted:${th.textMuted};
   --header-bg:${th.headerBg};--modal-bg:${th.modalBg};--input-bg:${th.inputBg};
@@ -348,7 +452,7 @@ body{font-family:${dir==='rtl'?"'Noto Sans Arabic',":""}Georgia,serif;font-size:
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${th.accent}3a;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:${th.accent}66}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid ${th.accent}88;outline-offset:2px}
 
-.app-bg{position:fixed;inset:0;z-index:-1;background-color:var(--bg);${th.image!=='none'?`background-image:url('${th.image}');background-size:cover;background-position:center;`:''}}
+.app-bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse at 12% 0%,${th.accent}0c,transparent 55%),var(--bg);${th.image!=='none'?`background-image:url('${th.image}');background-size:cover;background-position:center;`:''}}
 ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;background:${th.overlay}}`:''}
 .app-root{position:relative;z-index:1;min-height:100vh}
 
@@ -363,14 +467,14 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .search-input::placeholder{color:var(--text-muted)}.search-input:focus{border-color:var(--gold)}
 .icon-btn{width:34px;height:34px;background:var(--surface);border:1px solid var(--gold-border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;position:relative}
 .icon-btn:hover,.icon-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
-.btn-premium{padding:7px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#0a0a0f'};border:none;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:box-shadow .25s,transform .15s;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 12px ${th.accent}30}
+.btn-premium{padding:7px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#17201d'};border:none;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:box-shadow .25s,transform .15s;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 12px ${th.accent}30}
 .btn-premium:hover{transform:translateY(-1px);box-shadow:0 4px 22px ${th.accent}55}
 .dropdown{position:absolute;top:calc(100% + 8px);${dir==='rtl'?'left':'right'}:0;background:var(--modal-bg);backdrop-filter:blur(20px);border:1px solid var(--gold-border);border-radius:12px;padding:10px;min-width:190px;z-index:300;box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 0 1px ${th.accent}0d;animation:dropIn .18s ease}
 @keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .dropdown-title{font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px 8px;border-bottom:1px solid var(--gold-border);margin-bottom:8px}
 .dropdown-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:6px;cursor:pointer;transition:background .15s;font-size:14px;color:var(--text-muted);border:none;background:transparent;width:100%;text-align:${dir==='rtl'?'right':'left'};direction:${dir};-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .dropdown-item:hover,.dropdown-item:active{background:var(--gold-dim);color:var(--text)}.dropdown-item.active{background:var(--gold-dim);color:var(--gold)}
-.dropdown-item-emoji{font-size:16px;flex-shrink:0}
+.dropdown-item-icon{font-size:16px;flex-shrink:0}
 .track-playing{margin-${dir==='rtl'?'right':'left'}:auto;display:flex;gap:2px;align-items:flex-end;height:14px}
 .track-bar{width:3px;background:var(--gold);border-radius:1px;animation:eq .8s ease-in-out infinite alternate}
 .track-bar:nth-child(1){height:6px}.track-bar:nth-child(2){height:10px;animation-delay:.2s}.track-bar:nth-child(3){height:13px;animation-delay:.4s}
@@ -450,16 +554,16 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .focus-card:hover .focus-overlay{opacity:1}
 .focus-overlay-title{font-family:Georgia,serif;font-size:.95rem;font-weight:600;color:#fff;line-height:1.25;margin-bottom:3px}
 .focus-overlay-author{font-size:10px;color:rgba(255,255,255,0.65);margin-bottom:8px}
-.focus-overlay-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#0a0a0f;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;width:fit-content}
+.focus-overlay-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#17201d;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;width:fit-content}
 
 /* Locked state */
 .focus-locked{position:absolute;inset:0;background:${th.isLight?'rgba(250,246,239,0.82)':'rgba(10,10,15,0.78)'};backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .lock-icon{width:28px;height:28px;border:1.5px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:12px}
 .lock-label{font-size:9px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
 .shelf-badge{position:absolute;top:8px;${dir==='rtl'?'left':'right'}:8px;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;z-index:3}
-.shelf-want{background:rgba(201,168,76,.9);color:#0a0a0f}
-.shelf-reading{background:rgba(74,180,255,.9);color:#0a0a0f}
-.shelf-finished{background:rgba(74,200,120,.9);color:#0a0a0f}
+.shelf-want{background:rgba(180,197,180,.9);color:#17201d}
+.shelf-reading{background:rgba(74,180,255,.9);color:#17201d}
+.shelf-finished{background:rgba(74,200,120,.9);color:#17201d}
 
 /* ── EXPANDED READER PANEL ── */
 .expanded-backdrop{position:fixed;inset:0;background:${th.isLight?'rgba(180,155,120,0.55)':'rgba(0,0,0,0.8)'};backdrop-filter:blur(14px);z-index:200}
@@ -484,9 +588,9 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .shelf-actions{display:flex;gap:7px;margin-bottom:1.2rem;flex-wrap:wrap}
 .shelf-btn{padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer;transition:all .2s;border:1px solid var(--gold-border);background:transparent;color:var(--text-muted)}
 .shelf-btn:hover{border-color:var(--gold);color:var(--gold)}
-.shelf-btn.active-want{background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold)}
+.shelf-btn.active-want{background:rgba(180,197,180,.15);border-color:var(--gold);color:var(--gold)}
 .shelf-btn.active-reading{background:rgba(74,180,255,.12);border-color:#4ab4ff;color:${th.isLight?'#1a6fa0':'#4ab4ff'}}
-.shelf-btn.active-finished{background:rgba(74,200,120,.12);border-color:#4ac878;color:${th.isLight?'#1a7a40':'#4ac878'}}
+.shelf-btn.active-finished{background:rgba(74,200,120,.12);border-color:#a5c4aa;color:${th.isLight?'#1a7a40':'#a5c4aa'}}
 .hero-badges{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:1rem}
 .hero-badge{display:inline-block;padding:3px 10px;border:1px solid var(--gold-border);border-radius:3px;font-size:10px;color:var(--gold);letter-spacing:.06em;text-transform:uppercase}
 .audio-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:${th.accent}0d;border:1px solid var(--gold-border);border-radius:20px;font-size:11px;color:var(--gold);margin-bottom:1.2rem}
@@ -523,7 +627,7 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .chat-input-area{padding:.9rem;border-top:1px solid var(--gold-border);display:flex;gap:7px;flex-shrink:0}
 .chat-input{flex:1;padding:8px 11px;background:var(--input-bg);border:1px solid var(--gold-border);border-radius:6px;color:var(--text);font-size:12px;outline:none;direction:${dir}}
 .chat-input:focus{border-color:var(--gold)}.chat-input::placeholder{color:var(--text-muted)}
-.btn-send{padding:8px 13px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#0a0a0f'};border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0}
+.btn-send{padding:8px 13px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#17201d'};border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0}
 .btn-send:disabled{opacity:.4;cursor:not-allowed}
 .loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg)}
 .loading-logo{font-family:Georgia,serif;font-size:2rem;color:var(--gold);letter-spacing:.1em}
@@ -796,101 +900,18 @@ function paginateSummary(text: string): string[] {
 }
 
 // ── Focus Card ───────────────────────────────────────────────────────
-const FocusCard = memo(({ book, index, hovered, setHovered, isLocked, shelfStatus, onToggleShelf, onOpen }: any) => {
-  const onShelf = shelfStatus && shelfStatus !== 'none'
-  return (
-    <div
-      onClick={onOpen}
-      onMouseEnter={() => setHovered(index)}
-      onMouseLeave={() => setHovered(null)}
-      style={{
-        background: '#1a1813',
-        border: '0.5px solid rgba(201,168,76,0.2)',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        cursor: 'pointer',
-        transition: 'transform .25s, border-color .25s',
-        transform: hovered === index ? 'translateY(-4px)' : 'translateY(0)',
-        borderColor: hovered === index ? 'rgba(201,168,76,0.6)' : 'rgba(201,168,76,0.2)',
-        position: 'relative',
-        userSelect: 'none' as any,
-      }}
-    >
-      {/* FREE / lock badge — top-left */}
-      {isLocked ? (
-        <div style={{
-          position:'absolute',top:'8px',left:'8px',
-          width:'22px',height:'22px',
-          background:'rgba(10,10,15,0.9)',
-          border:'0.5px solid rgba(201,168,76,0.4)',
-          borderRadius:'50%',display:'flex',
-          alignItems:'center',justifyContent:'center',
-          fontSize:'10px',zIndex:2
-        }}>🔒</div>
-      ) : (
-        <div style={{
-          position:'absolute',top:'8px',left:'8px',
-          background:'#c9a84c',color:'#0a0a0f',
-          fontSize:'9px',padding:'2px 7px',
-          borderRadius:'20px',letterSpacing:'.08em',
-          fontWeight:'600',zIndex:2
-        }}>FREE</div>
-      )}
-      {/* Save-to-shelf bookmark — top-right; stops propagation so it doesn't open the book */}
-      <button
-        onClick={e => { e.stopPropagation(); onToggleShelf && onToggleShelf() }}
-        title={onShelf ? 'Remove from My Shelf' : 'Save to My Shelf'}
-        aria-label={onShelf ? 'Remove from My Shelf' : 'Save to My Shelf'}
-        style={{
-          position:'absolute',top:'8px',right:'8px',
-          width:'26px',height:'26px',zIndex:3,
-          background: onShelf ? '#c9a84c' : 'rgba(10,10,15,0.78)',
-          border:'0.5px solid rgba(201,168,76,0.5)',
-          borderRadius:'50%',cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          fontSize:'12px',lineHeight:1,
-          color: onShelf ? '#0a0a0f' : '#e8cf8a',
-          transition:'background .18s, transform .18s',
-        }}
-        onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.transform='scale(1.12)'}}
-        onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none'}}
-      >🔖</button>
-      <img
-        src={book.cover_url || coverFallback(book.title, book.author)}
-        alt={book.title}
-        loading="lazy"
-        decoding="async"
-        onError={e => { (e.target as HTMLImageElement).src = coverFallback(book.title, book.author) }}
-        style={{
-          width:'100%',aspectRatio:'2/3',
-          objectFit:'cover',display:'block',
-          // Reserve layout space & skip off-screen paint work for cards below
-          // the fold — big win with 301 books in the grid.
-          contentVisibility:'auto',containIntrinsicSize:'200px 300px',
-        }}
-      />
-      <div style={{padding:'10px 10px 12px'}}>
-        <div style={{
-          display:'inline-block',
-          background:'rgba(201,168,76,0.12)',
-          border:'0.5px solid rgba(201,168,76,0.3)',
-          borderRadius:'20px',padding:'2px 8px',
-          fontSize:'10px',color:'#c9a84c',
-          letterSpacing:'.06em',marginBottom:'6px'
-        }}>{book.category || 'Book'}</div>
-        <div style={{
-          fontSize:'12px',color:'#e8e4d9',
-          lineHeight:'1.4',marginBottom:'3px',fontWeight:'500',
-          display:'-webkit-box',
-          WebkitLineClamp:2,
-          WebkitBoxOrient:'vertical' as any,
-          overflow:'hidden'
-        }}>{book.title}</div>
-        <div style={{fontSize:'11px',color:'#9a9080',marginBottom:'4px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{book.author}</div>
-        <div style={{fontSize:'10px',color:'#9a9080'}}>{(book as any).read_time_mins || 15} min read</div>
+export const FocusCard = memo(({ book, isLocked, shelfStatus, onToggleShelf, onOpen, t }: any) => {
+  const onShelf = !!shelfStatus && shelfStatus !== 'none'
+  return <DepthSurface className="book-object">
+    <button className="book-open" onClick={onOpen} aria-label={(isLocked ? 'Unlock ' : 'Read ') + book.title}>
+      <div className="book-cover"><img src={book.cover_url || coverFallback(book.title, book.author)} alt="" loading="lazy" decoding="async" onError={e => { e.currentTarget.onerror=null; e.currentTarget.src=coverFallback(book.title,book.author) }}/></div>
+      <span className="book-access"><Icon name={isLocked?'lock':'unlock'} size={12}/>{isLocked?(t?.premium||'Premium'):'FREE'}</span>
+      <div className="book-details"><div className="book-category"><Icon name={categoryIcon(book.category||'Book')} size={13}/>{book.category||'Book'}</div>
+        <div className="book-title">{book.title}</div><div className="book-author">{book.author}</div><div className="book-time"><Icon name="clock" size={12}/>{book.read_time_mins||15} {t?.minRead||'min read'}</div>
       </div>
-    </div>
-  )
+    </button>
+    <button className="book-save" onClick={onToggleShelf} title={onShelf?'Remove from My Shelf':'Save to My Shelf'} aria-label={onShelf?'Remove from My Shelf':'Save to My Shelf'} aria-pressed={onShelf}><Icon name="bookmark" size={17}/></button>
+  </DepthSurface>
 })
 FocusCard.displayName = 'FocusCard'
 
@@ -951,16 +972,16 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
           <button
             onClick={() => setPlan('monthly')}
             style={{flex:1,padding:'10px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',cursor:'pointer',
-              background: plan==='monthly' ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.03)',
-              border: plan==='monthly' ? '1px solid rgba(201,168,76,0.5)' : '1px solid rgba(255,255,255,0.08)',
-              color: plan==='monthly' ? '#c9a84c' : 'var(--text-muted)'}}
+              background: plan==='monthly' ? 'rgba(180,197,180,0.16)' : 'rgba(255,255,255,0.03)',
+              border: plan==='monthly' ? '1px solid rgba(180,197,180,0.5)' : '1px solid rgba(255,255,255,0.08)',
+              color: plan==='monthly' ? '#b4c5b4' : 'var(--text-muted)'}}
           >Monthly<br/><strong style={{fontSize:'15px'}}>$8.99</strong></button>
           <button
             onClick={() => setPlan('yearly')}
             style={{flex:1,padding:'10px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',cursor:'pointer',position:'relative',
-              background: plan==='yearly' ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.03)',
-              border: plan==='yearly' ? '1px solid rgba(201,168,76,0.5)' : '1px solid rgba(255,255,255,0.08)',
-              color: plan==='yearly' ? '#c9a84c' : 'var(--text-muted)'}}
+              background: plan==='yearly' ? 'rgba(180,197,180,0.16)' : 'rgba(255,255,255,0.03)',
+              border: plan==='yearly' ? '1px solid rgba(180,197,180,0.5)' : '1px solid rgba(255,255,255,0.08)',
+              color: plan==='yearly' ? '#b4c5b4' : 'var(--text-muted)'}}
           >Yearly<br/><strong style={{fontSize:'15px'}}>$85</strong> <span style={{fontSize:'10px',opacity:0.7}}>(save 21%)</span></button>
         </div>
 
@@ -969,13 +990,13 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
           disabled={loading}
           style={{
             width:'100%',padding:'13px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-            background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(201,168,76,0.25)',borderRadius:'12px',
-            color:'#e8e4d9',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
+            background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(180,197,180,0.25)',borderRadius:'12px',
+            color:'#e7e9e3',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
             cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1,
             marginBottom:'10px',
           }}
         >
-          <span style={{fontSize:'16px'}}>🅿️</span>
+          <span style={{fontSize:'16px'}}><Icon name="shield"/></span>
           {loading ? 'Redirecting…' : 'Continue with PayPal'}
         </button>
 
@@ -1036,7 +1057,8 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
 
   if (state === 'done') return (
     <div style={{marginTop:'14px',padding:'14px 16px',borderRadius:'12px',background:'rgba(74,200,120,0.08)',border:'0.5px solid rgba(74,200,120,0.3)',fontSize:'13px',color:'#8fd8a8',fontFamily:'Georgia,serif',textAlign:'center'}}>
-      ✓ Thank you — that genuinely helps.
+      
+      <Icon name="check"/> Thank you — that genuinely helps.
     </div>
   )
 
@@ -1065,10 +1087,10 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
   }
 
   return (
-    <div style={{marginTop:'16px',padding:'16px',borderRadius:'14px',background:'rgba(201,168,76,0.06)',border:'0.5px solid rgba(201,168,76,0.22)',fontFamily:'Georgia,serif'}}>
+    <div style={{marginTop:'16px',padding:'16px',borderRadius:'14px',background:'rgba(180,197,180,0.06)',border:'0.5px solid rgba(180,197,180,0.22)',fontFamily:'Georgia,serif'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px'}}>
-        <div style={{fontSize:'14px',color:'#e8e4d9'}}>You finished it — how was this summary?</div>
-        <button onClick={dismiss} aria-label="Dismiss" style={{background:'none',border:'none',color:'#6a6458',fontSize:'16px',cursor:'pointer',lineHeight:1,padding:0}}>✕</button>
+        <div style={{fontSize:'14px',color:'#e7e9e3'}}>You finished it — how was this summary?</div>
+        <button onClick={dismiss} aria-label="Dismiss" style={{background:'none',border:'none',color:'#89978f',fontSize:'16px',cursor:'pointer',lineHeight:1,padding:0}}><Icon name="close"/></button>
       </div>
 
       <div style={{display:'flex',gap:'6px',marginTop:'12px'}}>
@@ -1079,11 +1101,11 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
             aria-label={`${n} out of 5`}
             style={{
               flex:1,padding:'9px 0',borderRadius:'10px',cursor:'pointer',fontSize:'16px',
-              background: n <= rating ? 'rgba(201,168,76,0.22)' : 'rgba(255,255,255,0.04)',
-              border: `0.5px solid ${n <= rating ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.08)'}`,
-              color: n <= rating ? '#e8c97a' : '#6a6458',
+              background: n <= rating ? 'rgba(180,197,180,0.22)' : 'rgba(255,255,255,0.04)',
+              border: `0.5px solid ${n <= rating ? 'rgba(180,197,180,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              color: n <= rating ? '#d4ddcb' : '#89978f',
             }}
-          >★</button>
+          ><Icon name="star" style={{color:'currentColor'}}/></button>
         ))}
       </div>
 
@@ -1094,21 +1116,21 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
             onChange={e => setNote(e.target.value.slice(0, 800))}
             placeholder="Anything you'd change? (optional)"
             rows={2}
-            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(201,168,76,0.25)',color:'#e8e4d9',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
+            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',color:'#e7e9e3',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
           />
           {err && <div style={{fontSize:'11px',color:'#e07a7a',marginTop:'6px'}}>{err}</div>}
           <div style={{display:'flex',gap:'8px',marginTop:'10px'}}>
             <button
               onClick={send}
-              style={{flex:1,padding:'10px',borderRadius:'10px',background:'linear-gradient(135deg,#e0be6f,#c9a84c)',color:'#0a0a0f',border:'none',fontSize:'13px',fontWeight:700,fontFamily:'Georgia,serif',cursor:'pointer'}}
+              style={{flex:1,padding:'10px',borderRadius:'10px',background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',color:'#17201d',border:'none',fontSize:'13px',fontWeight:700,fontFamily:'Georgia,serif',cursor:'pointer'}}
             >Send feedback</button>
-            <button onClick={dismiss} style={{padding:'10px 14px',borderRadius:'10px',background:'none',border:'0.5px solid rgba(255,255,255,0.1)',color:'#9a9080',fontSize:'12px',fontFamily:'Georgia,serif',cursor:'pointer'}}>Not now</button>
+            <button onClick={dismiss} style={{padding:'10px 14px',borderRadius:'10px',background:'none',border:'0.5px solid rgba(255,255,255,0.1)',color:'#abb6ae',fontSize:'12px',fontFamily:'Georgia,serif',cursor:'pointer'}}>Not now</button>
           </div>
         </>
       )}
 
       {state === 'sending' && (
-        <div style={{fontSize:'12px',color:'#9a9080',marginTop:'10px',textAlign:'center'}}>Sending…</div>
+        <div style={{fontSize:'12px',color:'#abb6ae',marginTop:'10px',textAlign:'center'}}>Sending…</div>
       )}
     </div>
   )
@@ -1259,8 +1281,8 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
     <div style={{marginBottom:'16px'}}>
       <div style={{
         display:'flex',alignItems:'center',gap:'12px',
-        background: state==='playing' ? 'rgba(201,168,76,0.14)' : 'rgba(201,168,76,0.07)',
-        border:'0.5px solid rgba(201,168,76,0.3)',
+        background: state==='playing' ? 'rgba(180,197,180,0.14)' : 'rgba(180,197,180,0.07)',
+        border:'0.5px solid rgba(180,197,180,0.3)',
         borderRadius:'16px',padding:'14px 16px',
         transition:'background .25s',
       }}>
@@ -1270,25 +1292,25 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
           aria-label={state === 'playing' ? 'Pause' : 'Play'}
           style={{
             width:'44px',height:'44px',flexShrink:0,borderRadius:'50%',
-            background: disabled ? 'rgba(255,255,255,0.06)' : '#c9a84c',
+            background: disabled ? 'rgba(255,255,255,0.06)' : '#b4c5b4',
             border:'none',display:'flex',alignItems:'center',justifyContent:'center',
-            fontSize:'16px',color: disabled ? '#6a6458' : '#0a0a0f',
+            fontSize:'16px',color: disabled ? '#89978f' : '#17201d',
             cursor: disabled || state==='loading' ? 'default' : 'pointer',
             opacity: state==='loading' ? 0.6 : 1,
             transition:'transform .15s',
-            boxShadow: !disabled ? '0 4px 14px rgba(201,168,76,0.35)' : 'none',
+            boxShadow: !disabled ? '0 4px 14px rgba(180,197,180,0.35)' : 'none',
           }}
           onMouseEnter={e=>{ if(!disabled) (e.currentTarget as HTMLButtonElement).style.transform='scale(1.06)' }}
           onMouseLeave={e=>{ (e.currentTarget as HTMLButtonElement).style.transform='none' }}
         >
-          {state === 'loading' ? '⏳' : state === 'playing' ? '⏸' : '▶'}
+          <Icon name={state==='loading'?'hourglass':state==='playing'?'pause':'play'} style={{color:'currentColor'}}/>
         </button>
 
         <div style={{flex:1,minWidth:0}}>
           {disabled ? (
-            <div style={{fontSize:'13px',color:'#6a6458',fontFamily:'Georgia,serif'}}>Generate the AI summary first to listen</div>
+            <div style={{fontSize:'13px',color:'#89978f',fontFamily:'Georgia,serif'}}>Generate the AI summary first to listen</div>
           ) : state === 'idle' ? (
-            <div style={{fontSize:'13px',color:'#c9a84c',fontFamily:'Georgia,serif'}}>Listen to this summary</div>
+            <div style={{fontSize:'13px',color:'#b4c5b4',fontFamily:'Georgia,serif'}}>Listen to this summary</div>
           ) : (
             <>
               <div
@@ -1305,17 +1327,17 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
                 }}
               >
                 <div style={{width:'100%',height:'4px',borderRadius:'4px',background:'rgba(255,255,255,0.12)',position:'relative',overflow:'visible'}}>
-                  <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,borderRadius:'4px',background:'#c9a84c',transition: scrubbing ? 'none' : 'width .1s linear'}}/>
+                  <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,borderRadius:'4px',background:'#b4c5b4',transition: scrubbing ? 'none' : 'width .1s linear'}}/>
                   <div style={{
                     position:'absolute',top:'50%',left:`${pct}%`,
                     width:'11px',height:'11px',borderRadius:'50%',
-                    background:'#e8e4d9',transform:'translate(-50%,-50%)',
+                    background:'#e7e9e3',transform:'translate(-50%,-50%)',
                     boxShadow:'0 1px 4px rgba(0,0,0,0.5)',
                     opacity: hasAudio ? 1 : 0,
                   }}/>
                 </div>
               </div>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#9a9080',marginTop:'2px',fontFamily:'Georgia,serif'}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#abb6ae',marginTop:'2px',fontFamily:'Georgia,serif'}}>
                 <span>{formatTime(currentTime)}</span>
                 <span>{duration ? formatTime(duration) : '--:--'}</span>
               </div>
@@ -1329,13 +1351,13 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
               onClick={() => skip(-15)}
               disabled={!hasAudio}
               aria-label="Back 15 seconds"
-              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e8e4d9',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
+              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e7e9e3',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
             >⟲15</button>
             <button
               onClick={() => skip(15)}
               disabled={!hasAudio}
               aria-label="Forward 15 seconds"
-              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e8e4d9',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
+              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e7e9e3',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
             >15⟳</button>
           </div>
         )}
@@ -1406,7 +1428,7 @@ function ExpandedPanel({
         top: 0, left: 0, right: 0, bottom: 0,
         width: '100vw',
         height: '100vh',
-        background: '#0f0e0b',
+        background: '#171d20',
         zIndex: 999,
         display: 'flex',
         flexDirection: 'column',
@@ -1430,7 +1452,7 @@ function ExpandedPanel({
             width:'36px',height:'36px',
             background:'rgba(255,255,255,0.06)',
             border:'none',borderRadius:'50%',
-            color:'#e8e4d9',fontSize:'18px',
+            color:'#e7e9e3',fontSize:'18px',
             cursor:'pointer',display:'flex',
             alignItems:'center',justifyContent:'center',
             fontFamily:'Georgia,serif',
@@ -1440,7 +1462,7 @@ function ExpandedPanel({
           onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(255,255,255,0.06)'}}
         >←</button>
         <div style={{
-          fontSize:'15px',color:'#e8e4d9',fontWeight:'500',
+          fontSize:'15px',color:'#e7e9e3',fontWeight:'500',
           flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
           fontFamily:'Georgia,serif',
         }}>{book.title}</div>
@@ -1449,14 +1471,14 @@ function ExpandedPanel({
             onClick={() => onShelf(shelfStatus === 'want' ? 'none' : 'want')}
             style={{
               width:'36px',height:'36px',
-              background: shelfStatus !== 'none' ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.06)',
+              background: shelfStatus !== 'none' ? 'rgba(180,197,180,0.15)' : 'rgba(255,255,255,0.06)',
               border:'none',borderRadius:'50%',
-              color: shelfStatus !== 'none' ? '#c9a84c' : '#e8e4d9',
+              color: shelfStatus !== 'none' ? '#b4c5b4' : '#e7e9e3',
               fontSize:'14px',cursor:'pointer',
               display:'flex',alignItems:'center',justifyContent:'center',
               transition:'background .2s',
             }}
-          >🔖</button>
+          ><Icon name="bookmark"/></button>
         </div>
       </div>
 
@@ -1474,7 +1496,7 @@ function ExpandedPanel({
           position:'relative',zIndex:1,
           display:'flex',alignItems:'center',
           padding:'24px 20px',gap:'20px',
-          borderBottom:'0.5px solid rgba(201,168,76,0.12)',
+          borderBottom:'0.5px solid rgba(180,197,180,0.12)',
         }}>
           <img
             src={book.cover_url || coverFallback(book.title, book.author)}
@@ -1484,13 +1506,13 @@ function ExpandedPanel({
             style={{
               width:'96px',height:'138px',
               objectFit:'cover',borderRadius:'12px',
-              border:'1.5px solid rgba(201,168,76,0.45)',
+              border:'1.5px solid rgba(180,197,180,0.45)',
               boxShadow:'0 12px 32px rgba(0,0,0,0.6)',
               flexShrink:0,
             }}
           />
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:'11px',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'.04em'}}>
+            <div style={{fontSize:'11px',color:'#b4c5b4',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'.04em'}}>
               {(book as any).read_time_mins || 15} min · AI Summary
             </div>
             <div style={{
@@ -1502,11 +1524,12 @@ function ExpandedPanel({
               by {book.author}
             </div>
             <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-              <div style={{background:'rgba(201,168,76,0.14)',border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#e8cf8a'}}>
+              <div style={{background:'rgba(180,197,180,0.14)',border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#d4ddcb'}}>
                 {book.category}
               </div>
-              <div style={{background:'rgba(201,168,76,0.14)',border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#e8cf8a'}}>
-                ✦ AI Ready
+              <div style={{background:'rgba(180,197,180,0.14)',border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#d4ddcb'}}>
+                
+                <Icon name="sparkles"/> AI Ready
               </div>
             </div>
           </div>
@@ -1525,32 +1548,32 @@ function ExpandedPanel({
           aria-label={audioState === 'playing' ? 'Pause narration' : 'Read and listen now'}
           style={{
             flex:2,padding:'13px',
-            background:'linear-gradient(135deg,#e0be6f,#c9a84c)',color:'#0a0a0f',
+            background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',color:'#17201d',
             border:'none',borderRadius:'13px',
             fontSize:'14px',cursor: hasSummary ? 'pointer' : 'default',
             opacity: hasSummary ? 1 : 0.45,
             fontFamily:'Georgia,serif',fontWeight:'700',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',
-            boxShadow:'0 6px 18px rgba(201,168,76,0.3)',
+            boxShadow:'0 6px 18px rgba(180,197,180,0.3)',
             transition:'transform .15s, box-shadow .15s',
           }}
-          onMouseEnter={e=>{if(!hasSummary)return;(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(201,168,76,0.42)'}}
-          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 6px 18px rgba(201,168,76,0.3)'}}
-        >{audioState === 'loading' ? '◌ Loading…' : audioState === 'playing' ? '❚❚ Pause' : audioState === 'paused' ? '▶ Resume' : '▶ Read Now'}</button>
+          onMouseEnter={e=>{if(!hasSummary)return;(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(180,197,180,0.42)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 6px 18px rgba(180,197,180,0.3)'}}
+        >{audioState === 'loading' ? '◌ Loading…' : audioState === 'playing' ? '❚❚ Pause' : audioState === 'paused' ? "Resume" : "Read Now"}</button>
         <button
           onClick={() => { setActiveTab('chat'); onToggleChat() }}
           style={{
             flex:1,padding:'13px',
-            background:'rgba(201,168,76,0.12)',color:'#c9a84c',
-            border:'0.5px solid rgba(201,168,76,0.3)',borderRadius:'13px',
+            background:'rgba(180,197,180,0.12)',color:'#b4c5b4',
+            border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'13px',
             fontSize:'13px',cursor:'pointer',
             fontFamily:'Georgia,serif',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',
             transition:'background .2s',
           }}
-          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(201,168,76,0.2)'}}
-          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(201,168,76,0.12)'}}
-        >✦ AI Chat</button>
+          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(180,197,180,0.2)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(180,197,180,0.12)'}}
+        ><Icon name="sparkles"/> AI Chat</button>
       </div>
 
       {/* TABS */}
@@ -1569,19 +1592,19 @@ function ExpandedPanel({
               position:'relative',
               padding:'12px 16px',
               fontSize:'13px',
-              color: activeTab === tab ? '#c9a84c' : '#9a9080',
+              color: activeTab === tab ? '#b4c5b4' : '#abb6ae',
               cursor:'pointer',border:'none',background:'none',
               fontFamily:'Georgia,serif',
               transition:'color .2s',
               whiteSpace:'nowrap',flexShrink:0,
             }}
           >
-            {tab === 'about' ? 'About' : tab === 'full' ? t.fullSummary : tab === 'insights' ? 'Key Insights' : tab === 'shelf' ? 'My Shelf' : '✦ AI Chat'}
+            {tab === 'about' ? 'About' : tab === 'full' ? t.fullSummary : tab === 'insights' ? 'Key Insights' : tab === 'shelf' ? 'My Shelf' : "AI Chat"}
             {activeTab === tab && (
               <motion.div
                 layoutId="tab-indicator"
                 transition={{ type: 'spring', stiffness: 500, damping: 40 }}
-                style={{position:'absolute',left:8,right:8,bottom:0,height:'2px',background:'#c9a84c',borderRadius:'2px'}}
+                style={{position:'absolute',left:8,right:8,bottom:0,height:'2px',background:'#b4c5b4',borderRadius:'2px'}}
               />
             )}
           </button>
@@ -1600,32 +1623,32 @@ function ExpandedPanel({
         {/* ABOUT TAB */}
         {activeTab === 'about' && (
           <motion.div key="about" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               What's it about?
             </div>
-            <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+            <div style={{fontSize:'10px',color:'#89978f',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
-            <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
-              {book.summary || (detailLoading ? '✦ Loading summary…' : 'Click ✦ AI Summary to generate a comprehensive summary of this book.')}
+            <div style={{fontSize:'14px',color:'#abb6ae',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
+              {book.summary || (detailLoading ? "Loading summary…" : "Click  AI Summary to generate a comprehensive summary of this book.")}
             </div>
             {!book.summary && !detailLoading && (
               <button
                 onClick={onGenerateSummary}
                 style={{
                   width:'100%',padding:'12px',
-                  background:'rgba(201,168,76,0.12)',
-                  color:'#c9a84c',
-                  border:'0.5px solid rgba(201,168,76,0.3)',
+                  background:'rgba(180,197,180,0.12)',
+                  color:'#b4c5b4',
+                  border:'0.5px solid rgba(180,197,180,0.3)',
                   borderRadius:'12px',fontSize:'14px',
                   cursor:'pointer',fontFamily:'Georgia,serif',
                   marginBottom:'16px',
                 }}
               >
-                {summaryLoading ? '✦ Generating...' : '✦ Generate AI Summary'}
+                {summaryLoading ? <> <Icon name="sparkles"/> Generating... </> : <> <Icon name="sparkles"/> Generate AI Summary </>}
               </button>
             )}
-            <div style={{fontSize:'13px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'13px',color:'#e7e9e3',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Audio Summary
             </div>
             <AudioSummary
@@ -1645,10 +1668,10 @@ function ExpandedPanel({
         {/* FULL SUMMARY TAB — long-form, paginated */}
         {activeTab === 'full' && (
           <motion.div key="full" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               {t.fullSummary}
             </div>
-            <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'16px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+            <div style={{fontSize:'10px',color:'#89978f',marginBottom:'16px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
             {book.long_summary ? (() => {
@@ -1657,10 +1680,10 @@ function ExpandedPanel({
               return (
                 <>
                   <div style={{
-                    background:'rgba(201,168,76,0.05)',
-                    border:'0.5px solid rgba(201,168,76,0.15)',
+                    background:'rgba(180,197,180,0.05)',
+                    border:'0.5px solid rgba(180,197,180,0.15)',
                     borderRadius:'14px',padding:'18px 20px',marginBottom:'14px',
-                    fontSize:'14px',color:'#e8e4d9',lineHeight:'1.85',
+                    fontSize:'14px',color:'#e7e9e3',lineHeight:'1.85',
                     fontFamily:'Georgia,serif',whiteSpace:'pre-line',
                     minHeight:'240px',
                   }}>
@@ -1672,12 +1695,12 @@ function ExpandedPanel({
                       disabled={page === 0}
                       style={{
                         padding:'9px 16px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',
-                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(201,168,76,0.25)',
-                        color: page === 0 ? '#4a463d' : '#c9a84c',
+                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',
+                        color: page === 0 ? '#4a463d' : '#b4c5b4',
                         cursor: page === 0 ? 'default' : 'pointer',
                       }}
                     >← Previous</button>
-                    <div style={{fontSize:'11px',color:'#9a9080',letterSpacing:'.05em'}}>
+                    <div style={{fontSize:'11px',color:'#abb6ae',letterSpacing:'.05em'}}>
                       Page {page + 1} of {pages.length}
                     </div>
                     <button
@@ -1685,11 +1708,11 @@ function ExpandedPanel({
                       disabled={page === pages.length - 1}
                       style={{
                         padding:'9px 16px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',
-                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(201,168,76,0.25)',
-                        color: page === pages.length - 1 ? '#4a463d' : '#c9a84c',
+                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',
+                        color: page === pages.length - 1 ? '#4a463d' : '#b4c5b4',
                         cursor: page === pages.length - 1 ? 'default' : 'pointer',
                       }}
-                    >Next →</button>
+                    >Next <Icon name="arrow"/></button>
                   </div>
 
                   {/* Reached the last page = they actually finished reading.
@@ -1700,17 +1723,17 @@ function ExpandedPanel({
                 </>
               )
             })() : (
-              <div style={{fontSize:'14px',color:'#9a9080',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
+              <div style={{fontSize:'14px',color:'#abb6ae',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
                 Full summary not available yet — check back soon.
               </div>
             )}
             <div style={{
               display:'flex',alignItems:'center',gap:'10px',
-              background:'rgba(201,168,76,0.07)',border:'0.5px solid rgba(201,168,76,0.2)',
+              background:'rgba(180,197,180,0.07)',border:'0.5px solid rgba(180,197,180,0.2)',
               borderRadius:'14px',padding:'14px 16px',
             }}>
-              <span style={{fontSize:'16px'}}>🎧</span>
-              <span style={{fontSize:'13px',color:'#c9a84c',fontFamily:'Georgia,serif'}}>{t.audioComingSoon}</span>
+              <span style={{fontSize:'16px'}}><Icon name="headphones"/></span>
+              <span style={{fontSize:'13px',color:'#b4c5b4',fontFamily:'Georgia,serif'}}>{t.audioComingSoon}</span>
             </div>
           </motion.div>
         )}
@@ -1718,27 +1741,27 @@ function ExpandedPanel({
         {/* KEY INSIGHTS TAB */}
         {activeTab === 'insights' && (
           <motion.div key="insights" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Key Insights
             </div>
-            <div style={{fontSize:'12px',color:'#9a9080',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'12px',color:'#abb6ae',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
               Core ideas distilled by AI
             </div>
             {book.key_insights ? (
               book.key_insights.split('\n').filter((i: string) => i.trim()).map((insight: string, idx: number) => (
                 <div key={idx} style={{
                   display:'flex',gap:'12px',alignItems:'flex-start',
-                  background:'rgba(201,168,76,0.05)',
-                  border:'0.5px solid rgba(201,168,76,0.15)',
+                  background:'rgba(180,197,180,0.05)',
+                  border:'0.5px solid rgba(180,197,180,0.15)',
                   borderRadius:'14px',padding:'14px 16px',
-                  fontSize:'13px',color:'#e8e4d9',lineHeight:'1.65',
+                  fontSize:'13px',color:'#e7e9e3',lineHeight:'1.65',
                   marginBottom:'10px',fontFamily:'Georgia,serif',
                   transition:'background .2s, border-color .2s',
                 }}>
                   <div style={{
                     width:'24px',height:'24px',borderRadius:'50%',flexShrink:0,
-                    background:'linear-gradient(135deg,#e0be6f,#c9a84c)',
-                    color:'#0a0a0f',fontSize:'11px',fontWeight:'700',
+                    background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',
+                    color:'#17201d',fontSize:'11px',fontWeight:'700',
                     display:'flex',alignItems:'center',justifyContent:'center',
                     marginTop:'1px',
                   }}>{idx+1}</div>
@@ -1746,19 +1769,19 @@ function ExpandedPanel({
                 </div>
               ))
             ) : detailLoading ? (
-              <div style={{fontSize:'13px',color:'#c9a84c',fontFamily:'Georgia,serif',padding:'8px 0'}}>✦ Loading insights…</div>
+              <div style={{fontSize:'13px',color:'#b4c5b4',fontFamily:'Georgia,serif',padding:'8px 0'}}><Icon name="sparkles"/> Loading insights…</div>
             ) : (
               <button
                 onClick={onGenerateSummary}
                 style={{
                   width:'100%',padding:'12px',
-                  background:'rgba(201,168,76,0.12)',color:'#c9a84c',
-                  border:'0.5px solid rgba(201,168,76,0.3)',
+                  background:'rgba(180,197,180,0.12)',color:'#b4c5b4',
+                  border:'0.5px solid rgba(180,197,180,0.3)',
                   borderRadius:'12px',fontSize:'14px',
                   cursor:'pointer',fontFamily:'Georgia,serif',
                 }}
               >
-                {summaryLoading ? '✦ Generating...' : '✦ Generate Key Insights'}
+                {summaryLoading ? <> <Icon name="sparkles"/> Generating... </> : <> <Icon name="sparkles"/> Generate Key Insights </>}
               </button>
             )}
           </motion.div>
@@ -1767,7 +1790,7 @@ function ExpandedPanel({
         {/* MY SHELF TAB */}
         {activeTab === 'shelf' && (
           <motion.div key="shelf" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
               My Reading
             </div>
             {/* Shelf status buttons */}
@@ -1778,36 +1801,36 @@ function ExpandedPanel({
                   onClick={() => onShelf(s)}
                   style={{
                     flex:1,padding:'9px 6px',
-                    background: shelfStatus === s ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.03)',
-                    border: shelfStatus === s ? '0.5px solid rgba(201,168,76,0.4)' : '0.5px solid rgba(255,255,255,0.08)',
+                    background: shelfStatus === s ? 'rgba(180,197,180,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: shelfStatus === s ? '0.5px solid rgba(180,197,180,0.4)' : '0.5px solid rgba(255,255,255,0.08)',
                     borderRadius:'10px',
-                    color: shelfStatus === s ? '#c9a84c' : '#9a9080',
+                    color: shelfStatus === s ? '#b4c5b4' : '#abb6ae',
                     fontSize:'11px',cursor:'pointer',
                     fontFamily:'Georgia,serif',textAlign:'center' as any,
                     transition:'all .2s',
                   }}
                 >
-                  {s === 'want' ? '🔖 Want' : s === 'reading' ? '📖 Reading' : '✅ Finished'}
+                  <Icon name={s==='want'?'bookmark':s==='reading'?'book':'check'}/>{s==='want'?t.wantRead:s==='reading'?t.reading:t.finished}
                 </button>
               ))}
             </div>
             {/* Progress */}
             <div style={{marginBottom:'20px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#9a9080',marginBottom:'6px',letterSpacing:'.06em',textTransform:'uppercase',fontFamily:'Georgia,serif'}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#abb6ae',marginBottom:'6px',letterSpacing:'.06em',textTransform:'uppercase',fontFamily:'Georgia,serif'}}>
                 <span>Reading Progress</span>
-                <span style={{color:'#c9a84c'}}>{progress}%</span>
+                <span style={{color:'#b4c5b4'}}>{progress}%</span>
               </div>
               <div style={{width:'100%',background:'rgba(255,255,255,0.06)',borderRadius:'4px',height:'5px',marginBottom:'10px'}}>
-                <div style={{height:'5px',background:'linear-gradient(90deg,#c9a84c,#e0be6f)',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
+                <div style={{height:'5px',background:'linear-gradient(90deg,#b4c5b4,#e0be6f)',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
               </div>
               <input
                 type="range" min="0" max="100" value={progress}
                 onChange={e => onProgress(Number(e.target.value))}
-                style={{width:'100%',accentColor:'#c9a84c'}}
+                style={{width:'100%',accentColor:'#b4c5b4'}}
               />
             </div>
             {/* Notes */}
-            <div style={{fontSize:'13px',color:'#e8e4d9',fontWeight:'500',marginBottom:'12px',fontFamily:'Georgia,serif'}}>My Notes</div>
+            <div style={{fontSize:'13px',color:'#e7e9e3',fontWeight:'500',marginBottom:'12px',fontFamily:'Georgia,serif'}}>My Notes</div>
             <textarea
               value={currentNote}
               onChange={e => onNoteChange(e.target.value)}
@@ -1815,9 +1838,9 @@ function ExpandedPanel({
               style={{
                 width:'100%',minHeight:'100px',
                 background:'rgba(255,255,255,0.03)',
-                border:'0.5px solid rgba(201,168,76,0.2)',
+                border:'0.5px solid rgba(180,197,180,0.2)',
                 borderRadius:'12px',padding:'12px',
-                color:'#e8e4d9',fontSize:'13px',
+                color:'#e7e9e3',fontSize:'13px',
                 fontFamily:'Georgia,serif',resize:'none',outline:'none',
               }}
             />
@@ -1825,19 +1848,19 @@ function ExpandedPanel({
               onClick={() => onSaveNote(currentNote)}
               style={{
                 marginTop:'10px',width:'100%',padding:'10px',
-                background:'rgba(201,168,76,0.12)',
-                border:'0.5px solid rgba(201,168,76,0.3)',
-                borderRadius:'10px',color:'#c9a84c',
+                background:'rgba(180,197,180,0.12)',
+                border:'0.5px solid rgba(180,197,180,0.3)',
+                borderRadius:'10px',color:'#b4c5b4',
                 fontSize:'13px',cursor:'pointer',fontFamily:'Georgia,serif',
               }}
-            >{noteSaved ? 'Saved ✓' : 'Save Notes'}</button>
+            >{noteSaved ? <> Saved <Icon name="check"/> </> : 'Save Notes'}</button>
             <button
               onClick={onExportPDF}
               style={{
                 marginTop:'8px',width:'100%',padding:'10px',
                 background:'rgba(255,255,255,0.03)',
                 border:'0.5px solid rgba(255,255,255,0.08)',
-                borderRadius:'10px',color:'#9a9080',
+                borderRadius:'10px',color:'#abb6ae',
                 fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',
               }}
             >{exportingPDF ? 'Exporting…' : 'Export Insights PDF'}</button>
@@ -1850,24 +1873,24 @@ function ExpandedPanel({
             <div style={{display:'flex',alignItems:'center',gap:'11px',marginBottom:'16px'}}>
               <Minerva size={44} perch state={chatLoading ? 'thinking' : chatStreaming ? 'speaking' : 'idle'} />
               <div>
-                <div style={{fontSize:'18px',color:'#e8e4d9',fontWeight:'500',fontFamily:'Georgia,serif'}}>
+                <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',fontFamily:'Georgia,serif'}}>
                   Minerva
                 </div>
-                <div style={{fontSize:'12px',color:'#9a9080',fontFamily:'Georgia,serif'}}>
+                <div style={{fontSize:'12px',color:'#abb6ae',fontFamily:'Georgia,serif'}}>
                   {chatLoading ? 'Thinking…' : chatStreaming ? 'Speaking…' : `Ask me anything about "${book.title}"`}
                 </div>
               </div>
             </div>
             <div style={{
-              background:'rgba(201,168,76,0.04)',
-              border:'0.5px solid rgba(201,168,76,0.15)',
+              background:'rgba(180,197,180,0.04)',
+              border:'0.5px solid rgba(180,197,180,0.15)',
               borderRadius:'14px',padding:'16px',marginBottom:'16px',
             }}>
               {chatMessages.length === 0 && (
                 <div style={{display:'flex',gap:'8px',alignItems:'flex-start',marginBottom:'8px',marginRight:'20px'}}>
                   <Minerva size={26} state="reading" />
                   <div style={{
-                    fontSize:'13px',color:'#9a9080',lineHeight:'1.6',
+                    fontSize:'13px',color:'#abb6ae',lineHeight:'1.6',
                     padding:'10px 12px',borderRadius:'14px 14px 14px 4px',
                     background:'rgba(255,255,255,0.04)',
                     fontFamily:'Georgia,serif',
@@ -1880,14 +1903,14 @@ function ExpandedPanel({
                 const isTyping = chatStreaming && msg.role === 'assistant' && i === chatMessages.length - 1
                 const bubble = (
                   <div style={{
-                    fontSize:'13px',color:'#e8e4d9',lineHeight:'1.6',
+                    fontSize:'13px',color:'#e7e9e3',lineHeight:'1.6',
                     padding:'10px 12px',
                     borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     fontFamily:'Georgia,serif',
-                    background: msg.role === 'user' ? 'rgba(201,168,76,0.14)' : 'rgba(255,255,255,0.04)',
+                    background: msg.role === 'user' ? 'rgba(180,197,180,0.14)' : 'rgba(255,255,255,0.04)',
                   }}>
                     {msg.content}
-                    {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#c9a84c',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
+                    {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#b4c5b4',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
                   </div>
                 )
                 // Minerva speaks only on the message she is currently writing;
@@ -1904,7 +1927,7 @@ function ExpandedPanel({
               {chatLoading && (
                 <div style={{display:'flex',gap:'8px',alignItems:'center',padding:'4px 0 8px',marginRight:'20px'}}>
                   <Minerva size={26} state="thinking" />
-                  <span style={{fontSize:'12px',color:'#c9a84c',fontFamily:'Georgia,serif'}}>Thinking…</span>
+                  <span style={{fontSize:'12px',color:'#b4c5b4',fontFamily:'Georgia,serif'}}>Thinking…</span>
                 </div>
               )}
               <div ref={chatEndRef}/>
@@ -1917,9 +1940,9 @@ function ExpandedPanel({
                   rows={2}
                   style={{
                     flex:1,background:'rgba(255,255,255,0.04)',
-                    border:'0.5px solid rgba(201,168,76,0.3)',
+                    border:'0.5px solid rgba(180,197,180,0.3)',
                     borderRadius:'10px',padding:'9px 12px',
-                    fontSize:'13px',color:'#e8e4d9',
+                    fontSize:'13px',color:'#e7e9e3',
                     fontFamily:'Georgia,serif',resize:'none',outline:'none',
                   }}
                 />
@@ -1927,16 +1950,16 @@ function ExpandedPanel({
                   onClick={() => onSendMessage(chatInput)}
                   disabled={chatBusy || !chatInput.trim()}
                   style={{
-                    background:'#c9a84c',border:'none',
+                    background:'#b4c5b4',border:'none',
                     borderRadius:'10px',width:'40px',
                     cursor:'pointer',fontSize:'16px',
-                    color:'#0a0a0f',flexShrink:0,
+                    color:'#17201d',flexShrink:0,
                     opacity: chatBusy || !chatInput.trim() ? 0.5 : 1,
                   }}
-                >→</button>
+                ><Icon name="arrow"/></button>
               </div>
             </div>
-            <div style={{fontSize:'10px',color:'#9a9080',textAlign:'center',paddingBottom:'1rem',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'10px',color:'#abb6ae',textAlign:'center',paddingBottom:'1rem',fontFamily:'Georgia,serif'}}>
               10 free AI chats · Resets every 6 hours
             </div>
           </motion.div>
@@ -2024,7 +2047,6 @@ export default function App() {
   const [booksError, setBooksError] = useState(false)
   const [booksRetryNonce, setBooksRetryNonce] = useState(0)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
-  const [hovered, setHovered] = useState<number | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [dailyQuote, setDailyQuote] = useState<{text:string;source:string}|null>(null)
   const [insideIds, setInsideIds] = useState<Set<string>|null>(null)
@@ -2536,12 +2558,12 @@ export default function App() {
       <html><head><meta charset="UTF-8"><title>${safeTitle} — Insights</title>
       <style>
         body{font-family:Georgia,serif;line-height:1.6;max-width:700px;margin:40px auto;color:#333}
-        h1{font-size:2rem;color:#c9a84c;margin-bottom:16px}
+        h1{font-size:2rem;color:#b4c5b4;margin-bottom:16px}
         .author{color:#666;font-size:1rem;margin-bottom:32px}
-        .divider{width:60px;height:2px;background:#c9a84c;margin:16px 0 32px}
+        .divider{width:60px;height:2px;background:#b4c5b4;margin:16px 0 32px}
         h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;color:#8a5c20;margin-bottom:20px}
-        .insight{display:flex;gap:16px;padding:16px;margin-bottom:12px;background:#faf6ef;border-left:3px solid #c9a84c;border-radius:4px}
-        .num{font-size:1.4rem;color:#c9a84c;font-weight:700;min-width:28px;line-height:1.3}
+        .insight{display:flex;gap:16px;padding:16px;margin-bottom:12px;background:#faf6ef;border-left:3px solid #b4c5b4;border-radius:4px}
+        .num{font-size:1.4rem;color:#b4c5b4;font-weight:700;min-width:28px;line-height:1.3}
         .text{font-size:0.95rem;color:#333}
         .footer{margin-top:48px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;text-align:center}
         @media print{body{margin:20px auto}}
@@ -2549,7 +2571,7 @@ export default function App() {
       <h1>${safeTitle}</h1>
       <div class="author">by ${safeAuthor}</div>
       <div class="divider"></div>
-      <h2>✦ Key Insights</h2>
+      <h2> Key Insights</h2>
       ${insights.map((ins,i)=>`<div class="insight"><div class="num">${String(i+1).padStart(2,'0')}</div><div class="text">${ins}</div></div>`).join('')}
       <div class="footer">Generated by House of Books · houseofbooks.app</div>
       </body></html>`
@@ -2681,7 +2703,7 @@ export default function App() {
     if(!isPremium&&!isAdmin(authedEmail)){
       const uses=getChatUses()
       if(uses.count>=FREE_AI_CHATS){
-        setChatMessages(p=>[...p,msg,{role:'assistant',content:`You've used all ${FREE_AI_CHATS} free AI chats for now — they reset every 6 hours. ✦`}])
+        setChatMessages(p=>[...p,msg,{role:'assistant',content:`You've used all ${FREE_AI_CHATS} free AI chats for now — they reset every 6 hours. `}])
         setChatInput('')
         return
       }
@@ -2766,28 +2788,29 @@ export default function App() {
   // ── Library Page Component ─────────────────────────────
   const LibraryPage = () => (
     <>
-      {dailyQuote&&<div className="daily-quote"><div className="quote-label">✦ {t.dailyQuote}</div><div className="quote-text">"{shortenQuote(dailyQuote.text)}"</div><div className="quote-source">— {dailyQuote.source}</div></div>}
-      {streak>=2&&<div className="streak-bar"><span className="streak-fire">🔥</span><span className="streak-count">{streak}</span><span className="streak-label">{t.streak}</span></div>}
-      {recommendations.length>0&&<div className="recs-section"><div className="recs-title">✨ {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url || coverFallback(b.title, b.author)} alt={b.title} loading="lazy" decoding="async" onError={e=>{(e.target as HTMLImageElement).src=coverFallback(b.title, b.author)}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
-      {loadingRecs&&<div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'1.5rem'}}>✨ {t.loadingRecs}</div>}
+      {dailyQuote&&<div className="daily-quote"><div className="quote-label"><Icon name="sparkles"/> {t.dailyQuote}</div><div className="quote-text">"{shortenQuote(dailyQuote.text)}"</div><div className="quote-source">— {dailyQuote.source}</div></div>}
+      {streak>=2&&<div className="streak-bar"><span className="streak-fire"><Icon name="trend"/></span><span className="streak-count">{streak}</span><span className="streak-label">{t.streak}</span></div>}
+      {recommendations.length>0&&<div className="recs-section"><div className="recs-title"><Icon name="sparkles"/> {t.recommendations}</div><div className="recs-grid">{recommendations.map(b=><div key={b.id} className="rec-card" onClick={()=>openBook(b)}><img src={b.cover_url || coverFallback(b.title, b.author)} alt={b.title} loading="lazy" decoding="async" onError={e=>{(e.target as HTMLImageElement).src=coverFallback(b.title, b.author)}}/><div className="rec-card-title">{b.title}</div></div>)}</div></div>}
+      {loadingRecs&&<div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'1.5rem'}}><Icon name="sparkles"/> {t.loadingRecs}</div>}
 
       <div className="section-header">
         <h2 className="section-title">{t.sectionTitle}<br/><span>{t.sectionTitleSpan}</span></h2>
         <div className="section-count">{filteredBooks.length} {t.books}</div>
       </div>
+      <div className="metric-grid library-kpis"><MetricTile value={books.length} label={t.allBooks} icon="library"/><MetricTile value={shelfCount} label={t.myShelf} icon="bookmark"/><MetricTile value={Object.values(shelf).filter(v=>v==='finished').length} label={t.finished} icon="check"/></div>
       <div className="view-tabs">
-        <button className={`view-tab${activeView==='all'?' active':''}`} onClick={()=>setActiveView('all')}>📚 {t.allBooks}</button>
-        <button className={`view-tab${activeView==='shelf'?' active':''}`} onClick={()=>setActiveView('shelf')}>🔖 {t.myShelf}{shelfCount>0?` (${shelfCount})`:''}</button>
+        <button className={`view-tab${activeView==='all'?' active':''}`} onClick={()=>setActiveView('all')}><Icon name="library"/> {t.allBooks}</button>
+        <button className={`view-tab${activeView==='shelf'?' active':''}`} onClick={()=>setActiveView('shelf')}><Icon name="bookmark"/> {t.myShelf}{shelfCount>0?` (${shelfCount})`:''}</button>
       </div>
-      <div className="cat-tabs">{categories.map(c=><button key={c} className={`cat-tab${activeCategory===c?' active':''}`} onClick={()=>setActiveCategory(c)}>{c}</button>)}</div>
-      <div className="search-inside-wrap"><span className="search-inside-icon">🔍</span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
-      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{IS_DEMO?'🚀 App coming soon':t.unlockTitle}</h3><p>{IS_DEMO?"You're exploring an early preview of House of Books":t.unlockDesc}</p></div>{!IS_DEMO&&<button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.startFor}</button>}</div>}
+      <div className="cat-tabs">{categories.map(c=><button key={c} className={`cat-tab${activeCategory===c?' active':''}`} onClick={()=>setActiveCategory(c)} aria-pressed={activeCategory===c}><Icon name={categoryIcon(c)} size={16}/>{c}</button>)}</div>
+      <div className="search-inside-wrap"><span className="search-inside-icon"><Icon name="search"/></span><input className="search-inside-input" placeholder={`${t.searchInside}…`} value={searchInside} onChange={e=>setSearchInside(e.target.value)}/></div>
+      {!isPremium&&<div className="upgrade-banner"><div className="upgrade-text"><h3>{IS_DEMO?<> <Icon name="trend"/> App coming soon </>:t.unlockTitle}</h3><p>{IS_DEMO?"You're exploring an early preview of House of Books":t.unlockDesc}</p></div>{!IS_DEMO&&<button className="btn-premium" onClick={()=>{track('upgrade_click');setShowPaymentModal(true)}}>{t.startFor}</button>}</div>}
 
       {booksError&&(
         <div style={{textAlign:'center',padding:'3rem 1rem',color:'var(--text-muted)'}}>
-          <div style={{fontSize:'2rem',marginBottom:'10px'}}>📡</div>
+          <div style={{fontSize:'2rem',marginBottom:'10px'}}><Icon name="globe"/></div>
           <div style={{marginBottom:'14px'}}>{t.connectionError} The library couldn't load.</div>
-          <button className="btn-premium" style={{padding:'10px 24px'}} onClick={()=>{setBooksError(false);setLoading(true);setBooksRetryNonce(n=>n+1)}}>↻ Try again</button>
+          <button className="btn-premium" style={{padding:'10px 24px'}} onClick={()=>{setBooksError(false);setLoading(true);setBooksRetryNonce(n=>n+1)}}><Icon name="refresh"/> Try again</button>
         </div>
       )}
       {!booksError&&(filteredBooks.length===0
@@ -2798,8 +2821,6 @@ export default function App() {
                 key={book.id}
                 book={localizedCards[index]}
                 index={index}
-                hovered={hovered}
-                setHovered={setHovered}
                 isLocked={!!book.is_premium&&!isPremium&&!isAdmin(authedEmail)}
                 shelfStatus={shelf[book.id]||'none'}
                 onToggleShelf={()=>updateShelf(book.id,(shelf[book.id]&&shelf[book.id]!=='none')?'none':'want')}
@@ -2818,7 +2839,7 @@ export default function App() {
       <style>{buildStyles(theme, lang.dir)}</style>
       <div className="app-bg"/>
       <div className="loading-screen" style={{position: 'relative', zIndex: 10}}>
-        <div className="loading-logo">📚 House of Books</div>
+        <div className="loading-logo"><Icon name="library"/> House of Books</div>
         <div className="loading-bar"/>
       </div>
     </>
@@ -2846,54 +2867,46 @@ export default function App() {
           }
           .landing-title {
             font-size: clamp(2rem, 5vw, 3.2rem);
-            color: #c9a84c;
+            color: #b4c5b4;
             line-height: 1.2;
             margin-bottom: 1rem;
           }
           .landing-sub {
             font-size: 1.1rem;
-            color: #e8e4d9;
+            color: #e7e9e3;
             line-height: 1.7;
             margin-bottom: 2.5rem;
             max-width: 480px;
           }
-          .landing-stat-num { font-size: 2rem; color: #c9a84c; font-weight: 500; }
-          .landing-stat-label { font-size: 10px; color: #9a9080; letter-spacing: .1em; }
+          .landing-stat-num { font-size: 2rem; color: #b4c5b4; font-weight: 500; }
+          .landing-stat-label { font-size: 10px; color: #abb6ae; letter-spacing: .1em; }
           .landing-feature {
             background: rgba(255,255,255,0.04);
-            border: 0.5px solid rgba(201,168,76,0.25);
-            border-left: 3px solid rgba(201,168,76,0.4);
+            border: 0.5px solid rgba(180,197,180,0.25);
+            border-left: 3px solid rgba(180,197,180,0.4);
             border-radius: 14px;
             padding: 1.25rem;
             text-align: left;
           }
-          .landing-feature-title { font-size: 14px; color: #c9a84c; margin-bottom: 6px; }
-          .landing-feature-desc { font-size: 12px; color: #9a9080; line-height: 1.5; }
+          .landing-feature-title { font-size: 14px; color: #b4c5b4; margin-bottom: 6px; }
+          .landing-feature-desc { font-size: 12px; color: #abb6ae; line-height: 1.5; }
         `}</style>
         <div className="app-bg"/>
 
         <div className="landing-wrap">
-          <img src="/logo-icon.png" alt="House of Books" style={{width:'88px',height:'88px',objectFit:'contain',margin:'0 auto 1.25rem',display:'block',filter:'drop-shadow(0 4px 24px rgba(201,168,76,0.35))'}} />
+          <img src="/logo-icon.png" alt="House of Books" style={{width:'88px',height:'88px',objectFit:'contain',margin:'0 auto 1.25rem',display:'block',filter:'drop-shadow(0 4px 24px rgba(180,197,180,0.35))'}} />
 
           <h1 className="landing-title">
             The World's Greatest Books<br/>
-            <em style={{color: '#e8e4d9'}}>Distilled by AI</em>
+            <em style={{color: '#e7e9e3'}}>Distilled by AI</em>
           </h1>
 
           <p className="landing-sub">
-            Read smarter. Explore 302 books with AI summaries,
+            Read smarter. Explore {TOTAL_BOOKS} books with AI summaries,
             audio narration, and an AI companion. Free during beta.
           </p>
 
-          {/* Stats */}
-          <div style={{display:'flex', justifyContent:'center', gap:'3rem', marginBottom:'3rem'}}>
-            {[[String(TOTAL_BOOKS),'BOOKS'],[String(FREE_BOOKS),'FREE'],['5','LANGUAGES']].map(([n,l]) => (
-              <div key={l}>
-                <div className="landing-stat-num">{n}</div>
-                <div className="landing-stat-label">{l}</div>
-              </div>
-            ))}
-          </div>
+          <div className="metric-grid"><MetricTile value={TOTAL_BOOKS} label="BOOKS" icon="library"/><MetricTile value={FREE_BOOKS} label="FREE TO EXPLORE" icon="unlock"/><MetricTile value="5" label="LANGUAGES" icon="globe"/></div>
 
           {/* Buttons */}
           <div style={{display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap', marginBottom:'2.5rem'}}>
@@ -2902,7 +2915,8 @@ export default function App() {
               style={{padding:'14px 32px', fontSize:'15px'}}
               onClick={() => setAppFlow('login')}
             >
-              Start Reading Free →
+              
+              Start Reading Free <Icon name="arrow"/>
             </button>
           </div>
 
@@ -2913,16 +2927,16 @@ export default function App() {
             gap:'16px', maxWidth:'800px', width:'100%'
           }}>
             {[
-              ['📚','302 Books','Classics and modern titles from 15+ countries in 5 languages'],
-              ['✦','AI Book Chat','10 free AI chats per session — ask anything about any book'],
-              ['🎧','Audio Summaries','Listen to any book, narrated by a natural AI voice'],
-              ['⭐','Go Premium','Unlimited AI, full library access, PDF exports and more']
+              ["library",TOTAL_BOOKS+' Books','Classics and modern titles from 15+ countries in 5 languages'],
+              ["sparkles",'AI Book Chat','10 free AI chats per session — ask anything about any book'],
+              ["headphones",'Audio Summaries','Listen to any book, narrated by a natural AI voice'],
+              ["star",'Go Premium','Unlimited AI, full library access, PDF exports and more']
             ].map(([icon, title, desc]) => (
-              <div key={title} className="landing-feature">
-                <div style={{fontSize:'1.5rem', marginBottom:'8px'}}>{icon}</div>
+              <DepthSurface key={title} className="landing-feature">
+                <div style={{fontSize:'1.5rem', marginBottom:'8px'}}><Icon name={icon}/></div>
                 <div className="landing-feature-title">{title}</div>
                 <div className="landing-feature-desc">{desc}</div>
-              </div>
+              </DepthSurface>
             ))}
           </div>
         </div>
@@ -2937,15 +2951,15 @@ export default function App() {
         <style>{buildStyles(theme, lang.dir)}</style>
         <div className="app-bg"/>
         <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
-          <div style={{background:'linear-gradient(180deg, rgba(24,22,30,0.98) 0%, rgba(12,12,17,0.98) 100%)',border:'1px solid rgba(201,168,76,0.28)',borderRadius:'20px',padding:'2.75rem 2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const,boxShadow:'0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
-            <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(201,168,76,0.35))'}} />
-            <h2 style={{fontSize:'1.7rem',color:'#c9a84c',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
+          <div style={{background:'var(--modal-bg)',border:'1px solid rgba(180,197,180,0.28)',borderRadius:'20px',padding:'2.75rem 2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const,boxShadow:'0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
+            <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(180,197,180,0.35))'}} />
+            <h2 style={{fontSize:'1.7rem',color:'#b4c5b4',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
             {loginStatus === 'sent' ? (
               <>
-                <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}>✉️</div>
-                <p style={{color:'#e8e4d9',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
-                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
-                  We sent a code to <span style={{color:'#c9a84c'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
+                <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}><Icon name="mail"/></div>
+                <p style={{color:'#e7e9e3',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
+                <p style={{color:'#abb6ae',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
+                  We sent a code to <span style={{color:'#b4c5b4'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
                 </p>
                 <input
                   type="text"
@@ -2955,24 +2969,24 @@ export default function App() {
                   value={codeInput}
                   onChange={e => { setCodeInput(e.target.value.replace(/\D/g,'')); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
-                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'#e7e9e3',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleVerifyCode}
                   disabled={verifying || !codeInput}
-                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:(verifying||!codeInput)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||!codeInput)?0.6:1}}
+                  style={{width:'100%',padding:'11px',background:'#b4c5b4',border:'none',borderRadius:'10px',color:'#17201d',fontSize:'14px',cursor:(verifying||!codeInput)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||!codeInput)?0.6:1}}
                 >
-                  {verifying ? 'Verifying…' : 'Sign in →'}
+                  {verifying ? 'Verifying…' : <> Sign in <Icon name="arrow"/> </>}
                 </button>
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
                 )}
-                <p style={{color:'#6a6458',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
+                <p style={{color:'#89978f',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
                   The email also has a link — but on a phone, use the code so you stay in the app.
                 </p>
                 <button
                   onClick={() => { setLoginStatus('idle'); setLoginError(''); setCodeInput('') }}
-                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
+                  style={{background:'none',border:'none',color:'#abb6ae',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
                 >
                   ← Use a different email
                 </button>
@@ -2984,21 +2998,21 @@ export default function App() {
                     an account — see signInWithEmail / handleLogin. The code
                     length isn't fixed here: Supabase decides it (this project
                     currently sends 8 digits), and validates server-side. */}
-                <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
+                <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
                   {([['signin','Sign in'],['signup','Sign up']] as const).map(([mode,label]) => (
                     <button
                       key={mode}
                       onClick={() => { setAuthMode(mode); setLoginError('') }}
                       style={{flex:1,padding:'9px',borderRadius:'9px',border:'none',cursor:'pointer',fontFamily:'Georgia,serif',fontSize:'13.5px',transition:'background .18s ease, color .18s ease',
-                        background: authMode===mode ? '#c9a84c' : 'transparent',
-                        color: authMode===mode ? '#0a0a0f' : '#9a9080',
+                        background: authMode===mode ? '#b4c5b4' : 'transparent',
+                        color: authMode===mode ? '#17201d' : '#abb6ae',
                         fontWeight: authMode===mode ? 600 : 400}}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
-                <p style={{color:'#9a9080',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
+                <p style={{color:'#abb6ae',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
                   {authMode === 'signin'
                     ? 'Welcome back — sign in to pick up where you left off.'
                     : 'Create your account — free, no credit card needed.'}
@@ -3013,9 +3027,9 @@ export default function App() {
                   {authMode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
                 </button>
                 <div style={{display:'flex',alignItems:'center',gap:'10px',margin:'14px 0'}}>
-                  <div style={{flex:1,height:'1px',background:'rgba(201,168,76,0.2)'}}/>
-                  <span style={{color:'#6a6458',fontSize:'11px'}}>or</span>
-                  <div style={{flex:1,height:'1px',background:'rgba(201,168,76,0.2)'}}/>
+                  <div style={{flex:1,height:'1px',background:'rgba(180,197,180,0.2)'}}/>
+                  <span style={{color:'#89978f',fontSize:'11px'}}>or</span>
+                  <div style={{flex:1,height:'1px',background:'rgba(180,197,180,0.2)'}}/>
                 </div>
                 <input
                   type="email"
@@ -3023,30 +3037,30 @@ export default function App() {
                   value={emailInput}
                   onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
-                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(201,168,76,0.3)',borderRadius:'10px',color:'#e8e4d9',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'#e7e9e3',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleLogin}
                   disabled={loginStatus === 'sending'}
-                  style={{width:'100%',padding:'11px',background:'#c9a84c',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
+                  style={{width:'100%',padding:'11px',background:'#b4c5b4',border:'none',borderRadius:'10px',color:'#17201d',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
                 >
                   {loginStatus === 'sending'
                     ? 'Sending code…'
-                    : authMode === 'signin' ? 'Email me a sign-in code →' : 'Create my account →'}
+                    : authMode === 'signin' ? "Email me a sign-in code" : "Create my account"}
                 </button>
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
                 )}
-                <p style={{color:'#6a6458',fontSize:'11.5px',marginTop:'12px',lineHeight:1.5}}>
+                <p style={{color:'#89978f',fontSize:'11.5px',marginTop:'12px',lineHeight:1.5}}>
                   {authMode === 'signin' ? (
-                    <>New here? <button onClick={()=>{setAuthMode('signup');setLoginError('')}} style={{background:'none',border:'none',color:'#c9a84c',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Create an account</button></>
+                    <>New here? <button onClick={()=>{setAuthMode('signup');setLoginError('')}} style={{background:'none',border:'none',color:'#b4c5b4',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Create an account</button></>
                   ) : (
-                    <>Already have an account? <button onClick={()=>{setAuthMode('signin');setLoginError('')}} style={{background:'none',border:'none',color:'#c9a84c',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Sign in</button></>
+                    <>Already have an account? <button onClick={()=>{setAuthMode('signin');setLoginError('')}} style={{background:'none',border:'none',color:'#b4c5b4',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Sign in</button></>
                   )}
                 </p>
                 <button
                   onClick={() => setAppFlow('landing')}
-                  style={{background:'none',border:'none',color:'#9a9080',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
+                  style={{background:'none',border:'none',color:'#abb6ae',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
                 >
                   ← Back
                 </button>
@@ -3091,7 +3105,8 @@ export default function App() {
             fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif',
             borderBottom: currentPage === 'library' ? '1px solid var(--gold)' : 'none'
           }}>
-          📚 Library
+          
+          <Icon name="library"/> Library
         </button>
         {isAdmin(authedEmail) && (
           <>
@@ -3103,7 +3118,8 @@ export default function App() {
                 color: currentPage === 'agent' ? 'var(--gold)' : 'var(--text-muted)',
                 fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif'
               }}>
-              🤖 Agents
+              
+              <Icon name="bot"/> Agents
             </button>
             <button
               onClick={() => setCurrentPage('dashboard')}
@@ -3113,7 +3129,8 @@ export default function App() {
                 color: currentPage === 'dashboard' ? 'var(--gold)' : 'var(--text-muted)',
                 fontSize: '13px', cursor: 'pointer', fontFamily: 'Georgia, serif'
               }}>
-              ⚙️ Dashboard
+              
+              <Icon name="settings"/> Dashboard
             </button>
           </>
         )}
@@ -3124,16 +3141,16 @@ export default function App() {
           <input className="search-input" placeholder={t.searchPlaceholder} value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/>
         </div>
         <div style={{position:'relative'}} ref={langMenuRef}>
-          <button className={`icon-btn${showLangMenu?' active':''}`} onClick={()=>{setShowLangMenu(v=>!v);setShowThemeMenu(false);setShowMusicMenu(false)}}>{lang.emoji}</button>
-          {showLangMenu&&<div className="dropdown"><div className="dropdown-title">{t.language}</div>{LANGUAGES.map(l=><button key={l.id} className={`dropdown-item${langId===l.id?' active':''}`} onClick={()=>selectLang(l.id)}><span className="dropdown-item-emoji">{l.emoji}</span>{l.label}{langId===l.id&&<span style={{marginLeft:'auto',color:'var(--gold)',fontSize:'11px'}}>✓</span>}</button>)}</div>}
+          <button className={`icon-btn${showLangMenu?' active':''}`} aria-label={t.language} aria-expanded={showLangMenu} onClick={()=>{setShowLangMenu(v=>!v);setShowThemeMenu(false);setShowMusicMenu(false)}}><Icon name={lang.icon}/></button>
+          {showLangMenu&&<div className="dropdown"><div className="dropdown-title">{t.language}</div>{LANGUAGES.map(l=><button key={l.id} className={`dropdown-item${langId===l.id?' active':''}`} onClick={()=>selectLang(l.id)}><span className="dropdown-item-icon"><Icon name={l.icon}/></span>{l.label}{langId===l.id&&<span style={{marginLeft:'auto',color:'var(--gold)',fontSize:'11px'}}><Icon name="check"/></span>}</button>)}</div>}
         </div>
         <div style={{position:'relative'}} ref={themeMenuRef}>
-          <button className={`icon-btn${showThemeMenu?' active':''}`} onClick={()=>{setShowThemeMenu(v=>!v);setShowMusicMenu(false);setShowLangMenu(false)}}>🎨</button>
-          {showThemeMenu&&<div className="dropdown"><div className="dropdown-title">{t.wallpaper}</div>{THEMES.map(th=><button key={th.id} className={`dropdown-item${themeId===th.id?' active':''}`} onClick={()=>selectTheme(th.id)}><span className="dropdown-item-emoji">{th.emoji}</span>{th.label}{themeId===th.id&&<span style={{marginLeft:'auto',color:'var(--gold)',fontSize:'11px'}}>✓</span>}</button>)}</div>}
+          <button className={`icon-btn${showThemeMenu?' active':''}`} aria-label={t.wallpaper} aria-expanded={showThemeMenu} onClick={()=>{setShowThemeMenu(v=>!v);setShowMusicMenu(false);setShowLangMenu(false)}}><Icon name="pen"/></button>
+          {showThemeMenu&&<div className="dropdown"><div className="dropdown-title">{t.wallpaper}</div>{THEMES.map(th=><button key={th.id} className={`dropdown-item${themeId===th.id?' active':''}`} onClick={()=>selectTheme(th.id)}><span className="dropdown-item-icon"><Icon name={th.icon}/></span>{th.label}{themeId===th.id&&<span style={{marginLeft:'auto',color:'var(--gold)',fontSize:'11px'}}><Icon name="check"/></span>}</button>)}</div>}
         </div>
         <div style={{position:'relative'}} ref={musicMenuRef}>
-          <button className={`icon-btn${(isPlaying||showMusicMenu)?' active':''}`} onClick={()=>{setShowMusicMenu(v=>!v);setShowThemeMenu(false);setShowLangMenu(false)}}>{isPlaying?'🎵':'🎧'}</button>
-          {showMusicMenu&&<div className="dropdown" style={{minWidth:'200px'}}><div className="dropdown-title">{t.music}</div>{TRACKS.map(tr=><button key={tr.id} className={`dropdown-item${currentTrack===tr.id?' active':''}`} onClick={()=>toggleTrack(tr.id)}><span className="dropdown-item-emoji">{tr.emoji}</span>{tr.label}{currentTrack===tr.id&&isPlaying&&<span className="track-playing"><span className="track-bar"/><span className="track-bar"/><span className="track-bar"/></span>}</button>)}<div className="volume-row"><span className="volume-label">{t.vol}</span><input type="range" className="volume-slider" min="0" max="1" step="0.05" value={volume} onChange={e=>setVolume(parseFloat(e.target.value))}/></div></div>}
+          <button className={`icon-btn${(isPlaying||showMusicMenu)?' active':''}`} aria-label={t.music} aria-expanded={showMusicMenu} onClick={()=>{setShowMusicMenu(v=>!v);setShowThemeMenu(false);setShowLangMenu(false)}}>{isPlaying?<> <Icon name="music"/> </>:<> <Icon name="headphones"/> </>}</button>
+          {showMusicMenu&&<div className="dropdown" style={{minWidth:'200px'}}><div className="dropdown-title">{t.music}</div>{TRACKS.map(tr=><button key={tr.id} className={`dropdown-item${currentTrack===tr.id?' active':''}`} onClick={()=>toggleTrack(tr.id)}><span className="dropdown-item-icon"><Icon name={tr.icon}/></span>{tr.label}{currentTrack===tr.id&&isPlaying&&<span className="track-playing"><span className="track-bar"/><span className="track-bar"/><span className="track-bar"/></span>}</button>)}<div className="volume-row"><span className="volume-label">{t.vol}</span><input type="range" className="volume-slider" min="0" max="1" step="0.05" value={volume} onChange={e=>setVolume(parseFloat(e.target.value))}/></div></div>}
         </div>
         {/* Mobile search toggle button — only visible on mobile */}
         <button
@@ -3142,7 +3159,8 @@ export default function App() {
           style={{display: 'none'}} // shown via CSS media query
           title="Search"
         >
-          🔍
+          
+          <Icon name="search"/>
         </button>
         {userEmail && (
           <button
@@ -3151,9 +3169,9 @@ export default function App() {
             style={{
               width: '32px', height: '32px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--gold), #8a6520)',
+              background: 'linear-gradient(135deg, var(--gold), #899d8d)',
               border: 'none',
-              color: '#0a0a0f',
+              color: '#17201d',
               fontSize: '12px',
               fontWeight: '500',
               fontFamily: 'Georgia, serif',
@@ -3304,9 +3322,9 @@ export default function App() {
     {/* PAYPAL RETURN STATUS TOAST */}
     {paypalReturnStatus !== 'idle' && (
       <div style={{position:'fixed',bottom:'20px',left:'50%',transform:'translateX(-50%)',zIndex:400,background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'10px',padding:'12px 20px',fontFamily:'Georgia,serif',fontSize:'13px',color: paypalReturnStatus==='error' ? '#e07a7a' : 'var(--gold)'}}>
-        {paypalReturnStatus === 'confirming' && '⏳ Confirming your PayPal payment…'}
-        {paypalReturnStatus === 'done' && '✅ Premium unlocked — welcome aboard!'}
-        {paypalReturnStatus === 'error' && '⚠️ Could not confirm payment. Contact support if you were charged.'}
+        {paypalReturnStatus === 'confirming' && "Confirming your PayPal payment…"}
+        {paypalReturnStatus === 'done' && "Premium unlocked — welcome aboard!"}
+        {paypalReturnStatus === 'error' && "Could not confirm payment. Contact support if you were charged."}
       </div>
     )}
 
@@ -3330,39 +3348,20 @@ export default function App() {
               width:'52px', height:'52px', borderRadius:'50%',
               background:'linear-gradient(135deg, var(--gold), #8a6520)',
               display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:'18px', fontWeight:'500', color:'#0a0a0f'
+              fontSize:'18px', fontWeight:'500', color:'#17201d'
             }}>
               {userEmail.slice(0,2).toUpperCase()}
             </div>
             <div>
               <div style={{fontSize:'15px', fontWeight:'500', color:'var(--text)'}}>
-                {isAdmin(authedEmail) ? '👑 Admin' : isPremium ? '⭐ Premium' : isTrial ? '🎯 Trial' : '📚 Reader'}
+                {isAdmin(authedEmail) ? <> <Icon name="crown"/> Admin </> : isPremium ? "Premium" : isTrial ? "Trial" : "Reader"}
               </div>
               <div style={{fontSize:'12px', color:'var(--text-muted)', marginTop:'2px'}}>{userEmail}</div>
             </div>
           </div>
 
           {/* Stats */}
-          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'1.5rem'}}>
-            <div style={{background:'var(--surface)', borderRadius:'10px', padding:'12px', textAlign:'center', border:'0.5px solid var(--gold-border)'}}>
-              <div style={{fontSize:'20px', fontWeight:'500', color:'var(--gold)'}}>
-                {Object.values(shelf).filter(v => v && v !== 'none').length}
-              </div>
-              <div style={{fontSize:'10px', color:'var(--text-muted)', marginTop:'3px', letterSpacing:'.06em'}}>SHELF</div>
-            </div>
-            <div style={{background:'var(--surface)', borderRadius:'10px', padding:'12px', textAlign:'center', border:'0.5px solid var(--gold-border)'}}>
-              <div style={{fontSize:'20px', fontWeight:'500', color:'var(--gold)'}}>
-                {Object.values(shelf).filter(v => v === 'finished').length}
-              </div>
-              <div style={{fontSize:'10px', color:'var(--text-muted)', marginTop:'3px', letterSpacing:'.06em'}}>FINISHED</div>
-            </div>
-            <div style={{background:'var(--surface)', borderRadius:'10px', padding:'12px', textAlign:'center', border:'0.5px solid var(--gold-border)'}}>
-              <div style={{fontSize:'20px', fontWeight:'500', color:'var(--gold)'}}>
-                {streak}
-              </div>
-              <div style={{fontSize:'10px', color:'var(--text-muted)', marginTop:'3px', letterSpacing:'.06em'}}>STREAK</div>
-            </div>
-          </div>
+          <div className="metric-grid"><MetricTile value={shelfCount} label="SHELF" icon="bookmark"/><MetricTile value={Object.values(shelf).filter(v=>v==='finished').length} label="FINISHED" icon="check"/><MetricTile value={streak} label="STREAK" icon="trend"/></div>
 
           {/* AI chats remaining */}
           {!isPremium && !isAdmin(authedEmail) && (
@@ -3382,11 +3381,12 @@ export default function App() {
           {/* Admin badge */}
           {isAdmin(authedEmail) && (
             <div style={{
-              background:'rgba(201,168,76,0.1)', border:'1px solid var(--gold-border)',
+              background:'rgba(180,197,180,0.1)', border:'1px solid var(--gold-border)',
               borderRadius:'10px', padding:'12px 14px', marginBottom:'1rem',
               fontSize:'12px', color:'var(--gold)', textAlign:'center', letterSpacing:'.06em'
             }}>
-              👑 ADMIN — Unlimited access to all features
+              
+              <Icon name="crown"/> ADMIN — Unlimited access to all features
             </div>
           )}
 
@@ -3401,7 +3401,8 @@ export default function App() {
                   fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                   textAlign:'left', paddingLeft:'16px'
                 }}>
-                ⚙️ Admin Dashboard
+                
+                <Icon name="settings"/> Admin Dashboard
               </button>
             )}
             {isAdmin(authedEmail) && (
@@ -3413,7 +3414,8 @@ export default function App() {
                   fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                   textAlign:'left', paddingLeft:'16px'
                 }}>
-                🤖 AI Agents
+                
+                <Icon name="bot"/> AI Agents
               </button>
             )}
             {/* Premium subscribers: cancel + refund info */}
@@ -3429,8 +3431,8 @@ export default function App() {
                     textAlign:'left', paddingLeft:'16px', marginTop:'4px', opacity: cancelling ? 0.6 : 1
                   }}>
                   {cancelling
-                    ? (isPaidSubscriber ? '⏳ Cancelling…' : '⏳ Turning off…')
-                    : (isPaidSubscriber ? '✕ Cancel subscription' : '✕ Turn off free access')}
+                    ? (isPaidSubscriber ? "Cancelling…" : "Turning off…")
+                    : (isPaidSubscriber ? "Cancel subscription" : "Turn off free access")}
                 </button>
                 {/* Refunds and billing periods only mean something to someone who
                     actually paid. Free access came from a code — say that instead. */}
@@ -3458,7 +3460,8 @@ export default function App() {
                 fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                 textAlign:'left', paddingLeft:'16px', marginTop:'4px'
               }}>
-              💬 Send Feedback
+              
+              <Icon name="chat"/> Send Feedback
             </button>
             {canInstall && (
               <button
@@ -3469,7 +3472,8 @@ export default function App() {
                   fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                   textAlign:'left', paddingLeft:'16px', marginTop:'4px'
                 }}>
-                ⬇️ Install App
+                
+                <Icon name="download"/> Install App
               </button>
             )}
             <button
@@ -3480,7 +3484,8 @@ export default function App() {
                 fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                 textAlign:'left', paddingLeft:'16px', marginTop:'4px'
               }}>
-              🚪 Log Out
+              
+              <Icon name="logout"/> Log Out
             </button>
             <button
               onClick={deleteAccount}
@@ -3490,7 +3495,8 @@ export default function App() {
                 fontSize:'13px', cursor:'pointer', fontFamily:'Georgia, serif',
                 textAlign:'left', paddingLeft:'16px'
               }}>
-              🗑️ Delete my account
+              
+              <Icon name="trash"/> Delete my account
             </button>
           </div>
 
@@ -3522,12 +3528,12 @@ export default function App() {
     {showFeedbackModal && (
       <div className="email-modal-wrap" onClick={e=>{if(e.target===e.currentTarget){setShowFeedbackModal(false);setFeedbackStatus('idle')}}}>
         <div style={{background:'var(--modal-bg)',border:'1px solid var(--gold-border)',borderRadius:'12px',padding:'2rem',maxWidth:'420px',width:'100%'}}>
-          <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.4rem',color:'var(--gold)',marginBottom:'8px'}}>💬 Send Feedback</h3>
+          <h3 style={{fontFamily:'Georgia,serif',fontSize:'1.4rem',color:'var(--gold)',marginBottom:'8px'}}><Icon name="chat"/> Send Feedback</h3>
           <p style={{color:'var(--text-muted)',fontSize:'13px',marginBottom:'1.2rem',lineHeight:'1.6'}}>
             Found a bug, missing a book, or have an idea? We read every message.
           </p>
           {feedbackStatus==='sent' ? (
-            <div style={{textAlign:'center',padding:'1.5rem 0',color:'var(--gold)',fontFamily:'Georgia,serif'}}>✦ Thank you — feedback received!</div>
+            <div style={{textAlign:'center',padding:'1.5rem 0',color:'var(--gold)',fontFamily:'Georgia,serif'}}><Icon name="sparkles"/> Thank you — feedback received!</div>
           ) : (
             <>
               <select value={feedbackCategory} onChange={e=>setFeedbackCategory(e.target.value)}
@@ -3545,7 +3551,8 @@ export default function App() {
                 {[1,2,3,4,5].map(n=>(
                   <button key={n} onClick={()=>setFeedbackRating(feedbackRating===n?null:n)}
                     style={{background:'none',border:'none',cursor:'pointer',fontSize:'22px',opacity:feedbackRating&&n<=feedbackRating?1:0.3,padding:0}}>
-                    ★
+                    
+                    <Icon name="star" style={{color:'currentColor'}}/>
                   </button>
                 ))}
               </div>

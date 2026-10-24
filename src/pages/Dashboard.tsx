@@ -1,3 +1,5 @@
+import { DepthSurface, StatSculpture } from '../components/DepthSurface'
+import { Icon } from '../components/Icon'
 import { useState, useEffect } from "react"
 import { getAggregatedInsights } from '../lib/feedbackCollector'
 import { motion, AnimatePresence } from "framer-motion"
@@ -10,17 +12,17 @@ import { supabase } from "../lib/supabase"
 // Powered by NVIDIA AI
 // ═════════════════════════════════════════════════════════════════
 
-const G    = "#c9a84c"
-const GL   = "#e8c97a"
-const GD   = "rgba(201,168,76,0.08)"
+const G    = "#b4c5b4"
+const GL   = "#d4ddcb"
+const GD   = "rgba(180,197,180,0.08)"
 const SF   = "rgba(255,255,255,0.08)"
-const GB   = "rgba(201,168,76,0.15)"
-const BG   = "#0f0e0b"
-const SURFACE = "#1a1813"
-const TX   = "#f0e8d8"
-const TM   = "rgba(240,232,216,0.5)"
-const RED  = "#ff6b6b"
-const GRN  = "#4ac878"
+const GB   = "rgba(180,197,180,0.15)"
+const BG   = "#171d20"
+const SURFACE = "#252e31"
+const TX   = "#e7e9e3"
+const TM   = "rgba(231,233,227,0.5)"
+const RED  = "#ceaaa4"
+const GRN  = "#a5c4aa"
 const BORDER = "rgba(255,255,255,0.08)"
 
 // ── Shared helpers ─────────────────────────────────────────────────
@@ -52,7 +54,7 @@ function Title({ icon, title, sub }: TitleProps) {
   return (
     <div style={{ marginBottom:20 }}>
       <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:3 }}>
-        <span style={{ fontSize:18 }}>{icon}</span>
+        <span style={{ fontSize:18 }}><Icon name={icon}/></span>
         <h2 style={{ fontFamily:"Georgia,serif", fontSize:"1.2rem", color:G, fontWeight:700, margin:0 }}>{title}</h2>
       </div>
       {sub && <p style={{ fontSize:11, color:TM, margin:0, paddingLeft:28 }}>{sub}</p>}
@@ -63,18 +65,12 @@ function Title({ icon, title, sub }: TitleProps) {
 interface MetricProps {
   label: string;
   value: string;
-  sub?: string;
+  sub?: React.ReactNode;
   color?: string;
   large?: boolean;
 }
 function Metric({ label, value, sub, color=G, large=false }: MetricProps) {
-  return (
-    <div style={{ background:GD, border:`1px solid ${GB}`, borderRadius:9, padding:large?"16px 18px":"12px 14px", textAlign:"center" }}>
-      <div style={{ fontFamily:"Georgia,serif", fontSize:large?"1.9rem":"1.4rem", color, fontWeight:700, lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:10, color:TM, marginTop:3 }}>{label}</div>
-      {sub && <div style={{ fontSize:9, color, marginTop:2, opacity:.75 }}>{sub}</div>}
-    </div>
-  )
+  return <DepthSurface className="metric-tile" tabIndex={0} aria-label={label+': '+value} style={{padding:large?'18px':'14px',flexWrap:'wrap'}}><StatSculpture icon={/user/i.test(label)?'users':/revenue|MRR|ARR|LTV/i.test(label)?'finance':'chart'}/><div className="metric-copy"><div className="metric-value" style={{color,fontSize:large?'1.9rem':'1.4rem'}}>{value}</div><div className="metric-label">{label}</div>{sub&&<div className="metric-sub">{sub}</div>}</div></DepthSurface>
 }
 
 interface FieldProps {
@@ -127,10 +123,10 @@ interface AIBtnProps {
   label?: string;
   small?: boolean;
 }
-function AIBtn({ onClick, loading, label="✦ Analyze with AI", small=false }: AIBtnProps) {
+function AIBtn({ onClick, loading, label="Analyze with AI", small=false }: AIBtnProps) {
   return (
     <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:.98 }} onClick={onClick} disabled={loading}
-      style={{ padding:small?"6px 14px":"9px 20px", background:loading?"rgba(201,168,76,0.12)":`linear-gradient(135deg,${G},${GL})`, color:loading?G:"#06050a", border:loading?`1px solid ${GB}`:"none", borderRadius:8, fontSize:small?10:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", cursor:loading?"wait":"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"Georgia,serif", flexShrink:0 }}>
+      style={{ padding:small?"6px 14px":"9px 20px", background:loading?"rgba(180,197,180,0.12)":`linear-gradient(135deg,${G},${GL})`, color:loading?G:"#06050a", border:loading?`1px solid ${GB}`:"none", borderRadius:8, fontSize:small?10:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", cursor:loading?"wait":"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"Georgia,serif", flexShrink:0 }}>
       {loading ? <><motion.span animate={{ rotate:360 }} transition={{ duration:.8, repeat:Infinity, ease:"linear" }} style={{ display:"inline-block" }}>⟳</motion.span>Analyzing…</> : label}
     </motion.button>
   )
@@ -144,14 +140,14 @@ function AIOut({ text, loading }: AIOutProps) {
   if (!text && !loading) return null
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
-      style={{ marginTop:14, background:"rgba(201,168,76,0.04)", border:`1px solid rgba(201,168,76,0.14)`, borderRadius:10, padding:"14px 16px" }}>
+      style={{ marginTop:14, background:"rgba(180,197,180,0.04)", border:`1px solid rgba(180,197,180,0.14)`, borderRadius:10, padding:"14px 16px" }}>
       <div style={{ fontSize:8, color:G, letterSpacing:".14em", textTransform:"uppercase", marginBottom:9, display:"flex", alignItems:"center", gap:5 }}>
         <span style={{ width:5, height:5, borderRadius:"50%", background:GRN, display:"inline-block", animation:"pulse 2s infinite" }}/>
         NVIDIA AI Analysis
       </div>
       {loading
         ? <div style={{ display:"flex", gap:4 }}>{[0,1,2].map(i=>(<motion.div key={i} style={{ width:6, height:6, borderRadius:"50%", background:G }} animate={{ y:[0,-5,0], opacity:[.4,1,.4] }} transition={{ duration:.8, repeat:Infinity, delay:i*.18 }}/>))}</div>
-        : <div style={{ fontSize:13, color:"rgba(232,228,217,0.88)", lineHeight:1.75, whiteSpace:"pre-wrap" }}>{text}</div>
+        : <div style={{ fontSize:13, color:"rgba(231,233,227,0.88)", lineHeight:1.75, whiteSpace:"pre-wrap" }}>{text}</div>
       }
     </motion.div>
   )
@@ -163,7 +159,7 @@ function CopyBtn({ text }: { text: string }) {
   const copy = () => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(()=>setCopied(false),2000) }
   return (
     <button onClick={copy} style={{ padding:"4px 10px", background:"transparent", border:`1px solid ${GB}`, borderRadius:5, fontSize:9, color:copied?GRN:TM, cursor:"pointer", letterSpacing:".07em", textTransform:"uppercase", transition:"all .2s" }}>
-      {copied?"✓ Copied":"Copy"}
+      {copied?<> <Icon name="check"/> Copied </>:"Copy"}
     </button>
   )
 }
@@ -184,7 +180,7 @@ function RevenueModule() {
   const analyze=async()=>{ setLoad(true);setAi("")
     try{ setAi(await askAI(`House of Books metrics: Free users:${m.freeUsers}, Conv:${m.conv}%, Premium:${prem}, MRR:$${mrr}, ARR:$${arr}, LTV:$${ltv}, CAC:$${m.cac}, LTV:CAC:${ltvCac}x, Churn:${m.churn}%/mo, Payback:${pb}mo, Net MRR:$${netMRR}. What's healthy, alarming, and 3 highest-leverage moves to grow MRR in 90 days? Be specific.`)) }catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
   return (<div>
-    <Title icon="💰" title="Revenue Calculator" sub="Model MRR, ARR, LTV and get AI diagnosis of your financial health" />
+    <Title icon="finance" title="Revenue Calculator" sub="Model MRR, ARR, LTV and get AI diagnosis of your financial health" />
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
       <Card>
         <div style={{ fontSize:9, color:G, letterSpacing:".12em", textTransform:"uppercase", marginBottom:12 }}>Your Metrics</div>
@@ -203,8 +199,8 @@ function RevenueModule() {
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
           <Metric label="LTV" value={`$${ltv}`} />
-          <Metric label="LTV:CAC" value={`${ltvCac}x`} sub={parseFloat(ltvCac)>=3?"✓ Healthy":"⚠ Low"} color={parseFloat(ltvCac)>=3?GRN:RED} />
-          <Metric label="Payback" value={`${pb}mo`} sub={pb<=6?"✓ Fast":"⚠ Slow"} color={pb<=6?GRN:RED} />
+          <Metric label="LTV:CAC" value={`${ltvCac}x`} sub={parseFloat(ltvCac)>=3?<> <Icon name="check"/> Healthy </>:<> <Icon name="warning"/> Low </>} color={parseFloat(ltvCac)>=3?GRN:RED} />
+          <Metric label="Payback" value={`${pb}mo`} sub={pb<=6?<> <Icon name="check"/> Fast </>:<> <Icon name="warning"/> Slow </>} color={pb<=6?GRN:RED} />
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           <Metric label="Premium Users" value={prem.toString()} sub={`${m.conv}% of ${m.freeUsers}`} />
@@ -229,7 +225,7 @@ function PricingModule() {
   const analyze=async()=>{ setLoad(true);setAi("")
     try{ setAi(await askAI(`House of Books at $${cur}/month. Competitors: Blinkist $15.99, Shortform $24.99, getAbstract $19.99. HoB unique: AI chat per book, community, 5 languages, mobile PWA. Is $${cur} right? Optimal monthly vs yearly strategy? Should we add a higher tier? How to frame price vs Blinkist and Shortform? Give specific price recommendations.`,"You are a SaaS pricing expert. Be direct.")) }catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
   return (<div>
-    <Title icon="🏷️" title="Pricing Optimizer" sub="Model price scenarios vs competitors and get AI pricing strategy" />
+    <Title icon="tag" title="Pricing Optimizer" sub="Model price scenarios vs competitors and get AI pricing strategy" />
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
       <Card>
         <div style={{ fontSize:9, color:G, letterSpacing:".12em", textTransform:"uppercase", marginBottom:14 }}>Competitor Price Map</div>
@@ -278,9 +274,9 @@ function GrowthModule() {
   const s=(k: string, v: any)=>setM(p=>({...p,[k]:v}))
   const gap=m.goal-m.mrr, newPrem=Math.ceil(gap/10), newFree=Math.ceil(newPrem/0.04)
   const analyze=async()=>{ setLoad(true);setAi("")
-    try{ setAi(await askAI(`Build a specific 90-day growth plan for House of Books. Current MRR:$${m.mrr}→Goal:$${m.goal}. Free users:${m.users}. Team:${m.team}. Budget:$${m.budget}/mo. Challenge:${m.challenge}. Strength:${m.strength}. Product: AI book summaries+community, $10/month, 210+ books, 5 languages. Give: Month 1/2/3 with 3 specific actions each + expected outcomes. #1 week-1 action. Top 3 things NOT to do.`,"You are a growth advisor for bootstrapped SaaS founders. Be specific with channels, tactics, and expected numbers.")) }catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
+    try{ setAi(await askAI(`Build a specific 90-day growth plan for House of Books. Current MRR:$${m.mrr}Goal:$${m.goal}. Free users:${m.users}. Team:${m.team}. Budget:$${m.budget}/mo. Challenge:${m.challenge}. Strength:${m.strength}. Product: AI book summaries+community, $10/month, 210+ books, 5 languages. Give: Month 1/2/3 with 3 specific actions each + expected outcomes. #1 week-1 action. Top 3 things NOT to do.`,"You are a growth advisor for bootstrapped SaaS founders. Be specific with channels, tactics, and expected numbers.")) }catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
   return (<div>
-    <Title icon="🚀" title="90-Day Growth Strategy" sub="Input your state and goal — AI builds a week-by-week action plan" />
+    <Title icon="trend" title="90-Day Growth Strategy" sub="Input your state and goal — AI builds a week-by-week action plan" />
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
       <Card>
         <div style={{ fontSize:9, color:G, letterSpacing:".12em", textTransform:"uppercase", marginBottom:12 }}>Your Current State</div>
@@ -301,7 +297,7 @@ function GrowthModule() {
             { label:"New Free Users Needed", value:newFree.toLocaleString(), sub:"at 4% conversion" },
             { label:"Daily New Free Users", value:Math.ceil(newFree/90), sub:"to hit goal" },
           ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<3?`1px solid rgba(201,168,76,0.07)`:"none" }}>
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<3?`1px solid rgba(180,197,180,0.07)`:"none" }}>
               <span style={{ fontSize:11, color:TM }}>{item.label}</span>
               <div style={{ textAlign:"right" }}>
                 <div style={{ fontSize:13, color:G, fontWeight:700 }}>{item.value}</div>
@@ -330,7 +326,7 @@ function FeatureGapModule() {
   const analyze=async()=>{ setLoad(true);setAi("")
     try{ setAi(await askAI(`House of Books feature gap analysis. HAS: ${FEATS.filter((_,i)=>CF["House of Books"][i]).join(", ")}. MISSING: ${missing.join(", ")}. UNIQUE (no competitor has): ${unique.join(", ")}. Blinkist has audio, multi-language. Goodreads has community but no summaries. Questions: 1) Which missing features have highest revenue impact? Rank top 3. 2) Which unique features to double down on in marketing? 3) What new feature could we build that NO competitor has? 4) Build order for missing features over 6 months.`)) }catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
   return (<div>
-    <Title icon="⚔️" title="Feature Gap Radar" sub="Every feature across all competitors — find gaps and moats" />
+    <Title icon="shield" title="Feature Gap Radar" sub="Every feature across all competitors — find gaps and moats" />
     <Card style={{ marginBottom:14, overflow:"auto" }}>
       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
         <thead><tr>
@@ -339,11 +335,11 @@ function FeatureGapModule() {
         </tr></thead>
         <tbody>{FEATS.map((f,fi)=>(
           <tr key={fi} onMouseEnter={()=>setHov(fi)} onMouseLeave={()=>setHov(null)} style={{ background:hov===fi?GD:"transparent", transition:"background .15s" }}>
-            <td style={{ padding:"8px 12px", color:TX, fontSize:11, borderBottom:`1px solid rgba(201,168,76,0.05)` }}>{f}</td>
+            <td style={{ padding:"8px 12px", color:TX, fontSize:11, borderBottom:`1px solid rgba(180,197,180,0.05)` }}>{f}</td>
             {names.map(n=>{
               const has=CF[n][fi], isHoB=n==="House of Books"
-              return <td key={n} style={{ textAlign:"center", padding:"8px 8px", borderBottom:`1px solid rgba(201,168,76,0.05)` }}>
-                {has?<span style={{ fontSize:13, color:isHoB?GRN:"rgba(74,200,120,0.55)" }}>✓</span>:<span style={{ fontSize:11, color:isHoB?RED:"rgba(255,255,255,0.08)" }}>—</span>}
+              return <td key={n} style={{ textAlign:"center", padding:"8px 8px", borderBottom:`1px solid rgba(180,197,180,0.05)` }}>
+                {has?<span style={{ fontSize:13, color:isHoB?GRN:"rgba(74,200,120,0.55)" }}><Icon name="check"/></span>:<span style={{ fontSize:11, color:isHoB?RED:"rgba(255,255,255,0.08)" }}>—</span>}
               </td>
             })}
           </tr>
@@ -372,7 +368,7 @@ function PositioningModule() {
   const analyze=async()=>{ setLoad(true);setAi("")
     try{ setAi(await askAI(`Positioning strategy for House of Books ($10/mo AI book summaries+community). Audience:${m.audience}. Pain:${m.pain}. Unique value:${m.value}. Channels:${m.channels}. Competitors: Blinkist($15.99 no AI), Shortform($24.99 no AI), Goodreads(free no summaries). Deliver: 1) One-line positioning statement 2) Detailed ICP (demographics, psychographics, job title) 3) Top 3 landing page headline options with subheadlines 4) Best 3 channels and why 5) Brand voice: 5 adjectives + what to avoid 6) How to frame price vs Blinkist specifically`,"You are a positioning strategist for B2C subscription products. Be specific.")) }catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
   return (<div>
-    <Title icon="🎯" title="Market Positioning" sub="Define your ICP, messaging, and competitive moat with AI strategy" />
+    <Title icon="target" title="Market Positioning" sub="Define your ICP, messaging, and competitive moat with AI strategy" />
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16 }}>
       <Card>
         <div style={{ fontSize:9, color:G, letterSpacing:".12em", textTransform:"uppercase", marginBottom:12 }}>Positioning Inputs</div>
@@ -388,11 +384,11 @@ function PositioningModule() {
           <div style={{ position:"absolute", inset:0 }}>
             <div style={{ position:"absolute", top:"50%", left:18, right:0, height:1, background:GB }}/>
             <div style={{ position:"absolute", left:"50%", top:0, bottom:18, width:1, background:GB }}/>
-            <div style={{ position:"absolute", bottom:6, left:"50%", transform:"translateX(-50%)", fontSize:8, color:TM, textTransform:"uppercase", letterSpacing:".08em", whiteSpace:"nowrap" }}>Features (Basic → Advanced)</div>
-            <div style={{ position:"absolute", top:"50%", left:2, transform:"translateY(-50%) rotate(-90deg)", fontSize:8, color:TM, textTransform:"uppercase", letterSpacing:".06em", transformOrigin:"center", whiteSpace:"nowrap" }}>Price (Low→High)</div>
-            {[{n:"Blinkist",x:30,y:55},{n:"Shortform",x:32,y:22},{n:"getAbstract",x:22,y:18},{n:"Goodreads",x:55,y:88},{n:"HoB ✦",x:74,y:58,h:true}].map(d=>(
+            <div style={{ position:"absolute", bottom:6, left:"50%", transform:"translateX(-50%)", fontSize:8, color:TM, textTransform:"uppercase", letterSpacing:".08em", whiteSpace:"nowrap" }}>Features (Basic <Icon name="arrow"/> Advanced)</div>
+            <div style={{ position:"absolute", top:"50%", left:2, transform:"translateY(-50%) rotate(-90deg)", fontSize:8, color:TM, textTransform:"uppercase", letterSpacing:".06em", transformOrigin:"center", whiteSpace:"nowrap" }}>Price (Low<Icon name="arrow"/>High)</div>
+            {[{n:"Blinkist",x:30,y:55},{n:"Shortform",x:32,y:22},{n:"getAbstract",x:22,y:18},{n:"Goodreads",x:55,y:88},{n:"HoB",x:74,y:58,h:true}].map(d=>(
               <div key={d.n} style={{ position:"absolute", left:`${d.x}%`, top:`${d.y}%`, transform:"translate(-50%,-50%)" }}>
-                <div style={{ width:d.h?13:9, height:d.h?13:9, borderRadius:"50%", background:d.h?G:"rgba(232,228,217,0.25)", border:`2px solid ${d.h?GL:"rgba(232,228,217,0.35)"}`, boxShadow:d.h?`0 0 10px ${G}55`:"none" }}/>
+                <div style={{ width:d.h?13:9, height:d.h?13:9, borderRadius:"50%", background:d.h?G:"rgba(231,233,227,0.25)", border:`2px solid ${d.h?GL:"rgba(231,233,227,0.35)"}`, boxShadow:d.h?`0 0 10px ${G}55`:"none" }}/>
                 <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)", fontSize:d.h?9:7.5, color:d.h?G:TM, whiteSpace:"nowrap", fontWeight:d.h?700:400, marginTop:2 }}>{d.n}</div>
               </div>
             ))}
@@ -420,15 +416,15 @@ function ContentModule() {
   }
   const analyze=async()=>{ setLoad(true);setAi(""); try{setAi(await askAI(prompts[tab],"You are a content strategist for subscription edtech apps. Be specific with titles, formats, and real tactics."))}catch(e){setAi(`Error: ${(e as Error).message}`)} setLoad(false) }
   return (<div>
-    <Title icon="✍️" title="Content Strategy" sub="Generate SEO, social, and community content strategies" />
+    <Title icon="pen" title="Content Strategy" sub="Generate SEO, social, and community content strategies" />
     <div style={{ display:"flex", gap:7, marginBottom:14, flexWrap:"wrap" }}>
-      {[{id:"seo",l:"🔍 SEO & Blog"},{id:"social",l:"📱 Social Media"},{id:"community",l:"👥 Community"}].map(t=>(
+      {[{id:"seo",l:"SEO & Blog"},{id:"social",l:"Social Media"},{id:"community",l:"Community"}].map(t=>(
         <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:"7px 15px", borderRadius:18, fontSize:11, cursor:"pointer", background:tab===t.id?GD:SF, border:`1px solid ${tab===t.id?G:GB}`, color:tab===t.id?G:TM, transition:"all .2s" }}>{t.l}</button>
       ))}
     </div>
     <Card style={{ marginBottom:14 }}>
       <Field label="Niche / Topic Focus" value={niche} onChange={(v: string)=>setNiche(v)} type="text" hint="e.g. stoicism, startup founders, personal finance, productivity" />
-      <AIBtn onClick={analyze} loading={load} label={`✦ Generate ${tab==="seo"?"SEO Strategy":tab==="social"?"Social Strategy":"Community Strategy"}`} />
+      <AIBtn onClick={analyze} loading={load} label={` Generate ${tab==="seo"?"SEO Strategy":tab==="social"?"Social Strategy":"Community Strategy"}`} />
     </Card>
     <AIOut text={ai} loading={load} />
   </div>)
@@ -455,7 +451,7 @@ interface MarketingTask {
 
 const MARKETING_TASKS: MarketingTask[] = [
   {
-    id:"landing",     icon:"🏠", label:"Landing Page Copy",
+    id:"landing",     icon:"home", label:"Landing Page Copy",
     desc:"Full hero, features, pricing, FAQ, CTA sections — ready to paste",
     fields:[
       { key:"angle", label:"Main angle / hook", default:"The only book app with AI you can actually talk to", type:"text" },
@@ -477,13 +473,13 @@ Write ALL sections:
 Use persuasive copywriting. Make every word earn its place.`,
   },
   {
-    id:"email_welcome", icon:"📧", label:"Welcome Email Sequence",
+    id:"email_welcome", icon:"mail", label:"Welcome Email Sequence",
     desc:"5-email onboarding sequence to convert free users to premium",
     fields:[
       { key:"userName", label:"Personalization token", default:"{{first_name}}", type:"text" },
       { key:"trialLength", label:"Free books count", default:"63", type:"text" },
     ],
-    prompt:(f)=>`Write a 5-email welcome sequence for House of Books. Free tier has ${f.trialLength} free books. Goal: convert free → premium.
+    prompt:(f)=>`Write a 5-email welcome sequence for House of Books. Free tier has ${f.trialLength} free books. Goal: convert free  premium.
 
 EMAIL 1 (Sent immediately - Welcome):
 - Subject line (A/B test 2 options)
@@ -508,7 +504,7 @@ EMAIL 5 (Day 14 - Last chance / reframe):
 For each: subject line, preview text, full body, CTA button text. Make each feel human, not robotic.`,
   },
   {
-    id:"ads",          icon:"📣", label:"Ad Copy (Google + Meta)",
+    id:"ads",          icon:"bell", label:"Ad Copy (Google + Meta)",
     desc:"Search ads, display ads, and Meta/Instagram ad variations",
     fields:[
       { key:"budget", label:"Target audience for ads", default:"25-40 year olds interested in books, self-improvement, business", type:"text" },
@@ -533,7 +529,7 @@ Full script with hook in first 5 seconds before skip button
 Include: character counts where relevant, emoji usage recommendations, best image/video style for each.`,
   },
   {
-    id:"social_posts", icon:"📱", label:"Social Media Posts",
+    id:"social_posts", icon:"phone", label:"Social Media Posts",
     desc:"10 ready-to-post tweets, 3 LinkedIn posts, 3 Instagram captions",
     fields:[
       { key:"topic",    label:"Topic / book to feature", default:"Atomic Habits by James Clear", type:"text" },
@@ -562,7 +558,7 @@ THREADS (3 thread starters):
 Opening tweet + 5 follow-up tweets per thread. Topic: book insights that changed how people think.`,
   },
   {
-    id:"outreach",      icon:"🤝", label:"Community Outreach Scripts",
+    id:"outreach",      icon:"users", label:"Community Outreach Scripts",
     desc:"Reddit posts, Discord messages, Hacker News Show HN, Product Hunt",
     fields:[
       { key:"milestone", label:"Current milestone / story", default:"Solo-built AI book platform with 210 books in 3 months", type:"text" },
@@ -592,7 +588,7 @@ TWITTER COLD DM to book influencers:
 3 templates for different influencer types. Each under 280 chars.`,
   },
   {
-    id:"seo_article",   icon:"📝", label:"Full SEO Article",
+    id:"seo_article",   icon:"pen", label:"Full SEO Article",
     desc:"Complete 1500-word SEO-optimized blog post ready to publish",
     fields:[
       { key:"keyword", label:"Target keyword", default:"best book summary apps 2025", type:"text" },
@@ -619,7 +615,7 @@ STRUCTURE:
 Total ~1500 words. Write naturally, include keyword 4-6 times. Make it genuinely helpful, not just promotional.`,
   },
   {
-    id:"pitch",         icon:"💼", label:"Investor / Partner Pitch",
+    id:"pitch",         icon:"briefcase", label:"Investor / Partner Pitch",
     desc:"Executive summary, TAM analysis, and pitch deck outline",
     fields:[
       { key:"stage",   label:"Stage / context", default:"pre-revenue, bootstrapped, seeking first users", type:"text" },
@@ -684,7 +680,7 @@ function MarketingAgentModule() {
 
   return (
     <div>
-      <Title icon="🎯" title="Marketing Agent" sub="Writes production-ready copy — not advice, actual words you can use today" />
+      <Title icon="target" title="Marketing Agent" sub="Writes production-ready copy — not advice, actual words you can use today" />
 
       <div style={{ display:"grid", gridTemplateColumns:"260px 1fr", gap:16 }}>
         {/* Task selector */}
@@ -694,7 +690,7 @@ function MarketingAgentModule() {
             <motion.button key={task.id} whileHover={{ x:2 }} onClick={() => setSelTask(task)}
               style={{ padding:"11px 13px", borderRadius:9, cursor:"pointer", textAlign:"left", background:selTask.id===task.id?GD:SF, border:`1px solid ${selTask.id===task.id?G:GB}`, transition:"all .2s" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                <span style={{ fontSize:15 }}>{task.icon}</span>
+                <span style={{ fontSize:15 }}><Icon name={task.icon}/></span>
                 <span style={{ fontSize:11, color:selTask.id===task.id?G:TX, fontWeight:selTask.id===task.id?700:400 }}>{task.label}</span>
               </div>
               <div style={{ fontSize:9, color:TM, paddingLeft:23, lineHeight:1.4 }}>{task.desc}</div>
@@ -718,13 +714,13 @@ function MarketingAgentModule() {
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <Card>
             <div style={{ fontSize:9, color:G, letterSpacing:".12em", textTransform:"uppercase", marginBottom:12 }}>
-              {selTask.icon} {selTask.label} — Customize Inputs
+              <Icon name={selTask.icon}/> {selTask.label} — Customize Inputs
             </div>
             {selTask.fields.map(f => (
               <Textarea key={f.key} label={f.label} value={fieldVals[f.key]||f.default} onChange={(v: string)=>setFieldVals(p=>({...p,[f.key]:v}))} rows={2} />
             ))}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <AIBtn onClick={generate} loading={loading} label={`✦ Generate ${selTask.label}`} />
+              <AIBtn onClick={generate} loading={loading} label={` Generate ${selTask.label}`} />
               {output && <CopyBtn text={output} />}
             </div>
           </Card>
@@ -745,7 +741,7 @@ function MarketingAgentModule() {
                 </div>
                 {loading
                   ? <div style={{ display:"flex", gap:4 }}>{[0,1,2].map(i=>(<motion.div key={i} style={{ width:6, height:6, borderRadius:"50%", background:G }} animate={{ y:[0,-5,0], opacity:[.4,1,.4] }} transition={{ duration:.8, repeat:Infinity, delay:i*.18 }}/>))}</div>
-                  : <div style={{ fontSize:12.5, color:"rgba(232,228,217,0.88)", lineHeight:1.8, whiteSpace:"pre-wrap", maxHeight:500, overflow:"auto" }}>{output}</div>
+                  : <div style={{ fontSize:12.5, color:"rgba(231,233,227,0.88)", lineHeight:1.8, whiteSpace:"pre-wrap", maxHeight:500, overflow:"auto" }}>{output}</div>
                 }
               </Card>
             </motion.div>
@@ -780,19 +776,20 @@ function FeedbackInsightsModule() {
 
   return (
     <div>
-      <Title icon="📊" title="User Insights — Anonymized & Privacy-Safe" sub="Aggregated feedback patterns and user behavior analytics" />
+      <Title icon="chart" title="User Insights — Anonymized & Privacy-Safe" sub="Aggregated feedback patterns and user behavior analytics" />
       
       <div style={{
-        background: 'rgba(201,168,76,0.04)',
-        border: '0.5px solid rgba(201,168,76,0.2)',
+        background: 'rgba(180,197,180,0.04)',
+        border: '0.5px solid rgba(180,197,180,0.2)',
         borderRadius: '10px',
         padding: '12px 14px',
         marginBottom: '16px',
         fontSize: '10px',
-        color: '#9a9080',
+        color: '#abb6ae',
         fontFamily: 'Georgia, serif'
       }}>
-        🔒 No personal data is stored or displayed. All insights are aggregated from anonymous session identifiers.
+        
+        <Icon name="lock"/> No personal data is stored or displayed. All insights are aggregated from anonymous session identifiers.
       </div>
 
       {loading ? (
@@ -812,8 +809,8 @@ function FeedbackInsightsModule() {
             style={{
               marginTop: '14px',
               padding: '6px 14px',
-              background: 'rgba(201,168,76,0.1)',
-              border: '0.5px solid rgba(201,168,76,0.3)',
+              background: 'rgba(180,197,180,0.1)',
+              border: '0.5px solid rgba(180,197,180,0.3)',
               borderRadius: '6px',
               color: G,
               fontSize: '10px',
@@ -821,7 +818,8 @@ function FeedbackInsightsModule() {
               fontFamily: 'Georgia, serif'
             }}
           >
-            🔄 Refresh Insights
+            
+            <Icon name="refresh"/> Refresh Insights
           </button>
         </Card>
       )}
@@ -829,7 +827,7 @@ function FeedbackInsightsModule() {
   )
 }
 
-const FEEDBACK_CATEGORY_ICON: Record<string,string> = { bug:"🐛", feature:"💡", general:"💬", praise:"✨", other:"❓" }
+const FEEDBACK_CATEGORY_ICON: Record<string,string> = { bug:"", feature:"", general:"", praise:"", other:"" }
 
 function UserMessagesModule() {
   const [items, setItems] = useState<any[]>([])
@@ -862,18 +860,19 @@ function UserMessagesModule() {
 
   return (
     <div>
-      <Title icon="📥" title="User Messages" sub={`${items.length} submission${items.length===1?'':'s'} from the app + website feedback forms`} />
+      <Title icon="inbox" title="User Messages" sub={`${items.length} submission${items.length===1?'':'s'} from the app + website feedback forms`} />
       <div style={{ display:'flex', gap:6, marginBottom:16, flexWrap:'wrap' }}>
         {['all','bug','feature','general','praise','other'].map(c => (
           <button key={c} onClick={()=>setFilter(c)}
             style={{ padding:'5px 12px', borderRadius:20, fontSize:10.5, cursor:'pointer', fontFamily:'Georgia,serif',
-              background: filter===c ? 'rgba(201,168,76,0.15)' : 'transparent',
+              background: filter===c ? 'rgba(180,197,180,0.15)' : 'transparent',
               border: `0.5px solid ${filter===c ? G : BORDER}`, color: filter===c ? G : TM }}>
             {c==='all' ? 'All' : `${FEEDBACK_CATEGORY_ICON[c]} ${c}`}
           </button>
         ))}
         <button onClick={load} style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:20, fontSize:10.5, cursor:'pointer', fontFamily:'Georgia,serif', background:'transparent', border:`0.5px solid ${BORDER}`, color:TM }}>
-          🔄 Refresh
+          
+          <Icon name="refresh"/> Refresh
         </button>
       </div>
       {loading ? (
@@ -888,11 +887,11 @@ function UserMessagesModule() {
             <Card key={item.id} style={{ cursor:'default' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8, gap:10 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:TM }}>
-                  <span>{FEEDBACK_CATEGORY_ICON[item.category] || '💬'}</span>
+                  <span>{FEEDBACK_CATEGORY_ICON[item.category] || ""}</span>
                   <span style={{ textTransform:'capitalize' }}>{item.category}</span>
                   <span>·</span>
-                  <span>{item.source === 'website' ? '🌐 Website' : '📱 App'}</span>
-                  {item.rating && <><span>·</span><span>{'★'.repeat(item.rating)}{'☆'.repeat(5-item.rating)}</span></>}
+                  <span>{item.source === 'website' ? <> <Icon name="globe"/> Website </> : <> <Icon name="phone"/> App </>}</span>
+                  {item.rating && <><span>·</span><span>{"".repeat(item.rating)}{'☆'.repeat(5-item.rating)}</span></>}
                 </div>
                 <span style={{ fontSize:10, color:TM, whiteSpace:'nowrap' }}>{new Date(item.created_at).toLocaleDateString()}</span>
               </div>
@@ -951,7 +950,7 @@ function RefundModule() {
 
   return (
     <div>
-      <Title icon="💸" title="Issue a Refund" sub="Refunds the customer's most recent payment, cancels their subscription, and revokes Premium" />
+      <Title icon="finance" title="Issue a Refund" sub="Refunds the customer's most recent payment, cancels their subscription, and revokes Premium" />
 
       <Card style={{ cursor:'default', maxWidth:520 }}>
         <label style={{ fontSize:11, color:TM, display:'block', marginBottom:5 }}>Customer email</label>
@@ -971,7 +970,8 @@ function RefundModule() {
             style={{ width:'100%', padding:'11px', borderRadius:8, fontFamily:'Georgia,serif', fontSize:13,
               cursor: email.trim() ? 'pointer':'default', background: email.trim() ? GD : SF,
               border:`0.5px solid ${email.trim() ? G : BORDER}`, color: email.trim() ? G : TM, opacity: busy?0.6:1 }}>
-            Review refund →
+            
+            Review refund <Icon name="arrow"/>
           </button>
         ) : (
           <div style={{ background:'rgba(220,50,50,0.07)', border:'0.5px solid rgba(220,50,50,0.3)', borderRadius:10, padding:14 }}>
@@ -1002,7 +1002,7 @@ function RefundModule() {
         {result && (
           <div style={{ marginTop:12, background:'rgba(80,160,110,0.08)', border:'0.5px solid rgba(80,160,110,0.35)',
             borderRadius:10, padding:13, fontSize:12, color:TX, lineHeight:1.7 }}>
-            <div style={{ color:'#5fb583', marginBottom:5 }}>✓ Refund issued</div>
+            <div style={{ color:'#5fb583', marginBottom:5 }}><Icon name="check"/> Refund issued</div>
             <div style={{ color:TM }}>
               Amount: <span style={{ color:TX }}>{result.amount ? `$${result.amount} ${result.currency}` : '—'}</span><br/>
               PayPal refund ID: <span style={{ color:TX }}>{result.refundId}</span><br/>
@@ -1022,16 +1022,16 @@ function RefundModule() {
 // MAIN DASHBOARD
 // ══════════════════════════════════════════════════════════════════════
 const MODULES = [
-  { id:"messages",  label:"📥 Messages",   component:UserMessagesModule },
-  { id:"refund",    label:"💸 Refund",     component:RefundModule },
-  { id:"revenue",   label:"💰 Revenue",    component:RevenueModule },
-  { id:"pricing",   label:"🏷️ Pricing",    component:PricingModule },
-  { id:"growth",    label:"🚀 Growth",     component:GrowthModule },
-  { id:"features",  label:"⚔️ Features",   component:FeatureGapModule },
-  { id:"positioning",label:"🎯 Positioning",component:PositioningModule },
-  { id:"content",   label:"✍️ Content",    component:ContentModule },
-  { id:"feedback",  label:"📊 Insights",   component:FeedbackInsightsModule },
-  { id:"marketing",  label:"📣 Marketing Agent",component:MarketingAgentModule },
+  { id:"messages",  label:"Messages",   component:UserMessagesModule },
+  { id:"refund",    label:"Refund",     component:RefundModule },
+  { id:"revenue",   label:"Revenue",    component:RevenueModule },
+  { id:"pricing",   label:"Pricing",    component:PricingModule },
+  { id:"growth",    label:"Growth",     component:GrowthModule },
+  { id:"features",  label:"Features",   component:FeatureGapModule },
+  { id:"positioning",label:"Positioning",component:PositioningModule },
+  { id:"content",   label:"Content",    component:ContentModule },
+  { id:"feedback",  label:"Insights",   component:FeedbackInsightsModule },
+  { id:"marketing",  label:"Marketing Agent",component:MarketingAgentModule },
 ]
 
 export default function BusinessDashboard() {
@@ -1046,7 +1046,7 @@ export default function BusinessDashboard() {
           <div style={{ gridArea:"stack", width:340, height:128, borderRadius:16, border:"1px solid " + GB, background:SURFACE, padding:"1.1rem 1.4rem", display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative", overflow:"hidden", cursor:"pointer", transition:"transform .4s cubic-bezier(.4,0,.2,1), filter .4s, borderColor .3s", transform:"skewY(-6deg) translateY(0)", filter:"grayscale(90%) brightness(.7)", zIndex:1 }}>
             <div style={{ position:"absolute", right:0, top:0, width:"45%", height:"100%", background:"linear-gradient(to left, " + BG + ", transparent)", pointerEvents:"none" }}></div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ width:30, height:30, borderRadius:8, background:GD, border:"0.5px solid " + GB, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>📖</div>
+              <div style={{ width:30, height:30, borderRadius:8, background:GD, border:"0.5px solid " + GB, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}><Icon name="book"/></div>
               <span style={{ fontFamily:"'Playfair Display', serif", fontSize:15, color:G }}>Philosophy Club</span>
             </div>
             <div style={{ fontSize:13, color:TX, lineHeight:1.4 }}>Deep dives into stoicism, existentialism & more</div>
@@ -1055,7 +1055,7 @@ export default function BusinessDashboard() {
           <div style={{ gridArea:"stack", width:340, height:128, borderRadius:16, border:"1px solid " + GB, background:SURFACE, padding:"1.1rem 1.4rem", display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative", overflow:"hidden", cursor:"pointer", transition:"transform .4s cubic-bezier(.4,0,.2,1), filter .4s, borderColor .3s", transform:"skewY(-6deg) translateX(44px) translateY(28px)", filter:"grayscale(55%) brightness(.85)", zIndex:2 }}>
             <div style={{ position:"absolute", right:0, top:0, width:"45%", height:"100%", background:"linear-gradient(to left, " + BG + ", transparent)", pointerEvents:"none" }}></div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ width:30, height:30, borderRadius:8, background:GD, border:"0.5px solid " + GB, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>🌍</div>
+              <div style={{ width:30, height:30, borderRadius:8, background:GD, border:"0.5px solid " + GB, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}><Icon name="globe"/></div>
               <span style={{ fontFamily:"'Playfair Display', serif", fontSize:15, color:G }}>World Literature</span>
             </div>
             <div style={{ fontSize:13, color:TX, lineHeight:1.4 }}>Books from 15+ countries, 10+ languages</div>
@@ -1064,7 +1064,7 @@ export default function BusinessDashboard() {
           <div style={{ gridArea:"stack", width:340, height:128, borderRadius:16, border:"1px solid " + GB, background:SURFACE, padding:"1.1rem 1.4rem", display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative", overflow:"hidden", cursor:"pointer", transition:"transform .4s cubic-bezier(.4,0,.2,1), filter .4s, borderColor .3s", transform:"skewY(-6deg) translateX(88px) translateY(56px)", filter:"none", zIndex:3 }}>
             <div style={{ position:"absolute", right:0, top:0, width:"45%", height:"100%", background:"linear-gradient(to left, " + BG + ", transparent)", pointerEvents:"none" }}></div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ width:30, height:30, borderRadius:8, background:GD, border:"0.5px solid " + GB, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>🚀</div>
+              <div style={{ width:30, height:30, borderRadius:8, background:GD, border:"0.5px solid " + GB, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}><Icon name="trend"/></div>
               <span style={{ fontFamily:"'Playfair Display', serif", fontSize:15, color:G }}>Sci-Fi Readers</span>
             </div>
             <div style={{ fontSize:13, color:TX, lineHeight:1.4 }}>Classic and modern science fiction picks</div>
@@ -1077,7 +1077,7 @@ export default function BusinessDashboard() {
       <div style={{ background:"rgba(8,8,14,0.55)", borderBottom:`1px solid ${GB}`, padding:"11px 20px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:31, height:31, border:`1px solid ${G}`, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, background:GD }}>📊</div>
+            <div style={{ width:31, height:31, border:`1px solid ${G}`, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, background:GD }}><Icon name="chart"/></div>
             <div>
               <div style={{ fontFamily:"Georgia, serif", fontSize:"1rem", fontWeight:700, color:G, letterSpacing:".06em" }}>House of Books</div>
               <div style={{ fontSize:7.5, color:TM, letterSpacing:".14em", textTransform:"uppercase" }}>Business Intelligence Platform · NVIDIA AI · 7 Modules</div>
@@ -1095,7 +1095,7 @@ export default function BusinessDashboard() {
         {MODULES.map(mod=>(
           <button key={mod.id} onClick={()=>setActive(mod.id)}
             style={{ padding:"9px 15px", fontSize:10.5, cursor:"pointer", fontFamily:"Georgia,serif", background:"transparent", border:"none", borderBottom:`2px solid ${active===mod.id?"#ffd700":"transparent"}`, color:active===mod.id?"#ffd700":"#333", transition:"all .2s", flexShrink:0, letterSpacing:".03em", whiteSpace:"nowrap", fontWeight:mod.id==="marketing"?700:400 }}>
-            {mod.label}
+            <Icon name={({messages:'inbox',refund:'finance',revenue:'finance',pricing:'tag',growth:'trend',features:'shield',positioning:'target',content:'pen',feedback:'chart',marketing:'bell'} as Record<string,string>)[mod.id]}/>{mod.label}
             {mod.id==="marketing"&&<span style={{ marginLeft:5, fontSize:7, background:"#ffd700", color:"#f8f8f8", padding:"1px 5px", borderRadius:3, verticalAlign:"middle", fontWeight:700 }}>NEW</span>}
           </button>
         ))}
@@ -1117,7 +1117,7 @@ export default function BusinessDashboard() {
         
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);border-radius:2px}
+        ::-webkit-scrollbar-thumb{background:rgba(180,197,180,0.2);border-radius:2px}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         input[type=number]::-webkit-inner-spin-button{opacity:.35}

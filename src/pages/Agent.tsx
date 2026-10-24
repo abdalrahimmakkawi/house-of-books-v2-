@@ -1,3 +1,5 @@
+import { DepthSurface, StatSculpture } from '../components/DepthSurface'
+import { Icon } from '../components/Icon'
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { supabase } from "../lib/supabase"
@@ -8,14 +10,14 @@ export const isAdminUser = (email: string) => ADMIN_EMAILS.map(e => e.toLowerCas
 // Admin bypass function available for future rate limiting bypasses
 
 // ── Constants ──────────────────────────────────────────────────────
-const G   = "#c9a84c"
-const GL  = "#e8c97a"
-const GD  = "rgba(201,168,76,0.08)"
-const GB  = "rgba(201,168,76,0.18)"
+const G   = "#b4c5b4"
+const GL  = "#d4ddcb"
+const GD  = "rgba(180,197,180,0.08)"
+const GB  = "rgba(180,197,180,0.18)"
 const BG  = "#06050a"
-const TX  = "#e8e4d9"
-const TM  = "rgba(232,228,217,0.45)"
-const GRN = "#4ac878"
+const TX  = "#e7e9e3"
+const TM  = "rgba(231,233,227,0.45)"
+const GRN = "#a5c4aa"
 const RED = "#f05555"
 const SF  = "rgba(255,255,255,0.03)"
 const HISTORY_KEY = "hob_agent_history"
@@ -32,18 +34,18 @@ const BOOKS = [
 
 // ── Competitors ────────────────────────────────────────────────────
 const COMPETITORS = [
-  { id:"blinkist",       name:"Blinkist",       emoji:"📘", tagline:"5000+ book summaries in 15 min",           pricing:"$15.99/mo", visitors:"~10M/mo",  rating:"4.6★", strengths:["Huge library 5000+","Audio blinks","Strong brand","Mobile apps","Offline mode"],            weaknesses:["No AI chat","Generic summaries","No community","Expensive","No gamification","Shallow summaries"], differentiator:"Speed — get the idea fast" },
-  { id:"getabstract",    name:"getAbstract",    emoji:"📋", tagline:"Business book summaries, enterprise focus",  pricing:"$19.99/mo", visitors:"~2M/mo",   rating:"3.8★", strengths:["Strong B2B sales","PDF summaries","Corporate training","Wide business coverage"],         weaknesses:["Zero AI features","Outdated UI","Very expensive","Only business books","No mobile","No community"],    differentiator:"Enterprise contracts" },
-  { id:"shortform",      name:"Shortform",      emoji:"📖", tagline:"In-depth book analysis, not just summaries", pricing:"$24.99/mo", visitors:"~800K/mo", rating:"No app", strengths:["Very detailed analysis","Critiques included","Chapter-by-chapter","Serious learners"],  weaknesses:["No AI chat","No community","Most expensive","Small library","Web only","No gamification"],        differentiator:"Depth over speed" },
-  { id:"goodreads",      name:"Goodreads",      emoji:"🌐", tagline:"World's largest book community, 150M users",  pricing:"Free",      visitors:"~90M/mo",  rating:"4.0★", strengths:["Massive community 150M","Social graph","Book tracking","Amazon integration","Free"],  weaknesses:["No summaries","Zero AI","Terrible UI","Amazon neglect","No learning features"],                   differentiator:"Network effects" },
-  { id:"readingraphics", name:"Readingraphics", emoji:"🎨", tagline:"Visual infographic book summaries",           pricing:"$19/mo",    visitors:"~200K/mo", rating:"N/A",  strengths:["Unique visual format","Good for visual learners","Memorable summaries"],                weaknesses:["Very small library","No AI","No community","Niche appeal","No mobile app"],                        differentiator:"Infographic format" },
+  { id:"blinkist",       name:"Blinkist",       icon:"book", tagline:"5000+ book summaries in 15 min",           pricing:"$15.99/mo", visitors:"~10M/mo",  rating:"4.6", strengths:["Huge library 5000+","Audio blinks","Strong brand","Mobile apps","Offline mode"],            weaknesses:["No AI chat","Generic summaries","No community","Expensive","No gamification","Shallow summaries"], differentiator:"Speed — get the idea fast" },
+  { id:"getabstract",    name:"getAbstract",    icon:"inbox", tagline:"Business book summaries, enterprise focus",  pricing:"$19.99/mo", visitors:"~2M/mo",   rating:"3.8", strengths:["Strong B2B sales","PDF summaries","Corporate training","Wide business coverage"],         weaknesses:["Zero AI features","Outdated UI","Very expensive","Only business books","No mobile","No community"],    differentiator:"Enterprise contracts" },
+  { id:"shortform",      name:"Shortform",      icon:"book", tagline:"In-depth book analysis, not just summaries", pricing:"$24.99/mo", visitors:"~800K/mo", rating:"No app", strengths:["Very detailed analysis","Critiques included","Chapter-by-chapter","Serious learners"],  weaknesses:["No AI chat","No community","Most expensive","Small library","Web only","No gamification"],        differentiator:"Depth over speed" },
+  { id:"goodreads",      name:"Goodreads",      icon:"globe", tagline:"World's largest book community, 150M users",  pricing:"Free",      visitors:"~90M/mo",  rating:"4.0", strengths:["Massive community 150M","Social graph","Book tracking","Amazon integration","Free"],  weaknesses:["No summaries","Zero AI","Terrible UI","Amazon neglect","No learning features"],                   differentiator:"Network effects" },
+  { id:"readingraphics", name:"Readingraphics", icon:"pen", tagline:"Visual infographic book summaries",           pricing:"$19/mo",    visitors:"~200K/mo", rating:"N/A",  strengths:["Unique visual format","Good for visual learners","Memorable summaries"],                weaknesses:["Very small library","No AI","No community","Niche appeal","No mobile app"],                        differentiator:"Infographic format" },
 ]
 
 // ── 8 Business Agents ─────────────────────────────────────────────
 const BUSINESS_AGENTS = [
   {
     id: "growth",
-    icon: "🚀",
+    icon: "trend",
     label: "Growth Advisor",
     desc: "Get a specific 90-day growth plan based on your current metrics",
     color: GRN,
@@ -68,7 +70,7 @@ Be brutally specific. Give real tactics, real channels, real numbers. No generic
   },
   {
     id: "revenue",
-    icon: "💰",
+    icon: "finance",
     label: "Revenue Analyst",
     desc: "Analyze your MRR, churn, LTV and get specific fixes",
     color: G,
@@ -85,13 +87,13 @@ House of Books context:
 - Pricing: $8.99/month or $85/year
 - Free tier: 84 books + 10 AI chats
 - Premium: 300+ books, unlimited AI, PDF export, notes
-- Key metrics to optimize: free→paid conversion (target 4-6%), monthly churn (target <3%), LTV:CAC (target >5x)
+- Key metrics to optimize: freepaid conversion (target 4-6%), monthly churn (target <3%), LTV:CAC (target >5x)
 
 When given metrics, calculate LTV, LTV:CAC ratio, payback period, and net MRR. Then give the 3 most impactful fixes ranked by revenue impact. Be specific with expected outcomes.`
   },
   {
     id: "pricing",
-    icon: "🏷️",
+    icon: "tag",
     label: "Pricing Strategist",
     desc: "Optimize your pricing tiers, positioning and messaging",
     color: "#7eb8f7",
@@ -116,7 +118,7 @@ Give specific price recommendations with reasoning. Include messaging copy when 
   },
   {
     id: "marketing",
-    icon: "📣",
+    icon: "bell",
     label: "Marketing Copywriter",
     desc: "Writes real copy — landing pages, emails, ads, social posts",
     color: "#c87efa",
@@ -141,7 +143,7 @@ When writing copy: lead with the transformation not the feature. Focus on "chat 
   },
   {
     id: "product",
-    icon: "⚙️",
+    icon: "settings",
     label: "Product Strategist",
     desc: "Roadmap prioritization, feature decisions, what to build next",
     color: "#fa9e7e",
@@ -155,15 +157,15 @@ When writing copy: lead with the transformation not the feature. Focus on "chat 
     systemPrompt: `You are a product strategist who specializes in consumer subscription apps and EdTech. You think in terms of retention, activation, and monetization.
 
 House of Books current features:
-✅ Built: AI chat per book, community discussions, reading groups, progress tracking, streaks, daily quotes, shelf management, notes (premium), PDF export (premium), recommendations, search inside summaries, 6 themes, ambient music, 5 languages, PWA, referral system, 7-day trial
+ Built: AI chat per book, community discussions, reading groups, progress tracking, streaks, daily quotes, shelf management, notes (premium), PDF export (premium), recommendations, search inside summaries, 6 themes, ambient music, 5 languages, PWA, referral system, 7-day trial
 
-🔲 Planned/missing: audio summaries, more books (100 being added), Stripe payments, Capacitor Android app, social features, leaderboard
+ Planned/missing: audio summaries, more books (100 being added), Stripe payments, Capacitor Android app, social features, leaderboard
 
 Prioritize features by: retention impact, conversion impact, differentiation value, build complexity. Be specific about what to build first and why. Consider the solo developer constraint.`
   },
   {
     id: "retention",
-    icon: "🔄",
+    icon: "refresh",
     label: "Churn & Retention",
     desc: "Reduce churn, win back users, improve long-term retention",
     color: "#f07e7e",
@@ -186,7 +188,7 @@ Give specific, implementable churn reduction tactics. Include email copy, in-app
   },
   {
     id: "competitor",
-    icon: "⚔️",
+    icon: "shield",
     label: "Competitor Analysis",
     desc: "Deep analysis of Blinkist, Shortform, Goodreads and positioning strategy",
     color: RED,
@@ -201,22 +203,22 @@ Give specific, implementable churn reduction tactics. Include email copy, in-app
     systemPrompt: `You are a sharp startup strategist and market analyst specializing in EdTech, book apps, and subscription businesses.
 
 House of Books:
-✦ AI summaries + deep AI chat per book (NVIDIA-powered, ~$0 cost)
-✦ 210+ curated books across 10 categories
-✦ 5 languages including Arabic RTL
-✦ Community: book discussions, reading groups, private chat
-✦ Reading progress, streaks, daily quotes, personalized AI recommendations
-✦ PDF export, notes, shelf management (premium)
-✦ Pricing: $8.99/month or $85/year — competitive with Blinkist, much cheaper than Shortform
-✦ Two tiers planned: Pro ($8.99) and Premium ($19.99 with advanced AI)
-✦ PWA + mobile-ready, beautiful UI with ambient music
-✦ Built by a solo developer — lean, fast-moving, no VC overhead
+ AI summaries + deep AI chat per book (NVIDIA-powered, ~$0 cost)
+ 210+ curated books across 10 categories
+ 5 languages including Arabic RTL
+ Community: book discussions, reading groups, private chat
+ Reading progress, streaks, daily quotes, personalized AI recommendations
+ PDF export, notes, shelf management (premium)
+ Pricing: $8.99/month or $85/year — competitive with Blinkist, much cheaper than Shortform
+ Two tiers planned: Pro ($8.99) and Premium ($19.99 with advanced AI)
+ PWA + mobile-ready, beautiful UI with ambient music
+ Built by a solo developer — lean, fast-moving, no VC overhead
 
 Be a trusted advisor. Sharp, specific, actionable. No hedging. Real opinions.`
   },
   {
     id: "seo",
-    icon: "🔍",
+    icon: "search",
     label: "SEO & Content",
     desc: "SEO strategy, blog topics, keywords, content that ranks and converts",
     color: "#7ed4f7",
@@ -296,9 +298,9 @@ async function callAI(messages: any[], systemPrompt: string) {
 //  into a line that flatters.
 // ═══════════════════════════════════════════════════════════════════
 
-const INK    = "#0d0c12"
-const INK2   = "#121017"
-const LINE   = "rgba(201,168,76,0.15)"
+const INK    = "#171d20"
+const INK2   = "#20282c"
+const LINE   = "rgba(180,197,180,0.15)"
 const LINE2  = "rgba(255,255,255,0.06)"
 const NUM    = "system-ui,-apple-system,'Segoe UI',sans-serif"
 const SERIF  = "Georgia,'Times New Roman',serif"
@@ -318,10 +320,10 @@ const SEV: any = {
   error: { dot: RED,   label: "Broken"    },
   warn:  { dot: "#e0a14c", label: "Attention" },
   good:  { dot: GRN,   label: "Good"      },
-  info:  { dot: "rgba(232,228,217,0.35)", label: "Note" },
+  info:  { dot: "rgba(231,233,227,0.35)", label: "Note" },
 }
 
-const BOOK_AGENT = { id:"books", icon:"📚", label:"Book Chat", desc:"Talk about any book on the shelf", color:G } as any
+const BOOK_AGENT = { id:"books", icon:"library", label:"Book Chat", desc:"Talk about any book on the shelf", color:G } as any
 const ALL_AGENTS = [BOOK_AGENT, ...BUSINESS_AGENTS]
 
 async function fetchMetrics() {
@@ -422,18 +424,7 @@ function Panel({ title, note, children, span }: any) {
 }
 
 function Reading({ label, value, foot, tint, muted }: any) {
-  const [hover, setHover] = useState(false)
-  return (
-    <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
-      style={{ ...surface(hover), borderRadius:15, padding:"14px 16px 15px",
-               transform: hover ? "translateY(-2px)" : "none",
-               transition:"transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s, background .22s" }}>
-      <div style={{ fontFamily:NUM, fontSize:9.5, letterSpacing:".16em", textTransform:"uppercase", color:TM, marginBottom:9 }}>{label}</div>
-      <div style={{ fontFamily:NUM, fontSize:29, fontWeight:600, lineHeight:1, letterSpacing:"-.025em",
-                    color: muted ? TM : (tint || TX), fontVariantNumeric:"tabular-nums" }}>{value}</div>
-      {foot && <div style={{ fontFamily:NUM, fontSize:11, color:TM, marginTop:7, lineHeight:1.4 }}>{foot}</div>}
-    </div>
-  )
+  return <DepthSurface className="metric-tile" tabIndex={0} aria-label={label+': '+value} style={{...surface(),padding:'16px',flexWrap:'wrap'}}><StatSculpture icon={/Reader|Paying/.test(label)?'users':/Monthly/.test(label)?'finance':/shelf/.test(label)?'library':'chat'}/><div className="metric-copy"><div className="metric-label">{label}</div><div className="metric-value" style={{color:muted?TM:(tint||TX)}}>{value}</div>{foot&&<div className="metric-sub">{foot}</div>}</div></DepthSurface>
 }
 
 // ── Anything worth flagging ────────────────────────────────────────
@@ -483,7 +474,7 @@ function Desk({ m, loading, err, onRefresh }: any) {
           <button onClick={onRefresh} disabled={loading}
             style={{ fontFamily:NUM, ...surface(), borderRadius:10, padding:"7px 14px", fontSize:11.5,
                      color: loading ? TM : G, cursor: loading ? "default" : "pointer" }}>
-            {loading ? "reading…" : "↻ Take again"}
+            {loading ? "reading…" : <> <Icon name="refresh"/> Take again </>}
           </button>
         </div>
 
@@ -599,8 +590,8 @@ function Composer({ taRef, value, onChange, onSend, loading, placeholder, chips,
                      ...surface(), borderRadius:14, color:TX, outline:"none", maxHeight:160, boxSizing:"border-box" }}/>
           <button onClick={onSend} disabled={loading || !value.trim()}
             style={{ fontFamily:NUM, fontSize:13, fontWeight:600, padding:"13px 22px", borderRadius:14, border:"none",
-                     background: loading || !value.trim() ? "rgba(201,168,76,0.14)" : "linear-gradient(150deg,#efd18a,#c9a84c)",
-                     boxShadow: loading || !value.trim() ? "none" : "0 8px 20px -8px rgba(201,168,76,0.7)",
+                     background: loading || !value.trim() ? "rgba(180,197,180,0.14)" : "linear-gradient(150deg,#efd18a,#b4c5b4)",
+                     boxShadow: loading || !value.trim() ? "none" : "0 8px 20px -8px rgba(180,197,180,0.7)",
                      color: loading || !value.trim() ? TM : "#12101a",
                      cursor: loading || !value.trim() ? "default" : "pointer", flexShrink:0, transition:"box-shadow .2s" }}>
             {loading ? "…" : "Ask"}
@@ -662,7 +653,7 @@ function Conversation({ agent, selComps, onToggleComp }: any) {
                 style={{ display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", flexShrink:0,
                          fontFamily:NUM, fontSize:11.5, padding:"7px 13px", borderRadius:999, cursor:"pointer",
                          ...surface(on), color: on ? GL : TM }}>
-                <span>{c.emoji}</span>{c.name}
+                <span><Icon name={c.icon}/></span>{c.name}
               </button>
             )
           })}
@@ -710,7 +701,7 @@ function HistoryDrawer({ onClose, onRestore }: any) {
         style={{ width:"min(440px,93vw)", background:INK2, borderLeft:"1px solid " + LINE, display:"flex", flexDirection:"column" }}>
         <div style={{ padding:"17px 21px", borderBottom:"1px solid " + LINE2, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontFamily:SERIF, fontSize:16, color:TX }}>Earlier conversations</span>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:TM, fontSize:19, cursor:"pointer", lineHeight:1 }}>✕</button>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:TM, fontSize:19, cursor:"pointer", lineHeight:1 }}><Icon name="close"/></button>
         </div>
         <div style={{ padding:"13px 21px" }}>
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"
@@ -769,8 +760,8 @@ export default function BookAgent() {
   const Tab = ({ id, label }: any) => (
     <button onClick={()=>setRoom(id)}
       style={{ fontFamily:NUM, fontSize:12.5, padding:"7px 15px", borderRadius:10, cursor:"pointer",
-               background: room===id ? "rgba(201,168,76,0.14)" : "transparent",
-               border:"1px solid " + (room===id ? "rgba(201,168,76,0.42)" : "transparent"),
+               background: room===id ? "rgba(180,197,180,0.14)" : "transparent",
+               border:"1px solid " + (room===id ? "rgba(180,197,180,0.42)" : "transparent"),
                color: room===id ? GL : TM, fontWeight: room===id ? 600 : 400, transition:"all .18s" }}>
       {label}
     </button>
@@ -778,10 +769,10 @@ export default function BookAgent() {
 
   return (
     <div style={{ background:INK, color:TX, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden",
-                  backgroundImage:"radial-gradient(1100px 520px at 18% -12%, rgba(201,168,76,0.07), transparent 62%)" }}>
+                  backgroundImage:"radial-gradient(1100px 520px at 18% -12%, rgba(180,197,180,0.07), transparent 62%)" }}>
 
       <div style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 24px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
-        <div style={{ width:30, height:30, borderRadius:9, ...surface(), display:"flex", alignItems:"center", justifyContent:"center", color:G, fontSize:14 }}>✦</div>
+        <div style={{ width:30, height:30, borderRadius:9, ...surface(), display:"flex", alignItems:"center", justifyContent:"center", color:G, fontSize:14 }}><Icon name="sparkles"/></div>
         <div style={{ fontFamily:SERIF, fontSize:16, color:GL, letterSpacing:".015em" }}>
           House of Books <span style={{ color:TM }}>· Studio</span>
         </div>
@@ -795,12 +786,13 @@ export default function BookAgent() {
 
         <button onClick={()=>{ setRoom("desk"); load() }} title="Anything worth flagging"
           style={{ position:"relative", ...surface(), borderRadius:10, padding:"7px 13px", fontFamily:NUM, fontSize:12, color:TM, cursor:"pointer" }}>
-          🔔
+          
+          <Icon name="bell"/>
           {unread > 0 && (
             <span style={{ position:"absolute", top:-5, right:-5, minWidth:17, height:17, padding:"0 4px", borderRadius:9,
-                           background:"linear-gradient(150deg,#efd18a,#c9a84c)", color:"#12101a",
+                           background:"linear-gradient(150deg,#efd18a,#b4c5b4)", color:"#12101a",
                            fontFamily:NUM, fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center",
-                           boxShadow:"0 3px 10px -2px rgba(201,168,76,0.8)" }}>{unread}</span>
+                           boxShadow:"0 3px 10px -2px rgba(180,197,180,0.8)" }}>{unread}</span>
           )}
         </button>
         <button onClick={()=>setShowHistory(true)}
@@ -821,7 +813,7 @@ export default function BookAgent() {
                   style={{ display:"flex", alignItems:"center", gap:7, whiteSpace:"nowrap", flexShrink:0,
                            padding:"8px 15px", borderRadius:999, cursor:"pointer", fontFamily:NUM, fontSize:12.5,
                            ...surface(on), color: on ? GL : TX, fontWeight: on ? 600 : 400, transition:"all .18s" }}>
-                  <span style={{ fontSize:14 }}>{a.icon}</span>{a.label}
+                  <span style={{ fontSize:14 }}><Icon name={a.icon}/></span>{a.label}
                 </button>
               )
             })}
@@ -840,7 +832,7 @@ export default function BookAgent() {
       <style>{`
         ::-webkit-scrollbar{width:5px;height:0}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.2);border-radius:3px}
+        ::-webkit-scrollbar-thumb{background:rgba(180,197,180,0.2);border-radius:3px}
         @keyframes bob{0%,80%,100%{transform:translateY(0);opacity:.32}40%{transform:translateY(-4px);opacity:1}}
       `}</style>
     </div>

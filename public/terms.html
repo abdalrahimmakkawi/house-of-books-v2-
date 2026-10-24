@@ -7,13 +7,13 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --gold:#c9a84c;--gold-light:#e8c97a;--gold-dim:rgba(201,168,76,0.15);
+  --gold:#b4c5b4;--gold-light:#d4ddcb;--gold-dim:rgba(180,197,180,0.15);
   --dark:#06050a;--text:#f0ece4;--text-soft:#9a9488;--text-dim:#5a5650;
 }
 html{scroll-behavior:smooth}
 body{font-family:'Georgia',serif;background:var(--dark);color:var(--text);line-height:1.6;overflow-x:hidden}
 .content{max-width:800px;margin:0 auto;padding:2rem}
-.header{text-align:center;padding:4rem 0 2rem;border-bottom:1px solid rgba(201,168,76,0.1)}
+.header{text-align:center;padding:4rem 0 2rem;border-bottom:1px solid rgba(180,197,180,0.1)}
 .header h1{font-family:'Georgia',serif;font-size:2.5rem;color:var(--gold);margin-bottom:1rem}
 .header p{color:var(--text-soft);font-size:1.1rem}
 .section{padding:2rem 0}
@@ -23,19 +23,19 @@ body{font-family:'Georgia',serif;background:var(--dark);color:var(--text);line-h
 .section ul{margin-left:2rem;margin-bottom:1rem;color:var(--text-soft)}
 .section li{margin-bottom:0.5rem}
 .section strong{color:var(--gold)}
-.nav{position:fixed;top:0;left:0;right:0;background:rgba(6,5,10,0.96);backdrop-filter:blur(28px);padding:1rem 2rem;border-bottom:1px solid rgba(201,168,76,0.12);z-index:100}
+.nav{position:fixed;top:0;left:0;right:0;background:rgba(6,5,10,0.96);backdrop-filter:blur(28px);padding:1rem 2rem;border-bottom:1px solid rgba(180,197,180,0.12);z-index:100}
 .nav-content{max-width:800px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
 .nav-logo{font-family:'Georgia',serif;font-size:1.2rem;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:0.5rem}
 .nav-back{color:var(--text-soft);text-decoration:none;font-size:0.9rem;transition:color 0.3s}
 .nav-back:hover{color:var(--gold)}
 @media(max-width:768px){.content{padding:1rem}.header{padding:2rem 0 1rem}.header h1{font-size:2rem}.section{padding:1.5rem 0}.nav{padding:0.8rem 1rem}}
 </style>
-</head>
+<style>.ui-icon{vertical-align:middle;color:#b4c5b4;margin-inline:3px}.feature-icon .ui-icon{width:30px;height:30px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}canvas{display:none}}</style></head>
 <body>
 
 <nav class="nav">
   <div class="nav-content">
-    <a href="/" class="nav-logo">📚 House of Books</a>
+    <a href="/" class="nav-logo"><svg class="ui-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16m5-16v16m5-16v16m3-15 4 14M2 20h20"/></svg> House of Books</a>
     <a href="/" class="nav-back">← Back to Library</a>
   </div>
 </nav>

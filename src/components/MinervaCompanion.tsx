@@ -1,3 +1,4 @@
+import { Icon } from './Icon'
 /**
  * Minerva, the companion — always on screen, and you can actually talk to her.
  *
@@ -51,44 +52,44 @@ const CSS = `
 .hobComp-owl:hover{transform:scale(1.06)}
 .hobComp-owl:active{transform:scale(.96)}
 .hobComp-owl.pulse::after{content:'';position:absolute;inset:-6px;border-radius:50%;
-  border:2px solid rgba(201,168,76,.55);animation:hobCompPulse 2.4s ease-out infinite}
+  border:2px solid rgba(180,197,180,.55);animation:hobCompPulse 2.4s ease-out infinite}
 @keyframes hobCompPulse{0%{transform:scale(.85);opacity:.9}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}
 
-.hobComp-bubble{max-width:250px;background:rgba(20,17,12,.97);color:#e8e4d9;
-  border:1px solid rgba(201,168,76,.34);border-radius:15px;padding:11px 13px;
+.hobComp-bubble{max-width:250px;background:rgba(20,17,12,.97);color:#e7e9e3;
+  border:1px solid rgba(180,197,180,.34);border-radius:15px;padding:11px 13px;
   font-size:13px;line-height:1.55;box-shadow:0 10px 30px -10px rgba(0,0,0,.8);
   animation:hobCompIn .3s cubic-bezier(.34,1.56,.64,1) both;position:relative}
 @keyframes hobCompIn{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
-.hobComp-cta{margin-top:9px;display:block;width:100%;background:linear-gradient(180deg,#e0be6f,#c9a84c);
+.hobComp-cta{margin-top:9px;display:block;width:100%;background:linear-gradient(180deg,#e0be6f,#b4c5b4);
   color:#17130c;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:600;
   font-family:Georgia,serif;cursor:pointer}
 .hobComp-cta:active{transform:translateY(1px)}
-.hobComp-x{position:absolute;top:-9px;background:#2a2419;color:#9a9080;border:1px solid rgba(201,168,76,.3);
+.hobComp-x{position:absolute;top:-9px;background:#2a2419;color:#abb6ae;border:1px solid rgba(180,197,180,.3);
   width:21px;height:21px;border-radius:50%;font-size:12px;line-height:1;cursor:pointer;padding:0;z-index:2}
 .hobComp.ltr .hobComp-x{right:-9px}
 .hobComp.rtl .hobComp-x{left:-9px}
-.hobComp-caret{display:inline-block;width:2px;height:1em;background:#c9a84c;margin-left:2px;
+.hobComp-caret{display:inline-block;width:2px;height:1em;background:#b4c5b4;margin-left:2px;
   vertical-align:text-bottom;animation:hobCompCaret 1s step-end infinite}
 @keyframes hobCompCaret{50%{opacity:0}}
 
 /* ── the conversation ─────────────────────────────────────── */
 .hobComp-chat{width:300px;max-width:78vw;background:rgba(16,14,10,.985);
-  border:1px solid rgba(201,168,76,.34);border-radius:16px;overflow:hidden;
+  border:1px solid rgba(180,197,180,.34);border-radius:16px;overflow:hidden;
   box-shadow:0 20px 50px -16px rgba(0,0,0,.9);animation:hobCompIn .3s cubic-bezier(.34,1.56,.64,1) both;
   position:relative;display:flex;flex-direction:column}
-.hobComp-chat-head{padding:9px 12px;border-bottom:1px solid rgba(201,168,76,.18);
-  font-size:12px;color:#c9a84c;letter-spacing:.04em}
+.hobComp-chat-head{padding:9px 12px;border-bottom:1px solid rgba(180,197,180,.18);
+  font-size:12px;color:#b4c5b4;letter-spacing:.04em}
 .hobComp-log{padding:11px 12px;display:flex;flex-direction:column;gap:9px;
   max-height:270px;overflow-y:auto}
 .hobComp-msg{font-size:12.5px;line-height:1.55;padding:8px 11px;border-radius:13px;max-width:88%}
-.hobComp-msg.her{background:rgba(255,255,255,.05);color:#e8e4d9;align-self:flex-start;border-bottom-left-radius:4px}
-.hobComp-msg.you{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.26);
+.hobComp-msg.her{background:rgba(255,255,255,.05);color:#e7e9e3;align-self:flex-start;border-bottom-left-radius:4px}
+.hobComp-msg.you{background:rgba(180,197,180,.15);border:1px solid rgba(180,197,180,.26);
   color:#ffdf9e;align-self:flex-end;border-bottom-right-radius:4px}
-.hobComp-form{display:flex;gap:7px;padding:9px 10px;border-top:1px solid rgba(201,168,76,.18)}
-.hobComp-in{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(201,168,76,.26);
-  border-radius:10px;padding:8px 10px;color:#e8e4d9;font-family:Georgia,serif;font-size:12.5px;outline:none}
-.hobComp-in:focus{border-color:#c9a84c}
-.hobComp-send{background:linear-gradient(180deg,#e0be6f,#c9a84c);color:#17130c;border:none;
+.hobComp-form{display:flex;gap:7px;padding:9px 10px;border-top:1px solid rgba(180,197,180,.18)}
+.hobComp-in{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid rgba(180,197,180,.26);
+  border-radius:10px;padding:8px 10px;color:#e7e9e3;font-family:Georgia,serif;font-size:12.5px;outline:none}
+.hobComp-in:focus{border-color:#b4c5b4}
+.hobComp-send{background:linear-gradient(180deg,#e0be6f,#b4c5b4);color:#17130c;border:none;
   border-radius:10px;width:36px;flex-shrink:0;font-size:15px;cursor:pointer}
 .hobComp-send:disabled{opacity:.45;cursor:default}
 
@@ -123,7 +124,7 @@ const LINES: Record<string, Record<string, string>> = {
     browsing: 'Anything catching your eye? I can summarise before you commit.',
     premiumTease: 'The whole library opens up with Premium — 300 more waiting.',
     idle: "I'll be here. Tap me if you want a recommendation.",
-    chatHead: '✦ Talking with Minerva',
+    chatHead: "Talking with Minerva",
     placeholder: 'Ask me anything…',
     thinking: 'Thinking…',
     offline: "I couldn't reach my books just now. Try again in a moment?",
@@ -140,7 +141,7 @@ const LINES: Record<string, Record<string, string>> = {
     browsing: 'هل لفت انتباهك شيء؟ أستطيع تلخيصه قبل أن تبدأ.',
     premiumTease: 'المكتبة كاملة تُفتح مع Premium — 300 كتاب بانتظارك.',
     idle: 'سأكون هنا. اضغط عليّ إن أردت ترشيحًا.',
-    chatHead: '✦ محادثة مع مينرفا',
+    chatHead: "محادثة مع مينرفا",
     placeholder: 'اسألني أي شيء…',
     thinking: 'أفكر…',
     offline: 'لم أستطع الوصول إلى كتبي الآن. جرّب بعد قليل؟',
@@ -157,7 +158,7 @@ const LINES: Record<string, Record<string, string>> = {
     browsing: 'Quelque chose vous attire ? Je peux le résumer avant.',
     premiumTease: 'Toute la bibliothèque s’ouvre avec Premium — 300 de plus.',
     idle: 'Je reste ici. Touchez-moi pour une recommandation.',
-    chatHead: '✦ Conversation avec Minerva',
+    chatHead: "Conversation avec Minerva",
     placeholder: 'Posez-moi une question…',
     thinking: 'Je réfléchis…',
     offline: "Je n'ai pas pu joindre mes livres. Réessayez dans un instant ?",
@@ -174,7 +175,7 @@ const LINES: Record<string, Record<string, string>> = {
     browsing: '¿Algo te llama la atención? Puedo resumirlo antes.',
     premiumTease: 'La biblioteca entera se abre con Premium — 300 más.',
     idle: 'Estaré aquí. Tócame si quieres una recomendación.',
-    chatHead: '✦ Hablando con Minerva',
+    chatHead: "Hablando con Minerva",
     placeholder: 'Pregúntame lo que sea…',
     thinking: 'Pensando…',
     offline: 'No pude alcanzar mis libros ahora. ¿Lo intentamos en un momento?',
@@ -191,7 +192,7 @@ const LINES: Record<string, Record<string, string>> = {
     browsing: '有什么吸引你吗？我可以先帮你总结。',
     premiumTease: '升级 Premium 可解锁整个书库——还有 300 本。',
     idle: '我在这儿。想要推荐就点我。',
-    chatHead: '✦ 与密涅瓦对话',
+    chatHead: "与密涅瓦对话",
     placeholder: '问我任何问题…',
     thinking: '思考中…',
     offline: '我现在联系不上我的书。稍后再试？',
@@ -354,7 +355,7 @@ export default function MinervaCompanion({
         body: JSON.stringify({
           category: 'feature',
           source: 'app',
-          message: `📚 Book request via Minerva: "${title}"\n\nAsked as: ${context.slice(0, 300)}`,
+          message: ` Book request via Minerva: "${title}"\n\nAsked as: ${context.slice(0, 300)}`,
           pageUrl: location.href,
         }),
       }).catch(() => {})   // a failed log must never interrupt the conversation
@@ -469,7 +470,7 @@ export default function MinervaCompanion({
             <button className="hobComp-cta" onClick={nudge.onCta}>{nudge.cta}</button>
           )}
           {state !== 'speaking' && (
-            <button className="hobComp-cta" style={{ background: 'transparent', border: '1px solid rgba(201,168,76,.4)', color: '#c9a84c' }}
+            <button className="hobComp-cta" style={{ background: 'transparent', border: '1px solid rgba(180,197,180,.4)', color: '#b4c5b4' }}
               onClick={tapOwl}>{L.placeholder}</button>
           )}
         </div>
@@ -492,7 +493,7 @@ export default function MinervaCompanion({
           <form className="hobComp-form" onSubmit={e => { e.preventDefault(); send(draft) }}>
             <input className="hobComp-in" value={draft} onChange={e => setDraft(e.target.value)}
               placeholder={L.placeholder} aria-label={L.placeholder} />
-            <button className="hobComp-send" type="submit" disabled={busy || !draft.trim()}>→</button>
+            <button className="hobComp-send" type="submit" disabled={busy || !draft.trim()}><Icon name="arrow"/></button>
           </form>
         </div>
       )}
