@@ -11,7 +11,7 @@ import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
 import { voiceFailure, diagnoseVoice } from './_lib/voice-errors.js'
 
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
+const ELEVENLABS_API_KEY = (process.env.ELEVENLABS_API_KEY || '').trim()
 // Fallback narrator ("George"); turbo model is ~5x faster and half the
 // cost of multilingual_v2, still covers ar/fr/es/zh (32 languages).
 const DEFAULT_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb'

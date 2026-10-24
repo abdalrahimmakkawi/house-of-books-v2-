@@ -5,11 +5,13 @@ export function voiceFailure(httpStatus, payload = {}) {
     ? String(detail.status || detail.code || detail.type || '') : ''
   if (['quota_exceeded','insufficient_credits'].includes(reason) || httpStatus === 402)
     return { status:503, code:'VOICE_QUOTA_EXCEEDED', error:'Audio generation is unavailable because the ElevenLabs credit limit has been reached.' }
+  if (['missing_permissions','insufficient_permissions','permission_denied'].includes(reason))
+    return { status:503, code:'VOICE_PERMISSION_DENIED', error:'ElevenLabs denied this request. Check the key permissions and account access.' }
   if (['invalid_api_key','authentication_error','invalid_authorization_header'].includes(reason) || httpStatus === 401)
     return { status:503, code:'VOICE_AUTH_FAILED', error:'The audio service credentials were rejected. The administrator needs to check the ElevenLabs key.' }
   if (['voice_not_found','voice_access_denied','voice_not_allowed','paid_plan_required'].includes(reason))
     return { status:503, code:'VOICE_UNAVAILABLE', error:'The selected narrator is unavailable for this ElevenLabs account.' }
-  if (httpStatus === 403 || reason === 'missing_permissions')
+  if (httpStatus === 403)
     return { status:503, code:'VOICE_PERMISSION_DENIED', error:'ElevenLabs denied this request. Check the key permissions and account access.' }
   if (httpStatus === 429)
     return { status:429, code:'VOICE_RATE_LIMITED', error:'The voice provider is busy. Please try again shortly.' }

@@ -8,6 +8,7 @@ test('quota errors returned as 401 are not mislabeled as invalid keys',()=>{
   assert.equal(voiceFailure(401,{detail:{status:'invalid_api_key'}}).code,'VOICE_AUTH_FAILED')
   assert.equal(voiceFailure(400,{detail:{status:'voice_not_found'}}).code,'VOICE_UNAVAILABLE')
   assert.equal(voiceFailure(403,{detail:{status:'missing_permissions'}}).code,'VOICE_PERMISSION_DENIED')
+  assert.equal(voiceFailure(401,{detail:{status:'missing_permissions'}}).code,'VOICE_PERMISSION_DENIED')
 })
 test('upstream error bodies never leak into returned messages',()=>{
   const result=voiceFailure(500,{detail:{message:'private upstream details'}})
