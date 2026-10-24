@@ -81,7 +81,7 @@ const styles = `
   .hub-logo-mark {
     width: 38px;
     height: 38px;
-    background: #b4c5b4;
+    background: #c5aa72;
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -93,7 +93,7 @@ const styles = `
     margin-bottom: 16px;
     cursor: pointer;
     flex-shrink: 0;
-    box-shadow: 0 4px 16px rgba(180,197,180,0.3);
+    box-shadow: 0 4px 16px rgba(197,170,114,0.3);
   }
 
   .hub-nav-icon {
@@ -116,9 +116,9 @@ const styles = `
   }
 
   .hub-nav-icon.active {
-    background: rgba(180,197,180,0.12);
-    color: #b4c5b4;
-    border-color: rgba(180,197,180,0.2);
+    background: rgba(197,170,114,0.12);
+    color: #c5aa72;
+    border-color: rgba(197,170,114,0.2);
   }
 
   .hub-nav-dot {
@@ -127,7 +127,7 @@ const styles = `
     right: 8px;
     width: 7px;
     height: 7px;
-    background: #c4a7ac;
+    background: #c68f9c;
     border-radius: 50%;
     border: 2px solid #13131a;
   }
@@ -165,7 +165,7 @@ const styles = `
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #b4c5b4, #c4a7ac);
+    background: linear-gradient(135deg, #c5aa72, #c68f9c);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -173,13 +173,13 @@ const styles = `
     font-weight: 600;
     color: white;
     cursor: pointer;
-    border: 2px solid rgba(180,197,180,0.3);
+    border: 2px solid rgba(197,170,114,0.3);
     transition: border-color 0.2s;
     font-family: 'DM Sans', sans-serif;
   }
 
   .hub-avatar:hover {
-    border-color: #b4c5b4;
+    border-color: #c5aa72;
   }
 
   .hub-settings-btn {

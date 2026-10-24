@@ -9,6 +9,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { enforceRateLimit } from './_lib/ratelimit.js'
+import { voiceFailure, diagnoseVoice } from './_lib/voice-errors.js'
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
 // Fallback narrator ("George"); turbo model is ~5x faster and half the
@@ -45,20 +46,28 @@ function isUuid(v) {
   return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 }
 
-const supabase = createClient(
+const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createClient(
   process.env.SUPABASE_URL || 'https://ulxzyjqmvzyqjynmqywe.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+) : null
 
 export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  if (!ELEVENLABS_API_KEY) {
-    return res.status(503).json({ error: 'Voice service not configured' })
-  }
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!supabase) {
     return res.status(503).json({ error: 'Storage service not configured' })
+  }
+
+  if (req.body?.action === 'diagnose') {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i,'')
+    if(!token) return res.status(403).json({error:'Administrator sign-in required'})
+    const {data,error} = await supabase.auth.getUser(token)
+    if(error || data.user?.email?.toLowerCase() !== 'abdalrahimmakkawi@gmail.com')
+      return res.status(403).json({error:'Administrator sign-in required'})
+    if(enforceRateLimit(req,res,'voice-diagnostics',6,60*60*1000)) return
+    try { return res.status(200).json(await diagnoseVoice({key:ELEVENLABS_API_KEY,storageConfigured:true})) }
+    catch { return res.status(502).json({ok:false,code:'VOICE_DIAGNOSTIC_UNAVAILABLE',message:'Could not reach ElevenLabs to check the key.'}) }
   }
 
   // `lang` selects WHERE the narration is stored, not just what is spoken.
@@ -100,6 +109,10 @@ export default async function handler(req, res) {
   // already returned and never reach this line.
   if (enforceRateLimit(req, res, 'voice', 6, 60 * 60 * 1000)) return
 
+  if (!ELEVENLABS_API_KEY) {
+    return res.status(503).json({ code:'VOICE_KEY_MISSING', error:'Voice service not configured: ELEVENLABS_API_KEY is missing.' })
+  }
+
   const clean = text.replace(/\s+/g, ' ').trim().slice(0, MAX_CHARS)
   const voiceId = pickVoice(category)
 
@@ -124,9 +137,9 @@ export default async function handler(req, res) {
     )
 
     if (!r.ok) {
-      const detail = await r.text().catch(() => '')
-      console.error('[Voice] ElevenLabs error', r.status, detail.slice(0, 300))
-      return res.status(502).json({ error: 'Voice generation failed' })
+      const failure = voiceFailure(r.status,await r.json().catch(()=>({})))
+      console.error('[Voice] ElevenLabs error',r.status,failure.code)
+      return res.status(failure.status).json({error:failure.error,code:failure.code})
     }
 
     const audio = Buffer.from(await r.arrayBuffer())
@@ -174,7 +187,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ url: publicUrl, cached: false })
   } catch (e) {
-    console.error('[Voice] error:', e.message)
-    return res.status(500).json({ error: 'Voice generation failed' })
+    const timeout = e?.name === 'TimeoutError' || e?.name === 'AbortError'
+    console.error('[Voice] request failed:', timeout?'timeout':'generation_or_storage')
+    return res.status(timeout?504:502).json({code:timeout?'VOICE_TIMEOUT':'VOICE_REQUEST_FAILED',error:timeout?'The voice provider timed out. Please try again.':'Audio generation or storage failed. Please try again or contact support.'})
   }
 }

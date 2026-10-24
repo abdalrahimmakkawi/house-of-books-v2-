@@ -1,5 +1,6 @@
 import { Icon, categoryIcon } from './components/Icon'
 import { DepthSurface, MetricTile } from './components/DepthSurface'
+import { readVoiceResponse } from './lib/voiceResponse'
 import { useState, useEffect, useRef, useMemo, memo, useCallback, lazy, Suspense, forwardRef, useImperativeHandle } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { supabase, signInWithEmail, verifyEmailCode, verifyTokenHash, signInWithGoogle, signOut } from './lib/supabase'
@@ -147,7 +148,7 @@ interface ReadingProgress { [bookId: string]: number } // 0-100
 //               animation: 'aiSpin 1.4s linear infinite',
 //             }}/>
 //           ) : (
-//             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={value.trim() ? '#17201d' : 'var(--gold)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+//             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={value.trim() ? '#0a0a0f' : 'var(--gold)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
 //               <path d="M12 19V5M5 12l7-7 7 7"/>
 //             </svg>
 //           )}
@@ -184,114 +185,12 @@ const T: Record<string,Record<string,string>> = {
 }
 
 export const THEMES = [
-  {
-    "id": "classic",
-    "label": "Classic",
-    "icon": "philosophy",
-    "image": "none",
-    "accent": "#b4c5b4",
-    "accentLight": "#d4ddcb",
-    "overlay": "none",
-    "isLight": false,
-    "bg": "#171d20",
-    "text": "#e7e9e3",
-    "textMuted": "#aab5ad",
-    "border": "rgba(180,197,180,0.20)",
-    "headerBg": "#171d20f2",
-    "modalBg": "#212a2d",
-    "surface": "rgba(208,222,216,0.045)",
-    "inputBg": "rgba(208,222,216,0.055)"
-  },
-  {
-    "id": "cosmos",
-    "label": "Cosmos",
-    "icon": "moon",
-    "image": "none",
-    "accent": "#b4b4cf",
-    "accentLight": "#d4d4e4",
-    "overlay": "none",
-    "isLight": false,
-    "bg": "#1b1e2b",
-    "text": "#e5e6ee",
-    "textMuted": "#b0b2c1",
-    "border": "rgba(180,197,180,0.20)",
-    "headerBg": "#1b1e2bf2",
-    "modalBg": "#252939",
-    "surface": "rgba(208,222,216,0.045)",
-    "inputBg": "rgba(208,222,216,0.055)"
-  },
-  {
-    "id": "nature",
-    "label": "Nature",
-    "icon": "leaf",
-    "image": "none",
-    "accent": "#b2c3a5",
-    "accentLight": "#d6dfc8",
-    "overlay": "none",
-    "isLight": false,
-    "bg": "#1b2420",
-    "text": "#e6ebe1",
-    "textMuted": "#b0bcae",
-    "border": "rgba(180,197,180,0.20)",
-    "headerBg": "#1b2420f2",
-    "modalBg": "#26312a",
-    "surface": "rgba(208,222,216,0.045)",
-    "inputBg": "rgba(208,222,216,0.055)"
-  },
-  {
-    "id": "beach",
-    "label": "Beach",
-    "icon": "waves",
-    "image": "none",
-    "accent": "#a4c1c4",
-    "accentLight": "#cddfe0",
-    "overlay": "none",
-    "isLight": false,
-    "bg": "#1b252b",
-    "text": "#e2e9ea",
-    "textMuted": "#a8bcc1",
-    "border": "rgba(180,197,180,0.20)",
-    "headerBg": "#1b252bf2",
-    "modalBg": "#26333a",
-    "surface": "rgba(208,222,216,0.045)",
-    "inputBg": "rgba(208,222,216,0.055)"
-  },
-  {
-    "id": "light",
-    "label": "Light",
-    "icon": "sun",
-    "image": "none",
-    "accent": "#536b60",
-    "accentLight": "#637962",
-    "overlay": "none",
-    "isLight": true,
-    "bg": "#f3f1e9",
-    "text": "#303c37",
-    "textMuted": "#626f67",
-    "border": "rgba(70,91,79,0.22)",
-    "headerBg": "#f3f1e9f2",
-    "modalBg": "#f9f8f2",
-    "surface": "rgba(255,255,255,0.58)",
-    "inputBg": "rgba(255,255,255,0.65)"
-  },
-  {
-    "id": "dark",
-    "label": "Dark",
-    "icon": "moon",
-    "image": "none",
-    "accent": "#beb9a9",
-    "accentLight": "#d9d4c7",
-    "overlay": "none",
-    "isLight": false,
-    "bg": "#1b1e20",
-    "text": "#e6e7e1",
-    "textMuted": "#adb3ad",
-    "border": "rgba(180,197,180,0.20)",
-    "headerBg": "#1b1e20f2",
-    "modalBg": "#252b2d",
-    "surface": "rgba(208,222,216,0.045)",
-    "inputBg": "rgba(208,222,216,0.055)"
-  }
+  { id:'classic',label:'Classic',icon:"philosophy",image:'/wallpaper/classic.jpg',accent:"#c6ad7c",accentLight:"#dfcca3",overlay:'rgba(8,6,2,0.80)',isLight:false,bg:'#0a0a0f',text:'#ebe6da',textMuted:'rgba(235,230,218,0.56)',border:"rgba(198,173,124,0.22)",headerBg:'rgba(10,10,15,0.90)',modalBg:'rgba(14,14,20,0.97)',surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'cosmos', label:'Cosmos', icon:"moon",image:'/wallpaper/cosmos.jpg', accent:"#9bbbd6",accentLight:"#c3d8e9",overlay:'rgba(2,4,18,0.78)', isLight:false,bg:'#02040f',text:'#e0eaf6',textMuted:'rgba(224,234,246,0.54)', border:"rgba(155,187,214,0.22)",headerBg:'rgba(2,4,18,0.90)',  modalBg:'rgba(4,8,22,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'nature', label:'Nature', icon:"leaf",image:'/wallpaper/nature.jpg', accent:"#9cbe9d",accentLight:"#c2d9bd",overlay:'rgba(2,10,4,0.78)',  isLight:false,bg:'#020a04',text:'#dfeedf',textMuted:'rgba(223,238,223,0.54)', border:"rgba(156,190,157,0.22)",headerBg:'rgba(2,10,4,0.90)',  modalBg:'rgba(4,14,6,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'beach',  label:'Beach',  icon:"waves",image:'/wallpaper/beach.jpg',  accent:"#86bdbb",accentLight:"#b7d7d3",overlay:'rgba(2,12,18,0.77)', isLight:false,bg:'#020c12',text:'#dceff0',textMuted:'rgba(220,239,240,0.54)', border:"rgba(134,189,187,0.22)", headerBg:'rgba(2,12,18,0.90)', modalBg:'rgba(4,16,22,0.97)',  surface:'rgba(255,255,255,0.045)',inputBg:'rgba(255,255,255,0.045)' },
+  { id:'light',  label:'Light',  icon:"sun",image:'none',                  accent:"#96733d",accentLight:"#b69964",overlay:'none',              isLight:true, bg:'#faf6ef',text:'#2a1f0e',textMuted:'rgba(42,31,14,0.5)',   border:"rgba(150,115,61,0.22)", headerBg:'rgba(250,246,239,0.96)',modalBg:'rgba(252,249,243,0.99)',surface:'rgba(154,111,42,0.06)',inputBg:'rgba(154,111,42,0.05)' },
+  { id:'dark',   label:'Dark',   icon:"moon",image:'none',                  accent:"#c5aa72",accentLight:"#ddc793",overlay:'none',              isLight:false,bg:'#0d0d0d',text:'#e8e4d9',textMuted:'rgba(232,228,217,0.42)',border:"rgba(197,170,114,0.20)", headerBg:'rgba(13,13,13,0.98)', modalBg:'rgba(16,16,16,0.99)',  surface:'rgba(255,255,255,0.03)',inputBg:'rgba(255,255,255,0.03)' },
 ]
 
 const TRACKS = [
@@ -425,14 +324,14 @@ const coverFallback = (title?: string, author?: string) => {
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">
 <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0%" stop-color="#1c1926"/><stop offset="55%" stop-color="#15131c"/><stop offset="100%" stop-color="#171d20"/>
+<stop offset="0%" stop-color="#1c1926"/><stop offset="55%" stop-color="#15131c"/><stop offset="100%" stop-color="#0f0e0b"/>
 </linearGradient></defs>
 <rect width="200" height="300" fill="url(#g)"/>
-<rect x="0" y="0" width="4" height="300" fill="#b4c5b4" opacity="0.55"/>
-<text x="100" y="52" text-anchor="middle" font-family="Georgia,serif" font-size="15" fill="#b4c5b4" opacity="0.75"></text>
-${lines.map((l, i) => `<text x="100" y="${startY + i * 26}" text-anchor="middle" font-family="Georgia,serif" font-size="17" fill="#e7e9e3">${esc(l)}</text>`).join('')}
-${author ? `<text x="100" y="${startY + lines.length * 26 + 14}" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-style="italic" fill="#abb6ae">${esc(String(author).slice(0, 26))}</text>` : ''}
-<text x="100" y="272" text-anchor="middle" font-family="Georgia,serif" font-size="9.5" fill="#89978f" letter-spacing="1.6">HOUSE OF BOOKS</text>
+<rect x="0" y="0" width="4" height="300" fill="#c5aa72" opacity="0.55"/>
+<text x="100" y="52" text-anchor="middle" font-family="Georgia,serif" font-size="15" fill="#c5aa72" opacity="0.75"></text>
+${lines.map((l, i) => `<text x="100" y="${startY + i * 26}" text-anchor="middle" font-family="Georgia,serif" font-size="17" fill="#e8e4d9">${esc(l)}</text>`).join('')}
+${author ? `<text x="100" y="${startY + lines.length * 26 + 14}" text-anchor="middle" font-family="Georgia,serif" font-size="12" font-style="italic" fill="#9a9080">${esc(String(author).slice(0, 26))}</text>` : ''}
+<text x="100" y="272" text-anchor="middle" font-family="Georgia,serif" font-size="9.5" fill="#6a6458" letter-spacing="1.6">HOUSE OF BOOKS</text>
 </svg>`
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
@@ -452,7 +351,7 @@ body{font-family:${dir==='rtl'?"'Noto Sans Arabic',":""}Georgia,serif;font-size:
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${th.accent}3a;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:${th.accent}66}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid ${th.accent}88;outline-offset:2px}
 
-.app-bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(ellipse at 12% 0%,${th.accent}0c,transparent 55%),var(--bg);${th.image!=='none'?`background-image:url('${th.image}');background-size:cover;background-position:center;`:''}}
+.app-bg{position:fixed;inset:0;z-index:-1;background-color:var(--bg);${th.image!=='none'?`background-image:url('${th.image}');background-size:cover;background-position:center;`:''}}
 ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;background:${th.overlay}}`:''}
 .app-root{position:relative;z-index:1;min-height:100vh}
 
@@ -467,7 +366,7 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .search-input::placeholder{color:var(--text-muted)}.search-input:focus{border-color:var(--gold)}
 .icon-btn{width:34px;height:34px;background:var(--surface);border:1px solid var(--gold-border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;position:relative}
 .icon-btn:hover,.icon-btn.active{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
-.btn-premium{padding:7px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#17201d'};border:none;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:box-shadow .25s,transform .15s;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 12px ${th.accent}30}
+.btn-premium{padding:7px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#0a0a0f'};border:none;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:box-shadow .25s,transform .15s;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 12px ${th.accent}30}
 .btn-premium:hover{transform:translateY(-1px);box-shadow:0 4px 22px ${th.accent}55}
 .dropdown{position:absolute;top:calc(100% + 8px);${dir==='rtl'?'left':'right'}:0;background:var(--modal-bg);backdrop-filter:blur(20px);border:1px solid var(--gold-border);border-radius:12px;padding:10px;min-width:190px;z-index:300;box-shadow:0 16px 48px rgba(0,0,0,.5),0 0 0 1px ${th.accent}0d;animation:dropIn .18s ease}
 @keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
@@ -554,16 +453,16 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .focus-card:hover .focus-overlay{opacity:1}
 .focus-overlay-title{font-family:Georgia,serif;font-size:.95rem;font-weight:600;color:#fff;line-height:1.25;margin-bottom:3px}
 .focus-overlay-author{font-size:10px;color:rgba(255,255,255,0.65);margin-bottom:8px}
-.focus-overlay-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#17201d;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;width:fit-content}
+.focus-overlay-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:#0a0a0f;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;width:fit-content}
 
 /* Locked state */
 .focus-locked{position:absolute;inset:0;background:${th.isLight?'rgba(250,246,239,0.82)':'rgba(10,10,15,0.78)'};backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .lock-icon{width:28px;height:28px;border:1.5px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:12px}
 .lock-label{font-size:9px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
 .shelf-badge{position:absolute;top:8px;${dir==='rtl'?'left':'right'}:8px;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;z-index:3}
-.shelf-want{background:rgba(180,197,180,.9);color:#17201d}
-.shelf-reading{background:rgba(74,180,255,.9);color:#17201d}
-.shelf-finished{background:rgba(74,200,120,.9);color:#17201d}
+.shelf-want{background:rgba(197,170,114,.9);color:#0a0a0f}
+.shelf-reading{background:rgba(74,180,255,.9);color:#0a0a0f}
+.shelf-finished{background:rgba(74,200,120,.9);color:#0a0a0f}
 
 /* ── EXPANDED READER PANEL ── */
 .expanded-backdrop{position:fixed;inset:0;background:${th.isLight?'rgba(180,155,120,0.55)':'rgba(0,0,0,0.8)'};backdrop-filter:blur(14px);z-index:200}
@@ -588,9 +487,9 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .shelf-actions{display:flex;gap:7px;margin-bottom:1.2rem;flex-wrap:wrap}
 .shelf-btn{padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer;transition:all .2s;border:1px solid var(--gold-border);background:transparent;color:var(--text-muted)}
 .shelf-btn:hover{border-color:var(--gold);color:var(--gold)}
-.shelf-btn.active-want{background:rgba(180,197,180,.15);border-color:var(--gold);color:var(--gold)}
+.shelf-btn.active-want{background:rgba(197,170,114,.15);border-color:var(--gold);color:var(--gold)}
 .shelf-btn.active-reading{background:rgba(74,180,255,.12);border-color:#4ab4ff;color:${th.isLight?'#1a6fa0':'#4ab4ff'}}
-.shelf-btn.active-finished{background:rgba(74,200,120,.12);border-color:#a5c4aa;color:${th.isLight?'#1a7a40':'#a5c4aa'}}
+.shelf-btn.active-finished{background:rgba(74,200,120,.12);border-color:#93bd9e;color:${th.isLight?'#1a7a40':'#93bd9e'}}
 .hero-badges{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:1rem}
 .hero-badge{display:inline-block;padding:3px 10px;border:1px solid var(--gold-border);border-radius:3px;font-size:10px;color:var(--gold);letter-spacing:.06em;text-transform:uppercase}
 .audio-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:${th.accent}0d;border:1px solid var(--gold-border);border-radius:20px;font-size:11px;color:var(--gold);margin-bottom:1.2rem}
@@ -627,7 +526,7 @@ ${th.image!=='none'?`.app-bg::after{content:'';position:absolute;inset:0;backgro
 .chat-input-area{padding:.9rem;border-top:1px solid var(--gold-border);display:flex;gap:7px;flex-shrink:0}
 .chat-input{flex:1;padding:8px 11px;background:var(--input-bg);border:1px solid var(--gold-border);border-radius:6px;color:var(--text);font-size:12px;outline:none;direction:${dir}}
 .chat-input:focus{border-color:var(--gold)}.chat-input::placeholder{color:var(--text-muted)}
-.btn-send{padding:8px 13px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#17201d'};border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0}
+.btn-send{padding:8px 13px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:${th.isLight?'#fff':'#0a0a0f'};border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0}
 .btn-send:disabled{opacity:.4;cursor:not-allowed}
 .loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg)}
 .loading-logo{font-family:Georgia,serif;font-size:2rem;color:var(--gold);letter-spacing:.1em}
@@ -972,16 +871,16 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
           <button
             onClick={() => setPlan('monthly')}
             style={{flex:1,padding:'10px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',cursor:'pointer',
-              background: plan==='monthly' ? 'rgba(180,197,180,0.16)' : 'rgba(255,255,255,0.03)',
-              border: plan==='monthly' ? '1px solid rgba(180,197,180,0.5)' : '1px solid rgba(255,255,255,0.08)',
-              color: plan==='monthly' ? '#b4c5b4' : 'var(--text-muted)'}}
+              background: plan==='monthly' ? 'rgba(197,170,114,0.16)' : 'rgba(255,255,255,0.03)',
+              border: plan==='monthly' ? '1px solid rgba(197,170,114,0.5)' : '1px solid rgba(255,255,255,0.08)',
+              color: plan==='monthly' ? '#c5aa72' : 'var(--text-muted)'}}
           >Monthly<br/><strong style={{fontSize:'15px'}}>$8.99</strong></button>
           <button
             onClick={() => setPlan('yearly')}
             style={{flex:1,padding:'10px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',cursor:'pointer',position:'relative',
-              background: plan==='yearly' ? 'rgba(180,197,180,0.16)' : 'rgba(255,255,255,0.03)',
-              border: plan==='yearly' ? '1px solid rgba(180,197,180,0.5)' : '1px solid rgba(255,255,255,0.08)',
-              color: plan==='yearly' ? '#b4c5b4' : 'var(--text-muted)'}}
+              background: plan==='yearly' ? 'rgba(197,170,114,0.16)' : 'rgba(255,255,255,0.03)',
+              border: plan==='yearly' ? '1px solid rgba(197,170,114,0.5)' : '1px solid rgba(255,255,255,0.08)',
+              color: plan==='yearly' ? '#c5aa72' : 'var(--text-muted)'}}
           >Yearly<br/><strong style={{fontSize:'15px'}}>$85</strong> <span style={{fontSize:'10px',opacity:0.7}}>(save 21%)</span></button>
         </div>
 
@@ -990,7 +889,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
           disabled={loading}
           style={{
             width:'100%',padding:'13px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
-            background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(180,197,180,0.25)',borderRadius:'12px',
+            background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(197,170,114,0.25)',borderRadius:'12px',
             color:'var(--text)',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
             cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1,
             marginBottom:'10px',
@@ -1087,10 +986,10 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
   }
 
   return (
-    <div style={{marginTop:'16px',padding:'16px',borderRadius:'14px',background:'rgba(180,197,180,0.06)',border:'0.5px solid rgba(180,197,180,0.22)',fontFamily:'Georgia,serif'}}>
+    <div style={{marginTop:'16px',padding:'16px',borderRadius:'14px',background:'rgba(197,170,114,0.06)',border:'0.5px solid rgba(197,170,114,0.22)',fontFamily:'Georgia,serif'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px'}}>
         <div style={{fontSize:'14px',color:'var(--text)'}}>You finished it — how was this summary?</div>
-        <button onClick={dismiss} aria-label="Dismiss" style={{background:'none',border:'none',color:'#89978f',fontSize:'16px',cursor:'pointer',lineHeight:1,padding:0}}><Icon name="close"/></button>
+        <button onClick={dismiss} aria-label="Dismiss" style={{background:'none',border:'none',color:'#6a6458',fontSize:'16px',cursor:'pointer',lineHeight:1,padding:0}}><Icon name="close"/></button>
       </div>
 
       <div style={{display:'flex',gap:'6px',marginTop:'12px'}}>
@@ -1101,9 +1000,9 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
             aria-label={`${n} out of 5`}
             style={{
               flex:1,padding:'9px 0',borderRadius:'10px',cursor:'pointer',fontSize:'16px',
-              background: n <= rating ? 'rgba(180,197,180,0.22)' : 'rgba(255,255,255,0.04)',
-              border: `0.5px solid ${n <= rating ? 'rgba(180,197,180,0.5)' : 'rgba(255,255,255,0.08)'}`,
-              color: n <= rating ? '#d4ddcb' : '#89978f',
+              background: n <= rating ? 'rgba(197,170,114,0.22)' : 'rgba(255,255,255,0.04)',
+              border: `0.5px solid ${n <= rating ? 'rgba(197,170,114,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              color: n <= rating ? '#ddc793' : '#6a6458',
             }}
           ><Icon name="star" style={{color:'currentColor'}}/></button>
         ))}
@@ -1116,13 +1015,13 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
             onChange={e => setNote(e.target.value.slice(0, 800))}
             placeholder="Anything you'd change? (optional)"
             rows={2}
-            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',color:'var(--text)',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
+            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(197,170,114,0.25)',color:'var(--text)',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
           />
           {err && <div style={{fontSize:'11px',color:'#e07a7a',marginTop:'6px'}}>{err}</div>}
           <div style={{display:'flex',gap:'8px',marginTop:'10px'}}>
             <button
               onClick={send}
-              style={{flex:1,padding:'10px',borderRadius:'10px',background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',color:'#17201d',border:'none',fontSize:'13px',fontWeight:700,fontFamily:'Georgia,serif',cursor:'pointer'}}
+              style={{flex:1,padding:'10px',borderRadius:'10px',background:'linear-gradient(135deg,#e0be6f,#c5aa72)',color:'#0a0a0f',border:'none',fontSize:'13px',fontWeight:700,fontFamily:'Georgia,serif',cursor:'pointer'}}
             >Send feedback</button>
             <button onClick={dismiss} style={{padding:'10px 14px',borderRadius:'10px',background:'none',border:'0.5px solid rgba(255,255,255,0.1)',color:'var(--text-muted)',fontSize:'12px',fontFamily:'Georgia,serif',cursor:'pointer'}}>Not now</button>
           </div>
@@ -1151,6 +1050,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
   const scrubbingRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const loadedForRef = useRef<string>('')
+  const temporaryAudioRef = useRef<string | null>(null)
   // The loaded <audio> is keyed by book AND language: the same book has a
   // different recording per language, so a reader who switches to Arabic
   // with the book still open must not keep hearing the English narration.
@@ -1160,6 +1060,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
   const setScrub = (v: boolean) => { scrubbingRef.current = v; setScrubbing(v) }
 
   const attachTimeListeners = (audio: HTMLAudioElement) => {
+    audio.onerror = () => { setState('error'); setErrorMsg('The audio file could not be loaded. Please try another book or contact support.') }
     audio.ontimeupdate = () => { if (!scrubbingRef.current) setCurrentTime(audio.currentTime) }
     audio.onloadedmetadata = () => setDuration(audio.duration)
     audio.ondurationchange = () => setDuration(audio.duration)
@@ -1171,6 +1072,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
     return () => {
       audioRef.current?.pause()
       audioRef.current = null; loadedForRef.current = ''
+      if(temporaryAudioRef.current) { URL.revokeObjectURL(temporaryAudioRef.current); temporaryAudioRef.current=null }
       setCurrentTime(0); setDuration(0); setState('idle')
     }
   }, [bookId, langId])
@@ -1180,7 +1082,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
     if (state === 'playing') { audioRef.current?.pause(); setState('paused'); return }
     if (state === 'idle') track('listen_narration', { category })
     if (audioRef.current && loadedForRef.current === trackKey) {
-      try { await audioRef.current.play(); setState('playing') } catch { setState('paused') }
+      try { await audioRef.current.play(); setState('playing') } catch (e:any) { if(e?.name==='NotAllowedError')setState('paused');else{setState('error');setErrorMsg('The audio file could not be loaded. Please try another book or contact support.')} }
       return
     }
 
@@ -1193,7 +1095,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       attachTimeListeners(audio)
       audioRef.current = audio
       loadedForRef.current = trackKey
-      try { await audio.play(); setState('playing') } catch { setState('paused') }
+      try { await audio.play(); setState('playing') } catch (e:any) { if(e?.name==='NotAllowedError')setState('paused');else{setState('error');setErrorMsg('The audio file could not be loaded. Please try another book or contact support.')} }
       return
     }
 
@@ -1207,14 +1109,11 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
         body: JSON.stringify({ bookId, text, category, lang: langId || 'en' }),
         signal: AbortSignal.timeout(75000),
       })
-      const j = await r.json().catch(() => ({}))
-      if (!r.ok) {
-        throw new Error(r.status === 429
-          ? 'Listening limit reached — try again in a bit.'
-          : (j.error || 'Audio unavailable right now.'))
-      }
-      if (!j.url) throw new Error('Audio unavailable right now.')
-      onCached?.(bookId, j.url)
+      const j = await readVoiceResponse(r)
+      if(j.temporary) {
+        if(temporaryAudioRef.current) URL.revokeObjectURL(temporaryAudioRef.current)
+        temporaryAudioRef.current=j.url
+      } else onCached?.(bookId, j.url)
       const audio = new Audio(j.url)
       audio.onended = () => setState('paused')
       attachTimeListeners(audio)
@@ -1223,7 +1122,8 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
       try {
         await audio.play()
         setState('playing')
-      } catch {
+      } catch (e:any) {
+        if(e?.name!=='NotAllowedError') throw new Error('The generated audio could not be played. Please try again.')
         // Autoplay blocked (the click "gesture" expired during generation).
         // Audio is ready — the next tap plays instantly.
         setState('paused')
@@ -1274,15 +1174,15 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
   }
 
   const disabled = !text?.trim()
-  const hasAudio = !!audioRef.current && loadedForRef.current === bookId
+  const hasAudio = !!audioRef.current && loadedForRef.current === trackKey
   const pct = duration ? (currentTime / duration) * 100 : 0
 
   return (
     <div style={{marginBottom:'16px'}}>
       <div style={{
         display:'flex',alignItems:'center',gap:'12px',
-        background: state==='playing' ? 'rgba(180,197,180,0.14)' : 'rgba(180,197,180,0.07)',
-        border:'0.5px solid rgba(180,197,180,0.3)',
+        background: state==='playing' ? 'rgba(197,170,114,0.14)' : 'rgba(197,170,114,0.07)',
+        border:'0.5px solid rgba(197,170,114,0.3)',
         borderRadius:'16px',padding:'14px 16px',
         transition:'background .25s',
       }}>
@@ -1292,13 +1192,13 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
           aria-label={state === 'playing' ? 'Pause' : 'Play'}
           style={{
             width:'44px',height:'44px',flexShrink:0,borderRadius:'50%',
-            background: disabled ? 'rgba(255,255,255,0.06)' : '#b4c5b4',
+            background: disabled ? 'rgba(255,255,255,0.06)' : '#c5aa72',
             border:'none',display:'flex',alignItems:'center',justifyContent:'center',
-            fontSize:'16px',color: disabled ? '#89978f' : '#17201d',
+            fontSize:'16px',color: disabled ? '#6a6458' : '#0a0a0f',
             cursor: disabled || state==='loading' ? 'default' : 'pointer',
             opacity: state==='loading' ? 0.6 : 1,
             transition:'transform .15s',
-            boxShadow: !disabled ? '0 4px 14px rgba(180,197,180,0.35)' : 'none',
+            boxShadow: !disabled ? '0 4px 14px rgba(197,170,114,0.35)' : 'none',
           }}
           onMouseEnter={e=>{ if(!disabled) (e.currentTarget as HTMLButtonElement).style.transform='scale(1.06)' }}
           onMouseLeave={e=>{ (e.currentTarget as HTMLButtonElement).style.transform='none' }}
@@ -1308,7 +1208,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
 
         <div style={{flex:1,minWidth:0}}>
           {disabled ? (
-            <div style={{fontSize:'13px',color:'#89978f',fontFamily:'Georgia,serif'}}>Generate the AI summary first to listen</div>
+            <div style={{fontSize:'13px',color:'#6a6458',fontFamily:'Georgia,serif'}}>Generate the AI summary first to listen</div>
           ) : state === 'idle' ? (
             <div style={{fontSize:'13px',color:'var(--gold)',fontFamily:'Georgia,serif'}}>Listen to this summary</div>
           ) : (
@@ -1327,11 +1227,11 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
                 }}
               >
                 <div style={{width:'100%',height:'4px',borderRadius:'4px',background:'rgba(255,255,255,0.12)',position:'relative',overflow:'visible'}}>
-                  <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,borderRadius:'4px',background:'#b4c5b4',transition: scrubbing ? 'none' : 'width .1s linear'}}/>
+                  <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,borderRadius:'4px',background:'#c5aa72',transition: scrubbing ? 'none' : 'width .1s linear'}}/>
                   <div style={{
                     position:'absolute',top:'50%',left:`${pct}%`,
                     width:'11px',height:'11px',borderRadius:'50%',
-                    background:'#e7e9e3',transform:'translate(-50%,-50%)',
+                    background:'#e8e4d9',transform:'translate(-50%,-50%)',
                     boxShadow:'0 1px 4px rgba(0,0,0,0.5)',
                     opacity: hasAudio ? 1 : 0,
                   }}/>
@@ -1428,7 +1328,7 @@ function ExpandedPanel({
         top: 0, left: 0, right: 0, bottom: 0,
         width: '100vw',
         height: '100vh',
-        background: '#171d20',
+        background: '#0f0e0b',
         zIndex: 999,
         display: 'flex',
         flexDirection: 'column',
@@ -1471,9 +1371,9 @@ function ExpandedPanel({
             onClick={() => onShelf(shelfStatus === 'want' ? 'none' : 'want')}
             style={{
               width:'36px',height:'36px',
-              background: shelfStatus !== 'none' ? 'rgba(180,197,180,0.15)' : 'rgba(255,255,255,0.06)',
+              background: shelfStatus !== 'none' ? 'rgba(197,170,114,0.15)' : 'rgba(255,255,255,0.06)',
               border:'none',borderRadius:'50%',
-              color: shelfStatus !== 'none' ? '#b4c5b4' : '#e7e9e3',
+              color: shelfStatus !== 'none' ? '#c5aa72' : '#e8e4d9',
               fontSize:'14px',cursor:'pointer',
               display:'flex',alignItems:'center',justifyContent:'center',
               transition:'background .2s',
@@ -1496,7 +1396,7 @@ function ExpandedPanel({
           position:'relative',zIndex:1,
           display:'flex',alignItems:'center',
           padding:'24px 20px',gap:'20px',
-          borderBottom:'0.5px solid rgba(180,197,180,0.12)',
+          borderBottom:'0.5px solid rgba(197,170,114,0.12)',
         }}>
           <img
             src={book.cover_url || coverFallback(book.title, book.author)}
@@ -1506,7 +1406,7 @@ function ExpandedPanel({
             style={{
               width:'96px',height:'138px',
               objectFit:'cover',borderRadius:'12px',
-              border:'1.5px solid rgba(180,197,180,0.45)',
+              border:'1.5px solid rgba(197,170,114,0.45)',
               boxShadow:'0 12px 32px rgba(0,0,0,0.6)',
               flexShrink:0,
             }}
@@ -1524,10 +1424,10 @@ function ExpandedPanel({
               by {book.author}
             </div>
             <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
-              <div style={{background:'rgba(180,197,180,0.14)',border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#d4ddcb'}}>
+              <div style={{background:'rgba(197,170,114,0.14)',border:'0.5px solid rgba(197,170,114,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#ddc793'}}>
                 {book.category}
               </div>
-              <div style={{background:'rgba(180,197,180,0.14)',border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#d4ddcb'}}>
+              <div style={{background:'rgba(197,170,114,0.14)',border:'0.5px solid rgba(197,170,114,0.3)',borderRadius:'20px',padding:'3px 10px',fontSize:'10px',color:'#ddc793'}}>
                 
                 <Icon name="sparkles"/> AI Ready
               </div>
@@ -1548,31 +1448,31 @@ function ExpandedPanel({
           aria-label={audioState === 'playing' ? 'Pause narration' : 'Read and listen now'}
           style={{
             flex:2,padding:'13px',
-            background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',color:'#17201d',
+            background:'linear-gradient(135deg,#e0be6f,#c5aa72)',color:'#0a0a0f',
             border:'none',borderRadius:'13px',
             fontSize:'14px',cursor: hasSummary ? 'pointer' : 'default',
             opacity: hasSummary ? 1 : 0.45,
             fontFamily:'Georgia,serif',fontWeight:'700',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',
-            boxShadow:'0 6px 18px rgba(180,197,180,0.3)',
+            boxShadow:'0 6px 18px rgba(197,170,114,0.3)',
             transition:'transform .15s, box-shadow .15s',
           }}
-          onMouseEnter={e=>{if(!hasSummary)return;(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(180,197,180,0.42)'}}
-          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 6px 18px rgba(180,197,180,0.3)'}}
+          onMouseEnter={e=>{if(!hasSummary)return;(e.currentTarget as HTMLButtonElement).style.transform='translateY(-1px)';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 8px 22px rgba(197,170,114,0.42)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.transform='none';(e.currentTarget as HTMLButtonElement).style.boxShadow='0 6px 18px rgba(197,170,114,0.3)'}}
         >{audioState === 'loading' ? '◌ Loading…' : audioState === 'playing' ? '❚❚ Pause' : audioState === 'paused' ? "Resume" : "Read Now"}</button>
         <button
           onClick={() => { setActiveTab('chat'); onToggleChat() }}
           style={{
             flex:1,padding:'13px',
-            background:'rgba(180,197,180,0.12)',color:'var(--gold)',
-            border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'13px',
+            background:'rgba(197,170,114,0.12)',color:'var(--gold)',
+            border:'0.5px solid rgba(197,170,114,0.3)',borderRadius:'13px',
             fontSize:'13px',cursor:'pointer',
             fontFamily:'Georgia,serif',
             display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',
             transition:'background .2s',
           }}
-          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(180,197,180,0.2)'}}
-          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(180,197,180,0.12)'}}
+          onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(197,170,114,0.2)'}}
+          onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(197,170,114,0.12)'}}
         ><Icon name="sparkles"/> AI Chat</button>
       </div>
 
@@ -1592,7 +1492,7 @@ function ExpandedPanel({
               position:'relative',
               padding:'12px 16px',
               fontSize:'13px',
-              color: activeTab === tab ? '#b4c5b4' : '#abb6ae',
+              color: activeTab === tab ? '#c5aa72' : '#9a9080',
               cursor:'pointer',border:'none',background:'none',
               fontFamily:'Georgia,serif',
               transition:'color .2s',
@@ -1604,7 +1504,7 @@ function ExpandedPanel({
               <motion.div
                 layoutId="tab-indicator"
                 transition={{ type: 'spring', stiffness: 500, damping: 40 }}
-                style={{position:'absolute',left:8,right:8,bottom:0,height:'2px',background:'#b4c5b4',borderRadius:'2px'}}
+                style={{position:'absolute',left:8,right:8,bottom:0,height:'2px',background:'#c5aa72',borderRadius:'2px'}}
               />
             )}
           </button>
@@ -1626,7 +1526,7 @@ function ExpandedPanel({
             <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               What's it about?
             </div>
-            <div style={{fontSize:'10px',color:'#89978f',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+            <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
             <div style={{fontSize:'14px',color:'var(--text-muted)',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
@@ -1637,9 +1537,9 @@ function ExpandedPanel({
                 onClick={onGenerateSummary}
                 style={{
                   width:'100%',padding:'12px',
-                  background:'rgba(180,197,180,0.12)',
+                  background:'rgba(197,170,114,0.12)',
                   color:'var(--gold)',
-                  border:'0.5px solid rgba(180,197,180,0.3)',
+                  border:'0.5px solid rgba(197,170,114,0.3)',
                   borderRadius:'12px',fontSize:'14px',
                   cursor:'pointer',fontFamily:'Georgia,serif',
                   marginBottom:'16px',
@@ -1671,7 +1571,7 @@ function ExpandedPanel({
             <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               {t.fullSummary}
             </div>
-            <div style={{fontSize:'10px',color:'#89978f',marginBottom:'16px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
+            <div style={{fontSize:'10px',color:'#6a6458',marginBottom:'16px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
             {book.long_summary ? (() => {
@@ -1680,8 +1580,8 @@ function ExpandedPanel({
               return (
                 <>
                   <div style={{
-                    background:'rgba(180,197,180,0.05)',
-                    border:'0.5px solid rgba(180,197,180,0.15)',
+                    background:'rgba(197,170,114,0.05)',
+                    border:'0.5px solid rgba(197,170,114,0.15)',
                     borderRadius:'14px',padding:'18px 20px',marginBottom:'14px',
                     fontSize:'14px',color:'var(--text)',lineHeight:'1.85',
                     fontFamily:'Georgia,serif',whiteSpace:'pre-line',
@@ -1695,8 +1595,8 @@ function ExpandedPanel({
                       disabled={page === 0}
                       style={{
                         padding:'9px 16px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',
-                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',
-                        color: page === 0 ? '#4a463d' : '#b4c5b4',
+                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(197,170,114,0.25)',
+                        color: page === 0 ? '#4a463d' : '#c5aa72',
                         cursor: page === 0 ? 'default' : 'pointer',
                       }}
                     >← Previous</button>
@@ -1708,8 +1608,8 @@ function ExpandedPanel({
                       disabled={page === pages.length - 1}
                       style={{
                         padding:'9px 16px',borderRadius:'10px',fontFamily:'Georgia,serif',fontSize:'13px',
-                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',
-                        color: page === pages.length - 1 ? '#4a463d' : '#b4c5b4',
+                        background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(197,170,114,0.25)',
+                        color: page === pages.length - 1 ? '#4a463d' : '#c5aa72',
                         cursor: page === pages.length - 1 ? 'default' : 'pointer',
                       }}
                     >Next <Icon name="arrow"/></button>
@@ -1729,7 +1629,7 @@ function ExpandedPanel({
             )}
             <div style={{
               display:'flex',alignItems:'center',gap:'10px',
-              background:'rgba(180,197,180,0.07)',border:'0.5px solid rgba(180,197,180,0.2)',
+              background:'rgba(197,170,114,0.07)',border:'0.5px solid rgba(197,170,114,0.2)',
               borderRadius:'14px',padding:'14px 16px',
             }}>
               <span style={{fontSize:'16px'}}><Icon name="headphones"/></span>
@@ -1751,8 +1651,8 @@ function ExpandedPanel({
               book.key_insights.split('\n').filter((i: string) => i.trim()).map((insight: string, idx: number) => (
                 <div key={idx} style={{
                   display:'flex',gap:'12px',alignItems:'flex-start',
-                  background:'rgba(180,197,180,0.05)',
-                  border:'0.5px solid rgba(180,197,180,0.15)',
+                  background:'rgba(197,170,114,0.05)',
+                  border:'0.5px solid rgba(197,170,114,0.15)',
                   borderRadius:'14px',padding:'14px 16px',
                   fontSize:'13px',color:'var(--text)',lineHeight:'1.65',
                   marginBottom:'10px',fontFamily:'Georgia,serif',
@@ -1760,8 +1660,8 @@ function ExpandedPanel({
                 }}>
                   <div style={{
                     width:'24px',height:'24px',borderRadius:'50%',flexShrink:0,
-                    background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',
-                    color:'#17201d',fontSize:'11px',fontWeight:'700',
+                    background:'linear-gradient(135deg,#e0be6f,#c5aa72)',
+                    color:'#0a0a0f',fontSize:'11px',fontWeight:'700',
                     display:'flex',alignItems:'center',justifyContent:'center',
                     marginTop:'1px',
                   }}>{idx+1}</div>
@@ -1775,8 +1675,8 @@ function ExpandedPanel({
                 onClick={onGenerateSummary}
                 style={{
                   width:'100%',padding:'12px',
-                  background:'rgba(180,197,180,0.12)',color:'var(--gold)',
-                  border:'0.5px solid rgba(180,197,180,0.3)',
+                  background:'rgba(197,170,114,0.12)',color:'var(--gold)',
+                  border:'0.5px solid rgba(197,170,114,0.3)',
                   borderRadius:'12px',fontSize:'14px',
                   cursor:'pointer',fontFamily:'Georgia,serif',
                 }}
@@ -1801,10 +1701,10 @@ function ExpandedPanel({
                   onClick={() => onShelf(s)}
                   style={{
                     flex:1,padding:'9px 6px',
-                    background: shelfStatus === s ? 'rgba(180,197,180,0.12)' : 'rgba(255,255,255,0.03)',
-                    border: shelfStatus === s ? '0.5px solid rgba(180,197,180,0.4)' : '0.5px solid rgba(255,255,255,0.08)',
+                    background: shelfStatus === s ? 'rgba(197,170,114,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: shelfStatus === s ? '0.5px solid rgba(197,170,114,0.4)' : '0.5px solid rgba(255,255,255,0.08)',
                     borderRadius:'10px',
-                    color: shelfStatus === s ? '#b4c5b4' : '#abb6ae',
+                    color: shelfStatus === s ? '#c5aa72' : '#9a9080',
                     fontSize:'11px',cursor:'pointer',
                     fontFamily:'Georgia,serif',textAlign:'center' as any,
                     transition:'all .2s',
@@ -1821,12 +1721,12 @@ function ExpandedPanel({
                 <span style={{color:'var(--gold)'}}>{progress}%</span>
               </div>
               <div style={{width:'100%',background:'rgba(255,255,255,0.06)',borderRadius:'4px',height:'5px',marginBottom:'10px'}}>
-                <div style={{height:'5px',background:'linear-gradient(90deg,#b4c5b4,#e0be6f)',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
+                <div style={{height:'5px',background:'linear-gradient(90deg,#c5aa72,#e0be6f)',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
               </div>
               <input
                 type="range" min="0" max="100" value={progress}
                 onChange={e => onProgress(Number(e.target.value))}
-                style={{width:'100%',accentColor:'#b4c5b4'}}
+                style={{width:'100%',accentColor:'#c5aa72'}}
               />
             </div>
             {/* Notes */}
@@ -1838,7 +1738,7 @@ function ExpandedPanel({
               style={{
                 width:'100%',minHeight:'100px',
                 background:'rgba(255,255,255,0.03)',
-                border:'0.5px solid rgba(180,197,180,0.2)',
+                border:'0.5px solid rgba(197,170,114,0.2)',
                 borderRadius:'12px',padding:'12px',
                 color:'var(--text)',fontSize:'13px',
                 fontFamily:'Georgia,serif',resize:'none',outline:'none',
@@ -1848,8 +1748,8 @@ function ExpandedPanel({
               onClick={() => onSaveNote(currentNote)}
               style={{
                 marginTop:'10px',width:'100%',padding:'10px',
-                background:'rgba(180,197,180,0.12)',
-                border:'0.5px solid rgba(180,197,180,0.3)',
+                background:'rgba(197,170,114,0.12)',
+                border:'0.5px solid rgba(197,170,114,0.3)',
                 borderRadius:'10px',color:'var(--gold)',
                 fontSize:'13px',cursor:'pointer',fontFamily:'Georgia,serif',
               }}
@@ -1882,8 +1782,8 @@ function ExpandedPanel({
               </div>
             </div>
             <div style={{
-              background:'rgba(180,197,180,0.04)',
-              border:'0.5px solid rgba(180,197,180,0.15)',
+              background:'rgba(197,170,114,0.04)',
+              border:'0.5px solid rgba(197,170,114,0.15)',
               borderRadius:'14px',padding:'16px',marginBottom:'16px',
             }}>
               {chatMessages.length === 0 && (
@@ -1907,10 +1807,10 @@ function ExpandedPanel({
                     padding:'10px 12px',
                     borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     fontFamily:'Georgia,serif',
-                    background: msg.role === 'user' ? 'rgba(180,197,180,0.14)' : 'rgba(255,255,255,0.04)',
+                    background: msg.role === 'user' ? 'rgba(197,170,114,0.14)' : 'rgba(255,255,255,0.04)',
                   }}>
                     {msg.content}
-                    {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#b4c5b4',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
+                    {isTyping && <span style={{display:'inline-block',width:'2px',height:'1em',background:'#c5aa72',marginLeft:'2px',verticalAlign:'text-bottom',animation:'hobBlink 1s step-end infinite'}}/>}
                   </div>
                 )
                 // Minerva speaks only on the message she is currently writing;
@@ -1940,7 +1840,7 @@ function ExpandedPanel({
                   rows={2}
                   style={{
                     flex:1,background:'rgba(255,255,255,0.04)',
-                    border:'0.5px solid rgba(180,197,180,0.3)',
+                    border:'0.5px solid rgba(197,170,114,0.3)',
                     borderRadius:'10px',padding:'9px 12px',
                     fontSize:'13px',color:'var(--text)',
                     fontFamily:'Georgia,serif',resize:'none',outline:'none',
@@ -1950,10 +1850,10 @@ function ExpandedPanel({
                   onClick={() => onSendMessage(chatInput)}
                   disabled={chatBusy || !chatInput.trim()}
                   style={{
-                    background:'#b4c5b4',border:'none',
+                    background:'#c5aa72',border:'none',
                     borderRadius:'10px',width:'40px',
                     cursor:'pointer',fontSize:'16px',
-                    color:'#17201d',flexShrink:0,
+                    color:'#0a0a0f',flexShrink:0,
                     opacity: chatBusy || !chatInput.trim() ? 0.5 : 1,
                   }}
                 ><Icon name="arrow"/></button>
@@ -2019,6 +1919,18 @@ export default function App() {
   const [readingProgress,setReadingProgress]=useState<ReadingProgress>({})
   const [exportingPDF,setExportingPDF]=useState(false)
   const [showUserDashboard,setShowUserDashboard]=useState(false)
+  const [voiceDiagnostic,setVoiceDiagnostic]=useState('')
+  const [voiceChecking,setVoiceChecking]=useState(false)
+  const checkVoiceService=async()=>{
+    setVoiceChecking(true);setVoiceDiagnostic('')
+    try {
+      const {data:{session}}=await supabase.auth.getSession()
+      const r=await fetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(session?.access_token||'')},body:JSON.stringify({action:'diagnose'}),signal:AbortSignal.timeout(20000)})
+      const j=await r.json()
+      setVoiceDiagnostic((j.message||j.error||'Could not check the voice service.')+(typeof j.remaining==='number'?` Remaining characters: ${j.remaining.toLocaleString()}.`:''))
+    } catch {setVoiceDiagnostic('Could not reach the voice service. Please try again.')}
+    finally {setVoiceChecking(false)}
+  }
   const [showFeedbackModal,setShowFeedbackModal]=useState(false)
   const [canInstall,setCanInstall]=useState(false)
   const [feedbackCategory,setFeedbackCategory]=useState('general')
@@ -2558,12 +2470,12 @@ export default function App() {
       <html><head><meta charset="UTF-8"><title>${safeTitle} — Insights</title>
       <style>
         body{font-family:Georgia,serif;line-height:1.6;max-width:700px;margin:40px auto;color:#333}
-        h1{font-size:2rem;color:#b4c5b4;margin-bottom:16px}
+        h1{font-size:2rem;color:#c5aa72;margin-bottom:16px}
         .author{color:#666;font-size:1rem;margin-bottom:32px}
-        .divider{width:60px;height:2px;background:#b4c5b4;margin:16px 0 32px}
+        .divider{width:60px;height:2px;background:#c5aa72;margin:16px 0 32px}
         h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;color:#8a5c20;margin-bottom:20px}
-        .insight{display:flex;gap:16px;padding:16px;margin-bottom:12px;background:#faf6ef;border-left:3px solid #b4c5b4;border-radius:4px}
-        .num{font-size:1.4rem;color:#b4c5b4;font-weight:700;min-width:28px;line-height:1.3}
+        .insight{display:flex;gap:16px;padding:16px;margin-bottom:12px;background:#faf6ef;border-left:3px solid #c5aa72;border-radius:4px}
+        .num{font-size:1.4rem;color:#c5aa72;font-weight:700;min-width:28px;line-height:1.3}
         .text{font-size:0.95rem;color:#333}
         .footer{margin-top:48px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;text-align:center}
         @media print{body{margin:20px auto}}
@@ -2867,34 +2779,34 @@ export default function App() {
           }
           .landing-title {
             font-size: clamp(2rem, 5vw, 3.2rem);
-            color: #b4c5b4;
+            color: #c5aa72;
             line-height: 1.2;
             margin-bottom: 1rem;
           }
           .landing-sub {
             font-size: 1.1rem;
-            color: #e7e9e3;
+            color: #e8e4d9;
             line-height: 1.7;
             margin-bottom: 2.5rem;
             max-width: 480px;
           }
-          .landing-stat-num { font-size: 2rem; color: #b4c5b4; font-weight: 500; }
-          .landing-stat-label { font-size: 10px; color: #abb6ae; letter-spacing: .1em; }
+          .landing-stat-num { font-size: 2rem; color: #c5aa72; font-weight: 500; }
+          .landing-stat-label { font-size: 10px; color: #9a9080; letter-spacing: .1em; }
           .landing-feature {
             background: rgba(255,255,255,0.04);
-            border: 0.5px solid rgba(180,197,180,0.25);
-            border-left: 3px solid rgba(180,197,180,0.4);
+            border: 0.5px solid rgba(197,170,114,0.25);
+            border-left: 3px solid rgba(197,170,114,0.4);
             border-radius: 14px;
             padding: 1.25rem;
             text-align: left;
           }
-          .landing-feature-title { font-size: 14px; color: #b4c5b4; margin-bottom: 6px; }
-          .landing-feature-desc { font-size: 12px; color: #abb6ae; line-height: 1.5; }
+          .landing-feature-title { font-size: 14px; color: #c5aa72; margin-bottom: 6px; }
+          .landing-feature-desc { font-size: 12px; color: #9a9080; line-height: 1.5; }
         `}</style>
         <div className="app-bg"/>
 
         <div className="landing-wrap">
-          <img src="/logo-icon.png" alt="House of Books" style={{width:'88px',height:'88px',objectFit:'contain',margin:'0 auto 1.25rem',display:'block',filter:'drop-shadow(0 4px 24px rgba(180,197,180,0.35))'}} />
+          <img src="/logo-icon.png" alt="House of Books" style={{width:'88px',height:'88px',objectFit:'contain',margin:'0 auto 1.25rem',display:'block',filter:'drop-shadow(0 4px 24px rgba(197,170,114,0.35))'}} />
 
           <h1 className="landing-title">
             The World's Greatest Books<br/>
@@ -2951,8 +2863,8 @@ export default function App() {
         <style>{buildStyles(theme, lang.dir)}</style>
         <div className="app-bg"/>
         <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
-          <div style={{background:'var(--modal-bg)',border:'1px solid rgba(180,197,180,0.28)',borderRadius:'20px',padding:'2.75rem 2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const,boxShadow:'0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
-            <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(180,197,180,0.35))'}} />
+          <div style={{background:'var(--modal-bg)',border:'1px solid rgba(197,170,114,0.28)',borderRadius:'20px',padding:'2.75rem 2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const,boxShadow:'0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
+            <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(197,170,114,0.35))'}} />
             <h2 style={{fontSize:'1.7rem',color:'var(--gold)',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
             {loginStatus === 'sent' ? (
               <>
@@ -2969,19 +2881,19 @@ export default function App() {
                   value={codeInput}
                   onChange={e => { setCodeInput(e.target.value.replace(/\D/g,'')); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
-                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'var(--text)',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(197,170,114,0.3)',borderRadius:'10px',color:'var(--text)',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleVerifyCode}
                   disabled={verifying || !codeInput}
-                  style={{width:'100%',padding:'11px',background:'#b4c5b4',border:'none',borderRadius:'10px',color:'#17201d',fontSize:'14px',cursor:(verifying||!codeInput)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||!codeInput)?0.6:1}}
+                  style={{width:'100%',padding:'11px',background:'#c5aa72',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:(verifying||!codeInput)?'default':'pointer',fontFamily:'Georgia,serif',opacity:(verifying||!codeInput)?0.6:1}}
                 >
                   {verifying ? 'Verifying…' : <> Sign in <Icon name="arrow"/> </>}
                 </button>
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif'}}>{loginError}</p>
                 )}
-                <p style={{color:'#89978f',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
+                <p style={{color:'#6a6458',fontSize:'11px',marginTop:'14px',lineHeight:1.5}}>
                   The email also has a link — but on a phone, use the code so you stay in the app.
                 </p>
                 <button
@@ -2998,14 +2910,14 @@ export default function App() {
                     an account — see signInWithEmail / handleLogin. The code
                     length isn't fixed here: Supabase decides it (this project
                     currently sends 8 digits), and validates server-side. */}
-                <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
+                <div style={{display:'flex',gap:'6px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(197,170,114,0.18)',borderRadius:'12px',padding:'4px',marginBottom:'1.25rem'}}>
                   {([['signin','Sign in'],['signup','Sign up']] as const).map(([mode,label]) => (
                     <button
                       key={mode}
                       onClick={() => { setAuthMode(mode); setLoginError('') }}
                       style={{flex:1,padding:'9px',borderRadius:'9px',border:'none',cursor:'pointer',fontFamily:'Georgia,serif',fontSize:'13.5px',transition:'background .18s ease, color .18s ease',
-                        background: authMode===mode ? '#b4c5b4' : 'transparent',
-                        color: authMode===mode ? '#17201d' : '#abb6ae',
+                        background: authMode===mode ? '#c5aa72' : 'transparent',
+                        color: authMode===mode ? '#0a0a0f' : '#9a9080',
                         fontWeight: authMode===mode ? 600 : 400}}
                     >
                       {label}
@@ -3027,9 +2939,9 @@ export default function App() {
                   {authMode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
                 </button>
                 <div style={{display:'flex',alignItems:'center',gap:'10px',margin:'14px 0'}}>
-                  <div style={{flex:1,height:'1px',background:'rgba(180,197,180,0.2)'}}/>
-                  <span style={{color:'#89978f',fontSize:'11px'}}>or</span>
-                  <div style={{flex:1,height:'1px',background:'rgba(180,197,180,0.2)'}}/>
+                  <div style={{flex:1,height:'1px',background:'rgba(197,170,114,0.2)'}}/>
+                  <span style={{color:'#6a6458',fontSize:'11px'}}>or</span>
+                  <div style={{flex:1,height:'1px',background:'rgba(197,170,114,0.2)'}}/>
                 </div>
                 <input
                   type="email"
@@ -3037,12 +2949,12 @@ export default function App() {
                   value={emailInput}
                   onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
-                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'var(--text)',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(197,170,114,0.3)',borderRadius:'10px',color:'var(--text)',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleLogin}
                   disabled={loginStatus === 'sending'}
-                  style={{width:'100%',padding:'11px',background:'#b4c5b4',border:'none',borderRadius:'10px',color:'#17201d',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
+                  style={{width:'100%',padding:'11px',background:'#c5aa72',border:'none',borderRadius:'10px',color:'#0a0a0f',fontSize:'14px',cursor:loginStatus==='sending'?'default':'pointer',fontFamily:'Georgia,serif',opacity:loginStatus==='sending'?0.7:1}}
                 >
                   {loginStatus === 'sending'
                     ? 'Sending code…'
@@ -3051,7 +2963,7 @@ export default function App() {
                 {loginError && (
                   <p style={{color:'#e07a7a',fontSize:'12px',marginTop:'10px',fontFamily:'Georgia,serif',lineHeight:1.5}}>{loginError}</p>
                 )}
-                <p style={{color:'#89978f',fontSize:'11.5px',marginTop:'12px',lineHeight:1.5}}>
+                <p style={{color:'#6a6458',fontSize:'11.5px',marginTop:'12px',lineHeight:1.5}}>
                   {authMode === 'signin' ? (
                     <>New here? <button onClick={()=>{setAuthMode('signup');setLoginError('')}} style={{background:'none',border:'none',color:'var(--gold)',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Create an account</button></>
                   ) : (
@@ -3171,7 +3083,7 @@ export default function App() {
               borderRadius: '50%',
               background: 'linear-gradient(135deg, var(--gold), #899d8d)',
               border: 'none',
-              color: '#17201d',
+              color: '#0a0a0f',
               fontSize: '12px',
               fontWeight: '500',
               fontFamily: 'Georgia, serif',
@@ -3348,7 +3260,7 @@ export default function App() {
               width:'52px', height:'52px', borderRadius:'50%',
               background:'linear-gradient(135deg, var(--gold), #8a6520)',
               display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:'18px', fontWeight:'500', color:'#17201d'
+              fontSize:'18px', fontWeight:'500', color:'#0a0a0f'
             }}>
               {userEmail.slice(0,2).toUpperCase()}
             </div>
@@ -3381,7 +3293,7 @@ export default function App() {
           {/* Admin badge */}
           {isAdmin(authedEmail) && (
             <div style={{
-              background:'rgba(180,197,180,0.1)', border:'1px solid var(--gold-border)',
+              background:'rgba(197,170,114,0.1)', border:'1px solid var(--gold-border)',
               borderRadius:'10px', padding:'12px 14px', marginBottom:'1rem',
               fontSize:'12px', color:'var(--gold)', textAlign:'center', letterSpacing:'.06em'
             }}>
@@ -3391,6 +3303,10 @@ export default function App() {
           )}
 
           {/* Action buttons */}
+          {isAdmin(authedEmail)&&<div style={{marginBottom:'12px'}}>
+            <button className="btn-ai" onClick={checkVoiceService} disabled={voiceChecking}><Icon name="headphones"/>{voiceChecking?'Checking voice service…':'Check voice service'}</button>
+            {voiceDiagnostic&&<p role="status" style={{fontSize:'12px',lineHeight:1.6,color:'var(--text)',marginTop:'8px'}}>{voiceDiagnostic}</p>}
+          </div>}
           <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
             {isAdmin(authedEmail) && (
               <button

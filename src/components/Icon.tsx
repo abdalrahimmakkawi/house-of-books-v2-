@@ -58,7 +58,7 @@ const paths: Record<string, string> = {
 }
 const colors: Record<string, string> = { science:'#9cbeb9', brain:'#b7a8c5', philosophy:'#c8b58f', heart:'#c5a4a1', trend:'#9ebba7', finance:'#c3b58f', briefcase:'#9eafc5', user:'#b6afc7', users:'#aaaed0', clock:'#c1b49f', globe:'#9fb5c6', leaf:'#a0b89e', waves:'#99b9c4', sun:'#c9b48c', moon:'#b1acc9', sparkles:'#c2b095', headphones:'#b3abd0', music:'#b3abd0', warning:'#c5aa81', trash:'#c49e9d' }
 export function Icon({ name='book', size=18, className='', style }: { name?:string; size?:number; className?:string; style?:CSSProperties }) {
-  return <svg className={'ui-icon '+className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{display:'inline-block',verticalAlign:'middle',flexShrink:0,color:colors[name]||'var(--gold, #b4c5b4)',...style}}><path d={paths[name]||paths.book}/></svg>
+  return <svg className={'ui-icon '+className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{display:'inline-block',verticalAlign:'middle',flexShrink:0,color:colors[name]||'var(--gold, #c5aa72)',...style}}><path d={paths[name]||paths.book}/></svg>
 }
 export function categoryIcon(category:string) {
   const c=category.toLowerCase().replace(/[-_]/g,' ')

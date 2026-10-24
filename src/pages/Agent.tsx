@@ -10,14 +10,14 @@ export const isAdminUser = (email: string) => ADMIN_EMAILS.map(e => e.toLowerCas
 // Admin bypass function available for future rate limiting bypasses
 
 // ── Constants ──────────────────────────────────────────────────────
-const G   = "#b4c5b4"
-const GL  = "#d4ddcb"
-const GD  = "rgba(180,197,180,0.08)"
-const GB  = "rgba(180,197,180,0.18)"
+const G   = "#c5aa72"
+const GL  = "#ddc793"
+const GD  = "rgba(197,170,114,0.08)"
+const GB  = "rgba(197,170,114,0.18)"
 const BG  = "#06050a"
-const TX  = "#e7e9e3"
-const TM  = "rgba(231,233,227,0.45)"
-const GRN = "#a5c4aa"
+const TX  = "#e8e4d9"
+const TM  = "rgba(232,228,217,0.45)"
+const GRN = "#93bd9e"
 const RED = "#f05555"
 const SF  = "rgba(255,255,255,0.03)"
 const HISTORY_KEY = "hob_agent_history"
@@ -298,9 +298,9 @@ async function callAI(messages: any[], systemPrompt: string) {
 //  into a line that flatters.
 // ═══════════════════════════════════════════════════════════════════
 
-const INK    = "#171d20"
-const INK2   = "#20282c"
-const LINE   = "rgba(180,197,180,0.15)"
+const INK    = "#0f0e0b"
+const INK2   = "#121017"
+const LINE   = "rgba(197,170,114,0.15)"
 const LINE2  = "rgba(255,255,255,0.06)"
 const NUM    = "system-ui,-apple-system,'Segoe UI',sans-serif"
 const SERIF  = "Georgia,'Times New Roman',serif"
@@ -320,7 +320,7 @@ const SEV: any = {
   error: { dot: RED,   label: "Broken"    },
   warn:  { dot: "#e0a14c", label: "Attention" },
   good:  { dot: GRN,   label: "Good"      },
-  info:  { dot: "rgba(231,233,227,0.35)", label: "Note" },
+  info:  { dot: "rgba(232,228,217,0.35)", label: "Note" },
 }
 
 const BOOK_AGENT = { id:"books", icon:"library", label:"Book Chat", desc:"Talk about any book on the shelf", color:G } as any
@@ -590,8 +590,8 @@ function Composer({ taRef, value, onChange, onSend, loading, placeholder, chips,
                      ...surface(), borderRadius:14, color:TX, outline:"none", maxHeight:160, boxSizing:"border-box" }}/>
           <button onClick={onSend} disabled={loading || !value.trim()}
             style={{ fontFamily:NUM, fontSize:13, fontWeight:600, padding:"13px 22px", borderRadius:14, border:"none",
-                     background: loading || !value.trim() ? "rgba(180,197,180,0.14)" : "linear-gradient(150deg,#efd18a,#b4c5b4)",
-                     boxShadow: loading || !value.trim() ? "none" : "0 8px 20px -8px rgba(180,197,180,0.7)",
+                     background: loading || !value.trim() ? "rgba(197,170,114,0.14)" : "linear-gradient(150deg,#efd18a,#c5aa72)",
+                     boxShadow: loading || !value.trim() ? "none" : "0 8px 20px -8px rgba(197,170,114,0.7)",
                      color: loading || !value.trim() ? TM : "#12101a",
                      cursor: loading || !value.trim() ? "default" : "pointer", flexShrink:0, transition:"box-shadow .2s" }}>
             {loading ? "…" : "Ask"}
@@ -760,8 +760,8 @@ export default function BookAgent() {
   const Tab = ({ id, label }: any) => (
     <button onClick={()=>setRoom(id)}
       style={{ fontFamily:NUM, fontSize:12.5, padding:"7px 15px", borderRadius:10, cursor:"pointer",
-               background: room===id ? "rgba(180,197,180,0.14)" : "transparent",
-               border:"1px solid " + (room===id ? "rgba(180,197,180,0.42)" : "transparent"),
+               background: room===id ? "rgba(197,170,114,0.14)" : "transparent",
+               border:"1px solid " + (room===id ? "rgba(197,170,114,0.42)" : "transparent"),
                color: room===id ? GL : TM, fontWeight: room===id ? 600 : 400, transition:"all .18s" }}>
       {label}
     </button>
@@ -769,7 +769,7 @@ export default function BookAgent() {
 
   return (
     <div style={{ background:INK, color:TX, height:"100vh", display:"flex", flexDirection:"column", overflow:"hidden",
-                  backgroundImage:"radial-gradient(1100px 520px at 18% -12%, rgba(180,197,180,0.07), transparent 62%)" }}>
+                  backgroundImage:"radial-gradient(1100px 520px at 18% -12%, rgba(197,170,114,0.07), transparent 62%)" }}>
 
       <div style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 24px", borderBottom:"1px solid " + LINE2, flexShrink:0 }}>
         <div style={{ width:30, height:30, borderRadius:9, ...surface(), display:"flex", alignItems:"center", justifyContent:"center", color:G, fontSize:14 }}><Icon name="sparkles"/></div>
@@ -790,9 +790,9 @@ export default function BookAgent() {
           <Icon name="bell"/>
           {unread > 0 && (
             <span style={{ position:"absolute", top:-5, right:-5, minWidth:17, height:17, padding:"0 4px", borderRadius:9,
-                           background:"linear-gradient(150deg,#efd18a,#b4c5b4)", color:"#12101a",
+                           background:"linear-gradient(150deg,#efd18a,#c5aa72)", color:"#12101a",
                            fontFamily:NUM, fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center",
-                           boxShadow:"0 3px 10px -2px rgba(180,197,180,0.8)" }}>{unread}</span>
+                           boxShadow:"0 3px 10px -2px rgba(197,170,114,0.8)" }}>{unread}</span>
           )}
         </button>
         <button onClick={()=>setShowHistory(true)}
@@ -832,7 +832,7 @@ export default function BookAgent() {
       <style>{`
         ::-webkit-scrollbar{width:5px;height:0}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(180,197,180,0.2);border-radius:3px}
+        ::-webkit-scrollbar-thumb{background:rgba(197,170,114,0.2);border-radius:3px}
         @keyframes bob{0%,80%,100%{transform:translateY(0);opacity:.32}40%{transform:translateY(-4px);opacity:1}}
       `}</style>
     </div>

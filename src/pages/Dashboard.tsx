@@ -12,17 +12,17 @@ import { supabase } from "../lib/supabase"
 // Powered by NVIDIA AI
 // ═════════════════════════════════════════════════════════════════
 
-const G    = "#b4c5b4"
-const GL   = "#d4ddcb"
-const GD   = "rgba(180,197,180,0.08)"
+const G    = "#c5aa72"
+const GL   = "#ddc793"
+const GD   = "rgba(197,170,114,0.08)"
 const SF   = "rgba(255,255,255,0.08)"
-const GB   = "rgba(180,197,180,0.15)"
-const BG   = "#171d20"
-const SURFACE = "#252e31"
-const TX   = "#e7e9e3"
-const TM   = "rgba(231,233,227,0.5)"
-const RED  = "#ceaaa4"
-const GRN  = "#a5c4aa"
+const GB   = "rgba(197,170,114,0.15)"
+const BG   = "#0f0e0b"
+const SURFACE = "#1a1813"
+const TX   = "#e8e4d9"
+const TM   = "rgba(232,228,217,0.5)"
+const RED  = "#e39a95"
+const GRN  = "#93bd9e"
 const BORDER = "rgba(255,255,255,0.08)"
 
 // ── Shared helpers ─────────────────────────────────────────────────
@@ -126,7 +126,7 @@ interface AIBtnProps {
 function AIBtn({ onClick, loading, label="Analyze with AI", small=false }: AIBtnProps) {
   return (
     <motion.button whileHover={{ scale:1.02 }} whileTap={{ scale:.98 }} onClick={onClick} disabled={loading}
-      style={{ padding:small?"6px 14px":"9px 20px", background:loading?"rgba(180,197,180,0.12)":`linear-gradient(135deg,${G},${GL})`, color:loading?G:"#06050a", border:loading?`1px solid ${GB}`:"none", borderRadius:8, fontSize:small?10:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", cursor:loading?"wait":"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"Georgia,serif", flexShrink:0 }}>
+      style={{ padding:small?"6px 14px":"9px 20px", background:loading?"rgba(197,170,114,0.12)":`linear-gradient(135deg,${G},${GL})`, color:loading?G:"#06050a", border:loading?`1px solid ${GB}`:"none", borderRadius:8, fontSize:small?10:11, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", cursor:loading?"wait":"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"Georgia,serif", flexShrink:0 }}>
       {loading ? <><motion.span animate={{ rotate:360 }} transition={{ duration:.8, repeat:Infinity, ease:"linear" }} style={{ display:"inline-block" }}>⟳</motion.span>Analyzing…</> : label}
     </motion.button>
   )
@@ -140,14 +140,14 @@ function AIOut({ text, loading }: AIOutProps) {
   if (!text && !loading) return null
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
-      style={{ marginTop:14, background:"rgba(180,197,180,0.04)", border:`1px solid rgba(180,197,180,0.14)`, borderRadius:10, padding:"14px 16px" }}>
+      style={{ marginTop:14, background:"rgba(197,170,114,0.04)", border:`1px solid rgba(197,170,114,0.14)`, borderRadius:10, padding:"14px 16px" }}>
       <div style={{ fontSize:8, color:G, letterSpacing:".14em", textTransform:"uppercase", marginBottom:9, display:"flex", alignItems:"center", gap:5 }}>
         <span style={{ width:5, height:5, borderRadius:"50%", background:GRN, display:"inline-block", animation:"pulse 2s infinite" }}/>
         NVIDIA AI Analysis
       </div>
       {loading
         ? <div style={{ display:"flex", gap:4 }}>{[0,1,2].map(i=>(<motion.div key={i} style={{ width:6, height:6, borderRadius:"50%", background:G }} animate={{ y:[0,-5,0], opacity:[.4,1,.4] }} transition={{ duration:.8, repeat:Infinity, delay:i*.18 }}/>))}</div>
-        : <div style={{ fontSize:13, color:"rgba(231,233,227,0.88)", lineHeight:1.75, whiteSpace:"pre-wrap" }}>{text}</div>
+        : <div style={{ fontSize:13, color:"rgba(232,228,217,0.88)", lineHeight:1.75, whiteSpace:"pre-wrap" }}>{text}</div>
       }
     </motion.div>
   )
@@ -297,7 +297,7 @@ function GrowthModule() {
             { label:"New Free Users Needed", value:newFree.toLocaleString(), sub:"at 4% conversion" },
             { label:"Daily New Free Users", value:Math.ceil(newFree/90), sub:"to hit goal" },
           ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<3?`1px solid rgba(180,197,180,0.07)`:"none" }}>
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<3?`1px solid rgba(197,170,114,0.07)`:"none" }}>
               <span style={{ fontSize:11, color:TM }}>{item.label}</span>
               <div style={{ textAlign:"right" }}>
                 <div style={{ fontSize:13, color:G, fontWeight:700 }}>{item.value}</div>
@@ -335,10 +335,10 @@ function FeatureGapModule() {
         </tr></thead>
         <tbody>{FEATS.map((f,fi)=>(
           <tr key={fi} onMouseEnter={()=>setHov(fi)} onMouseLeave={()=>setHov(null)} style={{ background:hov===fi?GD:"transparent", transition:"background .15s" }}>
-            <td style={{ padding:"8px 12px", color:TX, fontSize:11, borderBottom:`1px solid rgba(180,197,180,0.05)` }}>{f}</td>
+            <td style={{ padding:"8px 12px", color:TX, fontSize:11, borderBottom:`1px solid rgba(197,170,114,0.05)` }}>{f}</td>
             {names.map(n=>{
               const has=CF[n][fi], isHoB=n==="House of Books"
-              return <td key={n} style={{ textAlign:"center", padding:"8px 8px", borderBottom:`1px solid rgba(180,197,180,0.05)` }}>
+              return <td key={n} style={{ textAlign:"center", padding:"8px 8px", borderBottom:`1px solid rgba(197,170,114,0.05)` }}>
                 {has?<span style={{ fontSize:13, color:isHoB?GRN:"rgba(74,200,120,0.55)" }}><Icon name="check"/></span>:<span style={{ fontSize:11, color:isHoB?RED:"rgba(255,255,255,0.08)" }}>—</span>}
               </td>
             })}
@@ -388,7 +388,7 @@ function PositioningModule() {
             <div style={{ position:"absolute", top:"50%", left:2, transform:"translateY(-50%) rotate(-90deg)", fontSize:8, color:TM, textTransform:"uppercase", letterSpacing:".06em", transformOrigin:"center", whiteSpace:"nowrap" }}>Price (Low<Icon name="arrow"/>High)</div>
             {[{n:"Blinkist",x:30,y:55},{n:"Shortform",x:32,y:22},{n:"getAbstract",x:22,y:18},{n:"Goodreads",x:55,y:88},{n:"HoB",x:74,y:58,h:true}].map(d=>(
               <div key={d.n} style={{ position:"absolute", left:`${d.x}%`, top:`${d.y}%`, transform:"translate(-50%,-50%)" }}>
-                <div style={{ width:d.h?13:9, height:d.h?13:9, borderRadius:"50%", background:d.h?G:"rgba(231,233,227,0.25)", border:`2px solid ${d.h?GL:"rgba(231,233,227,0.35)"}`, boxShadow:d.h?`0 0 10px ${G}55`:"none" }}/>
+                <div style={{ width:d.h?13:9, height:d.h?13:9, borderRadius:"50%", background:d.h?G:"rgba(232,228,217,0.25)", border:`2px solid ${d.h?GL:"rgba(232,228,217,0.35)"}`, boxShadow:d.h?`0 0 10px ${G}55`:"none" }}/>
                 <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)", fontSize:d.h?9:7.5, color:d.h?G:TM, whiteSpace:"nowrap", fontWeight:d.h?700:400, marginTop:2 }}>{d.n}</div>
               </div>
             ))}
@@ -741,7 +741,7 @@ function MarketingAgentModule() {
                 </div>
                 {loading
                   ? <div style={{ display:"flex", gap:4 }}>{[0,1,2].map(i=>(<motion.div key={i} style={{ width:6, height:6, borderRadius:"50%", background:G }} animate={{ y:[0,-5,0], opacity:[.4,1,.4] }} transition={{ duration:.8, repeat:Infinity, delay:i*.18 }}/>))}</div>
-                  : <div style={{ fontSize:12.5, color:"rgba(231,233,227,0.88)", lineHeight:1.8, whiteSpace:"pre-wrap", maxHeight:500, overflow:"auto" }}>{output}</div>
+                  : <div style={{ fontSize:12.5, color:"rgba(232,228,217,0.88)", lineHeight:1.8, whiteSpace:"pre-wrap", maxHeight:500, overflow:"auto" }}>{output}</div>
                 }
               </Card>
             </motion.div>
@@ -779,13 +779,13 @@ function FeedbackInsightsModule() {
       <Title icon="chart" title="User Insights — Anonymized & Privacy-Safe" sub="Aggregated feedback patterns and user behavior analytics" />
       
       <div style={{
-        background: 'rgba(180,197,180,0.04)',
-        border: '0.5px solid rgba(180,197,180,0.2)',
+        background: 'rgba(197,170,114,0.04)',
+        border: '0.5px solid rgba(197,170,114,0.2)',
         borderRadius: '10px',
         padding: '12px 14px',
         marginBottom: '16px',
         fontSize: '10px',
-        color: '#abb6ae',
+        color: '#9a9080',
         fontFamily: 'Georgia, serif'
       }}>
         
@@ -809,8 +809,8 @@ function FeedbackInsightsModule() {
             style={{
               marginTop: '14px',
               padding: '6px 14px',
-              background: 'rgba(180,197,180,0.1)',
-              border: '0.5px solid rgba(180,197,180,0.3)',
+              background: 'rgba(197,170,114,0.1)',
+              border: '0.5px solid rgba(197,170,114,0.3)',
               borderRadius: '6px',
               color: G,
               fontSize: '10px',
@@ -865,7 +865,7 @@ function UserMessagesModule() {
         {['all','bug','feature','general','praise','other'].map(c => (
           <button key={c} onClick={()=>setFilter(c)}
             style={{ padding:'5px 12px', borderRadius:20, fontSize:10.5, cursor:'pointer', fontFamily:'Georgia,serif',
-              background: filter===c ? 'rgba(180,197,180,0.15)' : 'transparent',
+              background: filter===c ? 'rgba(197,170,114,0.15)' : 'transparent',
               border: `0.5px solid ${filter===c ? G : BORDER}`, color: filter===c ? G : TM }}>
             {c==='all' ? 'All' : `${FEEDBACK_CATEGORY_ICON[c]} ${c}`}
           </button>
@@ -1117,7 +1117,7 @@ export default function BusinessDashboard() {
         
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(180,197,180,0.2);border-radius:2px}
+        ::-webkit-scrollbar-thumb{background:rgba(197,170,114,0.2);border-radius:2px}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         input[type=number]::-webkit-inner-spin-button{opacity:.35}

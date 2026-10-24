@@ -8,7 +8,7 @@ import App from './App'
 // Lazily pulled in so the Studio chunk is never part of the normal boot path.
 const Studio = React.lazy(() => import('./pages/Agent'))
 const StudioPreview = () => (
-  <React.Suspense fallback={<div style={{ padding: 24, fontFamily: 'Georgia,serif', color: '#b4c5b4', background: '#171d20', minHeight: '100vh' }}>Loading Studio…</div>}>
+  <React.Suspense fallback={<div style={{ padding: 24, fontFamily: 'Georgia,serif', color: '#c5aa72', background: '#0f0e0b', minHeight: '100vh' }}>Loading Studio…</div>}>
     <Studio />
   </React.Suspense>
 )
@@ -22,15 +22,15 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   componentDidCatch(error: unknown) { console.error('[HoB] render error:', error) }
   render() {
     if (this.state.hasError) return (
-      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'14px',background:'#171d20',color:'#e7e9e3',fontFamily:'Georgia,serif',textAlign:'center',padding:'2rem'}}>
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'14px',background:'#0f0e0b',color:'#e8e4d9',fontFamily:'Georgia,serif',textAlign:'center',padding:'2rem'}}>
         <div style={{fontSize:'2.5rem'}}><Icon name="library"/></div>
-        <div style={{fontSize:'1.3rem',color:'#b4c5b4'}}>Something went wrong</div>
-        <div style={{fontSize:'13px',color:'#abb6ae',maxWidth:'360px',lineHeight:1.6}}>
+        <div style={{fontSize:'1.3rem',color:'#c5aa72'}}>Something went wrong</div>
+        <div style={{fontSize:'13px',color:'#9a9080',maxWidth:'360px',lineHeight:1.6}}>
           An unexpected error interrupted the app. Your shelf and notes are safe — reloading will pick up right where you left off.
         </div>
         <button
           onClick={() => window.location.reload()}
-          style={{padding:'11px 26px',background:'#b4c5b4',color:'#17201d',border:'none',borderRadius:'8px',fontSize:'14px',cursor:'pointer',fontFamily:'Georgia,serif'}}
+          style={{padding:'11px 26px',background:'#c5aa72',color:'#0a0a0f',border:'none',borderRadius:'8px',fontSize:'14px',cursor:'pointer',fontFamily:'Georgia,serif'}}
         ><Icon name="refresh"/> Reload</button>
       </div>
     )
