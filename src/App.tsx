@@ -991,7 +991,7 @@ function PaymentModal({ email, onClose }: { email: string; onClose: () => void }
           style={{
             width:'100%',padding:'13px',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',
             background:'rgba(255,255,255,0.05)',border:'0.5px solid rgba(180,197,180,0.25)',borderRadius:'12px',
-            color:'#e7e9e3',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
+            color:'var(--text)',fontSize:'14px',fontFamily:'Georgia,serif',fontWeight:600,
             cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1,
             marginBottom:'10px',
           }}
@@ -1089,7 +1089,7 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
   return (
     <div style={{marginTop:'16px',padding:'16px',borderRadius:'14px',background:'rgba(180,197,180,0.06)',border:'0.5px solid rgba(180,197,180,0.22)',fontFamily:'Georgia,serif'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px'}}>
-        <div style={{fontSize:'14px',color:'#e7e9e3'}}>You finished it — how was this summary?</div>
+        <div style={{fontSize:'14px',color:'var(--text)'}}>You finished it — how was this summary?</div>
         <button onClick={dismiss} aria-label="Dismiss" style={{background:'none',border:'none',color:'#89978f',fontSize:'16px',cursor:'pointer',lineHeight:1,padding:0}}><Icon name="close"/></button>
       </div>
 
@@ -1116,7 +1116,7 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
             onChange={e => setNote(e.target.value.slice(0, 800))}
             placeholder="Anything you'd change? (optional)"
             rows={2}
-            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',color:'#e7e9e3',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
+            style={{width:'100%',marginTop:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(255,255,255,0.04)',border:'0.5px solid rgba(180,197,180,0.25)',color:'var(--text)',fontSize:'13px',fontFamily:'Georgia,serif',resize:'vertical',boxSizing:'border-box',outline:'none'}}
           />
           {err && <div style={{fontSize:'11px',color:'#e07a7a',marginTop:'6px'}}>{err}</div>}
           <div style={{display:'flex',gap:'8px',marginTop:'10px'}}>
@@ -1124,13 +1124,13 @@ function PostSummaryFeedback({ bookTitle }: { bookTitle?: string }) {
               onClick={send}
               style={{flex:1,padding:'10px',borderRadius:'10px',background:'linear-gradient(135deg,#e0be6f,#b4c5b4)',color:'#17201d',border:'none',fontSize:'13px',fontWeight:700,fontFamily:'Georgia,serif',cursor:'pointer'}}
             >Send feedback</button>
-            <button onClick={dismiss} style={{padding:'10px 14px',borderRadius:'10px',background:'none',border:'0.5px solid rgba(255,255,255,0.1)',color:'#abb6ae',fontSize:'12px',fontFamily:'Georgia,serif',cursor:'pointer'}}>Not now</button>
+            <button onClick={dismiss} style={{padding:'10px 14px',borderRadius:'10px',background:'none',border:'0.5px solid rgba(255,255,255,0.1)',color:'var(--text-muted)',fontSize:'12px',fontFamily:'Georgia,serif',cursor:'pointer'}}>Not now</button>
           </div>
         </>
       )}
 
       {state === 'sending' && (
-        <div style={{fontSize:'12px',color:'#abb6ae',marginTop:'10px',textAlign:'center'}}>Sending…</div>
+        <div style={{fontSize:'12px',color:'var(--text-muted)',marginTop:'10px',textAlign:'center'}}>Sending…</div>
       )}
     </div>
   )
@@ -1310,7 +1310,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
           {disabled ? (
             <div style={{fontSize:'13px',color:'#89978f',fontFamily:'Georgia,serif'}}>Generate the AI summary first to listen</div>
           ) : state === 'idle' ? (
-            <div style={{fontSize:'13px',color:'#b4c5b4',fontFamily:'Georgia,serif'}}>Listen to this summary</div>
+            <div style={{fontSize:'13px',color:'var(--gold)',fontFamily:'Georgia,serif'}}>Listen to this summary</div>
           ) : (
             <>
               <div
@@ -1337,7 +1337,7 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
                   }}/>
                 </div>
               </div>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'#abb6ae',marginTop:'2px',fontFamily:'Georgia,serif'}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'10px',color:'var(--text-muted)',marginTop:'2px',fontFamily:'Georgia,serif'}}>
                 <span>{formatTime(currentTime)}</span>
                 <span>{duration ? formatTime(duration) : '--:--'}</span>
               </div>
@@ -1351,13 +1351,13 @@ const AudioSummary = forwardRef<AudioSummaryHandle, { text?: string; bookId: str
               onClick={() => skip(-15)}
               disabled={!hasAudio}
               aria-label="Back 15 seconds"
-              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e7e9e3',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
+              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'var(--text)',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
             >⟲15</button>
             <button
               onClick={() => skip(15)}
               disabled={!hasAudio}
               aria-label="Forward 15 seconds"
-              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'#e7e9e3',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
+              style={{width:'30px',height:'30px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',border:'none',color:'var(--text)',fontSize:'12px',cursor: hasAudio?'pointer':'default',opacity: hasAudio?1:0.4}}
             >15⟳</button>
           </div>
         )}
@@ -1452,7 +1452,7 @@ function ExpandedPanel({
             width:'36px',height:'36px',
             background:'rgba(255,255,255,0.06)',
             border:'none',borderRadius:'50%',
-            color:'#e7e9e3',fontSize:'18px',
+            color:'var(--text)',fontSize:'18px',
             cursor:'pointer',display:'flex',
             alignItems:'center',justifyContent:'center',
             fontFamily:'Georgia,serif',
@@ -1462,7 +1462,7 @@ function ExpandedPanel({
           onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='rgba(255,255,255,0.06)'}}
         >←</button>
         <div style={{
-          fontSize:'15px',color:'#e7e9e3',fontWeight:'500',
+          fontSize:'15px',color:'var(--text)',fontWeight:'500',
           flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
           fontFamily:'Georgia,serif',
         }}>{book.title}</div>
@@ -1512,7 +1512,7 @@ function ExpandedPanel({
             }}
           />
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:'11px',color:'#b4c5b4',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'.04em'}}>
+            <div style={{fontSize:'11px',color:'var(--gold)',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'.04em'}}>
               {(book as any).read_time_mins || 15} min · AI Summary
             </div>
             <div style={{
@@ -1564,7 +1564,7 @@ function ExpandedPanel({
           onClick={() => { setActiveTab('chat'); onToggleChat() }}
           style={{
             flex:1,padding:'13px',
-            background:'rgba(180,197,180,0.12)',color:'#b4c5b4',
+            background:'rgba(180,197,180,0.12)',color:'var(--gold)',
             border:'0.5px solid rgba(180,197,180,0.3)',borderRadius:'13px',
             fontSize:'13px',cursor:'pointer',
             fontFamily:'Georgia,serif',
@@ -1623,13 +1623,13 @@ function ExpandedPanel({
         {/* ABOUT TAB */}
         {activeTab === 'about' && (
           <motion.div key="about" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               What's it about?
             </div>
             <div style={{fontSize:'10px',color:'#89978f',marginBottom:'12px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
               AI-generated summary for informational purposes — not affiliated with or endorsed by the author or publisher.
             </div>
-            <div style={{fontSize:'14px',color:'#abb6ae',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'14px',color:'var(--text-muted)',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
               {book.summary || (detailLoading ? "Loading summary…" : "Click  AI Summary to generate a comprehensive summary of this book.")}
             </div>
             {!book.summary && !detailLoading && (
@@ -1638,7 +1638,7 @@ function ExpandedPanel({
                 style={{
                   width:'100%',padding:'12px',
                   background:'rgba(180,197,180,0.12)',
-                  color:'#b4c5b4',
+                  color:'var(--gold)',
                   border:'0.5px solid rgba(180,197,180,0.3)',
                   borderRadius:'12px',fontSize:'14px',
                   cursor:'pointer',fontFamily:'Georgia,serif',
@@ -1648,7 +1648,7 @@ function ExpandedPanel({
                 {summaryLoading ? <> <Icon name="sparkles"/> Generating... </> : <> <Icon name="sparkles"/> Generate AI Summary </>}
               </button>
             )}
-            <div style={{fontSize:'13px',color:'#e7e9e3',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'13px',color:'var(--text)',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Audio Summary
             </div>
             <AudioSummary
@@ -1668,7 +1668,7 @@ function ExpandedPanel({
         {/* FULL SUMMARY TAB — long-form, paginated */}
         {activeTab === 'full' && (
           <motion.div key="full" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',marginBottom:'6px',fontFamily:'Georgia,serif'}}>
               {t.fullSummary}
             </div>
             <div style={{fontSize:'10px',color:'#89978f',marginBottom:'16px',fontFamily:'Georgia,serif',fontStyle:'italic'}}>
@@ -1683,7 +1683,7 @@ function ExpandedPanel({
                     background:'rgba(180,197,180,0.05)',
                     border:'0.5px solid rgba(180,197,180,0.15)',
                     borderRadius:'14px',padding:'18px 20px',marginBottom:'14px',
-                    fontSize:'14px',color:'#e7e9e3',lineHeight:'1.85',
+                    fontSize:'14px',color:'var(--text)',lineHeight:'1.85',
                     fontFamily:'Georgia,serif',whiteSpace:'pre-line',
                     minHeight:'240px',
                   }}>
@@ -1700,7 +1700,7 @@ function ExpandedPanel({
                         cursor: page === 0 ? 'default' : 'pointer',
                       }}
                     >← Previous</button>
-                    <div style={{fontSize:'11px',color:'#abb6ae',letterSpacing:'.05em'}}>
+                    <div style={{fontSize:'11px',color:'var(--text-muted)',letterSpacing:'.05em'}}>
                       Page {page + 1} of {pages.length}
                     </div>
                     <button
@@ -1723,7 +1723,7 @@ function ExpandedPanel({
                 </>
               )
             })() : (
-              <div style={{fontSize:'14px',color:'#abb6ae',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
+              <div style={{fontSize:'14px',color:'var(--text-muted)',lineHeight:'1.8',marginBottom:'20px',fontFamily:'Georgia,serif'}}>
                 Full summary not available yet — check back soon.
               </div>
             )}
@@ -1733,7 +1733,7 @@ function ExpandedPanel({
               borderRadius:'14px',padding:'14px 16px',
             }}>
               <span style={{fontSize:'16px'}}><Icon name="headphones"/></span>
-              <span style={{fontSize:'13px',color:'#b4c5b4',fontFamily:'Georgia,serif'}}>{t.audioComingSoon}</span>
+              <span style={{fontSize:'13px',color:'var(--gold)',fontFamily:'Georgia,serif'}}>{t.audioComingSoon}</span>
             </div>
           </motion.div>
         )}
@@ -1741,10 +1741,10 @@ function ExpandedPanel({
         {/* KEY INSIGHTS TAB */}
         {activeTab === 'insights' && (
           <motion.div key="insights" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',marginBottom:'8px',fontFamily:'Georgia,serif'}}>
               Key Insights
             </div>
-            <div style={{fontSize:'12px',color:'#abb6ae',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'12px',color:'var(--text-muted)',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
               Core ideas distilled by AI
             </div>
             {book.key_insights ? (
@@ -1754,7 +1754,7 @@ function ExpandedPanel({
                   background:'rgba(180,197,180,0.05)',
                   border:'0.5px solid rgba(180,197,180,0.15)',
                   borderRadius:'14px',padding:'14px 16px',
-                  fontSize:'13px',color:'#e7e9e3',lineHeight:'1.65',
+                  fontSize:'13px',color:'var(--text)',lineHeight:'1.65',
                   marginBottom:'10px',fontFamily:'Georgia,serif',
                   transition:'background .2s, border-color .2s',
                 }}>
@@ -1769,13 +1769,13 @@ function ExpandedPanel({
                 </div>
               ))
             ) : detailLoading ? (
-              <div style={{fontSize:'13px',color:'#b4c5b4',fontFamily:'Georgia,serif',padding:'8px 0'}}><Icon name="sparkles"/> Loading insights…</div>
+              <div style={{fontSize:'13px',color:'var(--gold)',fontFamily:'Georgia,serif',padding:'8px 0'}}><Icon name="sparkles"/> Loading insights…</div>
             ) : (
               <button
                 onClick={onGenerateSummary}
                 style={{
                   width:'100%',padding:'12px',
-                  background:'rgba(180,197,180,0.12)',color:'#b4c5b4',
+                  background:'rgba(180,197,180,0.12)',color:'var(--gold)',
                   border:'0.5px solid rgba(180,197,180,0.3)',
                   borderRadius:'12px',fontSize:'14px',
                   cursor:'pointer',fontFamily:'Georgia,serif',
@@ -1790,7 +1790,7 @@ function ExpandedPanel({
         {/* MY SHELF TAB */}
         {activeTab === 'shelf' && (
           <motion.div key="shelf" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-            <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',marginBottom:'16px',fontFamily:'Georgia,serif'}}>
               My Reading
             </div>
             {/* Shelf status buttons */}
@@ -1816,9 +1816,9 @@ function ExpandedPanel({
             </div>
             {/* Progress */}
             <div style={{marginBottom:'20px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#abb6ae',marginBottom:'6px',letterSpacing:'.06em',textTransform:'uppercase',fontFamily:'Georgia,serif'}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'var(--text-muted)',marginBottom:'6px',letterSpacing:'.06em',textTransform:'uppercase',fontFamily:'Georgia,serif'}}>
                 <span>Reading Progress</span>
-                <span style={{color:'#b4c5b4'}}>{progress}%</span>
+                <span style={{color:'var(--gold)'}}>{progress}%</span>
               </div>
               <div style={{width:'100%',background:'rgba(255,255,255,0.06)',borderRadius:'4px',height:'5px',marginBottom:'10px'}}>
                 <div style={{height:'5px',background:'linear-gradient(90deg,#b4c5b4,#e0be6f)',borderRadius:'4px',width:`${progress}%`,transition:'width .3s'}}/>
@@ -1830,7 +1830,7 @@ function ExpandedPanel({
               />
             </div>
             {/* Notes */}
-            <div style={{fontSize:'13px',color:'#e7e9e3',fontWeight:'500',marginBottom:'12px',fontFamily:'Georgia,serif'}}>My Notes</div>
+            <div style={{fontSize:'13px',color:'var(--text)',fontWeight:'500',marginBottom:'12px',fontFamily:'Georgia,serif'}}>My Notes</div>
             <textarea
               value={currentNote}
               onChange={e => onNoteChange(e.target.value)}
@@ -1840,7 +1840,7 @@ function ExpandedPanel({
                 background:'rgba(255,255,255,0.03)',
                 border:'0.5px solid rgba(180,197,180,0.2)',
                 borderRadius:'12px',padding:'12px',
-                color:'#e7e9e3',fontSize:'13px',
+                color:'var(--text)',fontSize:'13px',
                 fontFamily:'Georgia,serif',resize:'none',outline:'none',
               }}
             />
@@ -1850,7 +1850,7 @@ function ExpandedPanel({
                 marginTop:'10px',width:'100%',padding:'10px',
                 background:'rgba(180,197,180,0.12)',
                 border:'0.5px solid rgba(180,197,180,0.3)',
-                borderRadius:'10px',color:'#b4c5b4',
+                borderRadius:'10px',color:'var(--gold)',
                 fontSize:'13px',cursor:'pointer',fontFamily:'Georgia,serif',
               }}
             >{noteSaved ? <> Saved <Icon name="check"/> </> : 'Save Notes'}</button>
@@ -1860,7 +1860,7 @@ function ExpandedPanel({
                 marginTop:'8px',width:'100%',padding:'10px',
                 background:'rgba(255,255,255,0.03)',
                 border:'0.5px solid rgba(255,255,255,0.08)',
-                borderRadius:'10px',color:'#abb6ae',
+                borderRadius:'10px',color:'var(--text-muted)',
                 fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',
               }}
             >{exportingPDF ? 'Exporting…' : 'Export Insights PDF'}</button>
@@ -1873,10 +1873,10 @@ function ExpandedPanel({
             <div style={{display:'flex',alignItems:'center',gap:'11px',marginBottom:'16px'}}>
               <Minerva size={44} perch state={chatLoading ? 'thinking' : chatStreaming ? 'speaking' : 'idle'} />
               <div>
-                <div style={{fontSize:'18px',color:'#e7e9e3',fontWeight:'500',fontFamily:'Georgia,serif'}}>
+                <div style={{fontSize:'18px',color:'var(--text)',fontWeight:'500',fontFamily:'Georgia,serif'}}>
                   Minerva
                 </div>
-                <div style={{fontSize:'12px',color:'#abb6ae',fontFamily:'Georgia,serif'}}>
+                <div style={{fontSize:'12px',color:'var(--text-muted)',fontFamily:'Georgia,serif'}}>
                   {chatLoading ? 'Thinking…' : chatStreaming ? 'Speaking…' : `Ask me anything about "${book.title}"`}
                 </div>
               </div>
@@ -1890,7 +1890,7 @@ function ExpandedPanel({
                 <div style={{display:'flex',gap:'8px',alignItems:'flex-start',marginBottom:'8px',marginRight:'20px'}}>
                   <Minerva size={26} state="reading" />
                   <div style={{
-                    fontSize:'13px',color:'#abb6ae',lineHeight:'1.6',
+                    fontSize:'13px',color:'var(--text-muted)',lineHeight:'1.6',
                     padding:'10px 12px',borderRadius:'14px 14px 14px 4px',
                     background:'rgba(255,255,255,0.04)',
                     fontFamily:'Georgia,serif',
@@ -1903,7 +1903,7 @@ function ExpandedPanel({
                 const isTyping = chatStreaming && msg.role === 'assistant' && i === chatMessages.length - 1
                 const bubble = (
                   <div style={{
-                    fontSize:'13px',color:'#e7e9e3',lineHeight:'1.6',
+                    fontSize:'13px',color:'var(--text)',lineHeight:'1.6',
                     padding:'10px 12px',
                     borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     fontFamily:'Georgia,serif',
@@ -1927,7 +1927,7 @@ function ExpandedPanel({
               {chatLoading && (
                 <div style={{display:'flex',gap:'8px',alignItems:'center',padding:'4px 0 8px',marginRight:'20px'}}>
                   <Minerva size={26} state="thinking" />
-                  <span style={{fontSize:'12px',color:'#b4c5b4',fontFamily:'Georgia,serif'}}>Thinking…</span>
+                  <span style={{fontSize:'12px',color:'var(--gold)',fontFamily:'Georgia,serif'}}>Thinking…</span>
                 </div>
               )}
               <div ref={chatEndRef}/>
@@ -1942,7 +1942,7 @@ function ExpandedPanel({
                     flex:1,background:'rgba(255,255,255,0.04)',
                     border:'0.5px solid rgba(180,197,180,0.3)',
                     borderRadius:'10px',padding:'9px 12px',
-                    fontSize:'13px',color:'#e7e9e3',
+                    fontSize:'13px',color:'var(--text)',
                     fontFamily:'Georgia,serif',resize:'none',outline:'none',
                   }}
                 />
@@ -1959,7 +1959,7 @@ function ExpandedPanel({
                 ><Icon name="arrow"/></button>
               </div>
             </div>
-            <div style={{fontSize:'10px',color:'#abb6ae',textAlign:'center',paddingBottom:'1rem',fontFamily:'Georgia,serif'}}>
+            <div style={{fontSize:'10px',color:'var(--text-muted)',textAlign:'center',paddingBottom:'1rem',fontFamily:'Georgia,serif'}}>
               10 free AI chats · Resets every 6 hours
             </div>
           </motion.div>
@@ -2898,7 +2898,7 @@ export default function App() {
 
           <h1 className="landing-title">
             The World's Greatest Books<br/>
-            <em style={{color: '#e7e9e3'}}>Distilled by AI</em>
+            <em style={{color:'var(--text)'}}>Distilled by AI</em>
           </h1>
 
           <p className="landing-sub">
@@ -2953,13 +2953,13 @@ export default function App() {
         <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
           <div style={{background:'var(--modal-bg)',border:'1px solid rgba(180,197,180,0.28)',borderRadius:'20px',padding:'2.75rem 2.5rem',maxWidth:'400px',width:'100%',textAlign:'center' as const,boxShadow:'0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
             <img src="/logo-icon.png" alt="House of Books" style={{width:'80px',height:'80px',objectFit:'contain',margin:'0 auto 12px',display:'block',filter:'drop-shadow(0 4px 20px rgba(180,197,180,0.35))'}} />
-            <h2 style={{fontSize:'1.7rem',color:'#b4c5b4',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
+            <h2 style={{fontSize:'1.7rem',color:'var(--gold)',marginBottom:'8px',fontFamily:'Georgia,serif',letterSpacing:'0.01em'}}>House of Books</h2>
             {loginStatus === 'sent' ? (
               <>
                 <div style={{fontSize:'2.2rem',margin:'8px 0 12px'}}><Icon name="mail"/></div>
-                <p style={{color:'#e7e9e3',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
-                <p style={{color:'#abb6ae',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
-                  We sent a code to <span style={{color:'#b4c5b4'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
+                <p style={{color:'var(--text)',fontSize:'15px',marginBottom:'8px',fontFamily:'Georgia,serif'}}>Check your email</p>
+                <p style={{color:'var(--text-muted)',fontSize:'13px',marginBottom:'1.25rem',lineHeight:1.6}}>
+                  We sent a code to <span style={{color:'var(--gold)'}}>{emailInput.trim().toLowerCase()}</span>. Enter it below to sign in. (Check spam if you don't see it.)
                 </p>
                 <input
                   type="text"
@@ -2969,7 +2969,7 @@ export default function App() {
                   value={codeInput}
                   onChange={e => { setCodeInput(e.target.value.replace(/\D/g,'')); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleVerifyCode() }}
-                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'#e7e9e3',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'13px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'var(--text)',fontSize:'22px',letterSpacing:'0.35em',textAlign:'center' as const,outline:'none',marginBottom:'10px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleVerifyCode}
@@ -2986,7 +2986,7 @@ export default function App() {
                 </p>
                 <button
                   onClick={() => { setLoginStatus('idle'); setLoginError(''); setCodeInput('') }}
-                  style={{background:'none',border:'none',color:'#abb6ae',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
+                  style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',display:'block',width:'100%',marginTop:'10px'}}
                 >
                   ← Use a different email
                 </button>
@@ -3012,7 +3012,7 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                <p style={{color:'#abb6ae',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
+                <p style={{color:'var(--text-muted)',fontSize:'13px',marginBottom:'1.5rem',lineHeight:1.6}}>
                   {authMode === 'signin'
                     ? 'Welcome back — sign in to pick up where you left off.'
                     : 'Create your account — free, no credit card needed.'}
@@ -3037,7 +3037,7 @@ export default function App() {
                   value={emailInput}
                   onChange={e => { setEmailInput(e.target.value); if (loginError) setLoginError('') }}
                   onKeyDown={e => { if(e.key==='Enter') handleLogin() }}
-                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'#e7e9e3',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
+                  style={{width:'100%',padding:'11px 14px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(180,197,180,0.3)',borderRadius:'10px',color:'var(--text)',fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'Georgia,serif',boxSizing:'border-box' as const}}
                 />
                 <button
                   onClick={handleLogin}
@@ -3053,14 +3053,14 @@ export default function App() {
                 )}
                 <p style={{color:'#89978f',fontSize:'11.5px',marginTop:'12px',lineHeight:1.5}}>
                   {authMode === 'signin' ? (
-                    <>New here? <button onClick={()=>{setAuthMode('signup');setLoginError('')}} style={{background:'none',border:'none',color:'#b4c5b4',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Create an account</button></>
+                    <>New here? <button onClick={()=>{setAuthMode('signup');setLoginError('')}} style={{background:'none',border:'none',color:'var(--gold)',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Create an account</button></>
                   ) : (
-                    <>Already have an account? <button onClick={()=>{setAuthMode('signin');setLoginError('')}} style={{background:'none',border:'none',color:'#b4c5b4',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Sign in</button></>
+                    <>Already have an account? <button onClick={()=>{setAuthMode('signin');setLoginError('')}} style={{background:'none',border:'none',color:'var(--gold)',fontSize:'11.5px',cursor:'pointer',fontFamily:'Georgia,serif',padding:0,textDecoration:'underline'}}>Sign in</button></>
                   )}
                 </p>
                 <button
                   onClick={() => setAppFlow('landing')}
-                  style={{background:'none',border:'none',color:'#abb6ae',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
+                  style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:'12px',cursor:'pointer',fontFamily:'Georgia,serif',marginTop:'12px',display:'block',width:'100%'}}
                 >
                   ← Back
                 </button>
