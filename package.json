@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "seed:marine-biology": "node scripts/seed-marine-biology.mjs",
+    "test:marine-biology": "node --test scripts/seed-marine-biology.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

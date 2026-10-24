@@ -1,4 +1,5 @@
 {
+  "buildCommand": "npm run build && npm run seed:marine-biology -- --production-only",
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/((?!api/|.well-known/).*)", "destination": "/index.html" }
