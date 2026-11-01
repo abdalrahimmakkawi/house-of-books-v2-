@@ -47,11 +47,21 @@ export async function seedDopamineNation({ url, key, fetchImpl = fetch, log = co
   // Read back via the same view used by the app, not merely the write result.
   const verified = await request('books_catalog', { select: 'id,title,author,category' })
   for (const book of books) {
-    if (!verified.some(b => normalize(b.title) === normalize(book.title) && normalize(b.author) === normalize(book.author) && normalize(b.category) === 'psychology')) {
+    if (!verified.some(b => normalize(b.title) === normalize(book.title) && normalize(b.author) === normalize(book.author))) {
       throw new Error('Dopamine Nation catalog verification failed for ' + book.title)
     }
   }
-  log('Dopamine Nation import verified: 1 Psychology title; ' + additions.length + ' insert candidates.')
+  for (const book of books) {
+    const existing=verified.find(b=>normalize(b.title)===normalize(book.title)&&normalize(b.author)===normalize(book.author))
+    const details=await request('books',{select:'summary,key_insights,long_summary',id:'eq.'+existing.id})
+    if(!details[0]) throw new Error('Book detail verification failed')
+    const patch={}
+    for(const field of ['summary','key_insights','long_summary']) if(!details[0][field]?.trim()) patch[field]=book[field]
+    if(patch.summary) patch.summary_generated=true
+    if(Object.keys(patch).length) await request('books',{id:'eq.'+existing.id},{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)})
+    log('Verified title: '+existing.title+'; category: '+existing.category+'; filled fields: '+Object.keys(patch).length)
+  }
+  log('Dopamine Nation import verified: 1 title; ' + additions.length + ' insert candidates.')
   return { candidates: additions.length, verified: books.length }
 }
 

@@ -228,8 +228,8 @@ export function localizeBook<T extends Book>(book: T, langId: string): T {
 // Display-only counts for the landing page stats. Lock state is NOT derived
 // from these — it comes from each book's is_premium flag, which the database
 // paywall enforces. Includes five new free marine biology titles.
-const TOTAL_BOOKS = 308
-const FREE_BOOKS = 93
+const TOTAL_BOOKS = 307
+const FREE_BOOKS = 92
 
 // Vercel Web Analytics custom event helper (no-op until the script loads /
 // Web Analytics is on a plan that records custom events; safe to call always).
@@ -3489,3 +3489,4 @@ export default function App() {
 
   </div></>)
 }
+
