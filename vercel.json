@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build && npm run seed:marine-biology -- --production-only",
+  "buildCommand": "npm run build && npm run seed:marine-biology -- --production-only && node scripts/seed-dopamine-nation.mjs --production-only",
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/((?!api/|.well-known/).*)", "destination": "/index.html" }

@@ -228,8 +228,8 @@ export function localizeBook<T extends Book>(book: T, langId: string): T {
 // Display-only counts for the landing page stats. Lock state is NOT derived
 // from these — it comes from each book's is_premium flag, which the database
 // paywall enforces. Includes five new free marine biology titles.
-const TOTAL_BOOKS = 307
-const FREE_BOOKS = 92
+const TOTAL_BOOKS = 308
+const FREE_BOOKS = 93
 
 // Vercel Web Analytics custom event helper (no-op until the script loads /
 // Web Analytics is on a plan that records custom events; safe to call always).
@@ -292,8 +292,8 @@ const BOOK_LIST_COLUMNS = 'id,title,author,cover_url,category,read_time_mins,is_
 // repaired). Returning visitors hold the previous list for up to the TTL and
 // would otherwise not see the change — a new key retires their copy on the
 // next load, which is the only way to push a catalogue change out promptly.
-// v4: added five marine biology titles to Science.
-const BOOKS_CACHE_KEY = 'hob_books_cache_v4'
+// v5: added Dopamine Nation to Psychology.
+const BOOKS_CACHE_KEY = 'hob_books_cache_v5'
 const BOOKS_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 // ── Cover fallback ────────────────────────────────────────────────
@@ -2116,7 +2116,7 @@ export default function App() {
     if(!IS_DEMO){
       // Retired cache keys hold a full copy of the catalogue (~100KB); drop
       // them so a bumped key doesn't leave dead weight in every user's storage.
-      try{ localStorage.removeItem('hob_books_cache'); localStorage.removeItem('hob_books_cache_v2'); localStorage.removeItem('hob_books_cache_v3') }catch{}
+      try{ localStorage.removeItem('hob_books_cache'); localStorage.removeItem('hob_books_cache_v2'); localStorage.removeItem('hob_books_cache_v3'); localStorage.removeItem('hob_books_cache_v4') }catch{}
       try{
         const c=JSON.parse(localStorage.getItem(BOOKS_CACHE_KEY)||'null')
         if(c && Date.now()-c.at<BOOKS_CACHE_TTL && Array.isArray(c.books) && c.books.length){
